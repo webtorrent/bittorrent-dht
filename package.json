@@ -1,0 +1,36 @@
+{
+  "name": "bittorrent-dht",
+  "version": "0.1.0",
+  "description": "Simple, robust, BitTorrent DHT implementation",
+  "main": "index.js",
+  "dependencies": {
+    "bitfield": "0.x",
+    "bncode": "0.x",
+    "bops": "0.x",
+    "core-util-is": "1.x"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feross/bittorrent-dht.git"
+  },
+  "keywords": [
+    "torrent",
+    "bittorrent",
+    "dht",
+    "search",
+    "distributed hash table",
+    "protocol",
+    "peer",
+    "p2p",
+    "peer-to-peer"
+  ],
+  "author": "Feross Aboukhadijeh <feross@feross.org> (http://feross.org/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/feross/bittorrent-dht/issues"
+  }
+}
