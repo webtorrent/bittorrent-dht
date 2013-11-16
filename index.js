@@ -133,15 +133,14 @@ DHT.prototype._handlePeer = function (addr) {
   })
 }
 
-DHT.prototype._onData = function (data, host, port) {
+DHT.prototype._onData = function (data, rinfo) {
   var self = this
-  var addr = host + ':' + port
+  var addr = rinfo.address + ':' + rinfo.port
 
   var message
   try {
-    // console.log('got response from ' + addr)
+    console.log('got response from ' + addr)
     message = bencode.decode(data)
-    // console.log(JSON.stringify(message))
     if (!message) throw new Error('message is undefined')
   } catch (err) {
     console.error('Failed to decode UDP data from node ' + addr)
@@ -150,7 +149,7 @@ DHT.prototype._onData = function (data, host, port) {
   }
 
   if (!message.t || (bops.to(message.t) !== self.requestId.toString())) {
-    console.log('wrong message requestId: ', bops.to(message.t), self.requestId.toString(), host, port)
+    console.log('wrong message requestId: ', bops.to(message.t), self.requestId.toString(), addr)
     return
   }
 
