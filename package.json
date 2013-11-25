@@ -10,7 +10,10 @@
     "compact2string": "~1.x",
     "core-util-is": "1.x"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "once": "~1.x",
+    "tape": "~2.x"
+  },
   "browser": {
     "dgram": "./node_modules/chrome-dgram/index.js"
   },
