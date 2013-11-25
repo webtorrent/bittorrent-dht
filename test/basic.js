@@ -24,5 +24,5 @@ test('Find nodes (Pride & Prejudice)', function (t) {
 
   setTimeout(function () {
     t.end()
-  }, 60000)
+  }, 600000)
 })
