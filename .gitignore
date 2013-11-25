@@ -2,6 +2,7 @@ bundle.js
 tmp
 *.out
 
+.DS_Store
 lib-cov
 *.seed
 *.log
