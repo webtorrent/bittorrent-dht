@@ -7,10 +7,10 @@
 module.exports = DHT
 
 var bencode = require('bncode')
-var bops = require('bops')
 var compact2string = require('compact2string')
+var crypto = require('crypto')
+var dgram = require('dgram')
 var EventEmitter = require('events').EventEmitter
-var dgram = require('chrome-dgram')
 var is = require('core-util-is') // added in Node 0.12
 var util = require('util')
 
@@ -23,16 +23,20 @@ var BOOTSTRAP_NODES = [
 ]
 
 function randomId () {
-  var array = new Uint8Array(20)
-  window.crypto.getRandomValues(array)
-  return array
+  if (typeof window !== 'undefined') {
+    var array = new Uint8Array(20)
+    window.crypto.getRandomValues(array)
+    return new Buffer(array)
+  } else {
+    return crypto.randomBytes(20)
+  }
 }
 
 function parseNodeInfo (compact) {
   try {
     var nodes = []
     for (var i = 0; i < compact.length; i += 26) {
-      nodes.push(compact2string(bops.subarray(compact, i + 20, i + 26)))
+      nodes.push(compact2string(compact.slice(i + 20, i + 26)))
     }
     return nodes
   } catch (err) {
@@ -62,7 +66,7 @@ function DHT (infoHash) {
 
   // Support infoHash as string or Buffer
   if (is.isString(infoHash)) {
-    infoHash = bops.from(infoHash, 'hex')
+    infoHash = new Buffer(infoHash, 'hex')
   } else if (!is.isBuffer(infoHash)) {
     throw new Error('DHT() requires string or buffer infoHash')
   }
@@ -76,7 +80,7 @@ function DHT (infoHash) {
   self.missingPeers = 0
 
   self.nodeId = randomId()
-  console.log('our node id: ' + bops.to(self.nodeId, 'hex'))
+  console.log('our node id: ' + self.nodeId.toString('hex'))
 
   self.requestId = 1
   self.pendingRequests = {}
@@ -99,6 +103,11 @@ function DHT (infoHash) {
   self.socket.on('message', self._onData.bind(self))
 }
 
+DHT.prototype.close = function () {
+  var self = this
+  self.socket.close()
+}
+
 /**
  * Called when client finds a new DHT node
  * @param  {string} addr
@@ -111,7 +120,7 @@ DHT.prototype._handleNode = function (addr) {
   }
 
   process.nextTick(function () {
-    self.emit('node', addr, bops.to(self.infoHash, 'hex'))
+    self.emit('node', addr, self.infoHash.toString('hex'))
   })
 
   if (self.missingPeers > 0) self.query(addr)
@@ -129,7 +138,7 @@ DHT.prototype._handlePeer = function (addr) {
   self.missingPeers = Math.max(0, self.missingPeers - 1)
 
   process.nextTick(function () {
-    self.emit('peer', addr, bops.to(self.infoHash, 'hex'))
+    self.emit('peer', addr, self.infoHash.toString('hex'))
   })
 }
 
@@ -148,8 +157,8 @@ DHT.prototype._onData = function (data, rinfo) {
     return
   }
 
-  if (!message.t || (bops.to(message.t) !== self.requestId.toString())) {
-    console.log('wrong message requestId: ', bops.to(message.t), self.requestId.toString(), addr)
+  if (!message.t || (message.t.toString() !== self.requestId.toString())) {
+    console.log('wrong message requestId: ', message.t || message.t.toString(), self.requestId || self.requestId.toString(), addr)
     return
   }
 
@@ -158,7 +167,7 @@ DHT.prototype._onData = function (data, rinfo) {
 
   var r = message && message.r
 
-  if (r && bops.is(r.nodes)) {
+  if (r && Buffer.isBuffer(r.nodes)) {
     // console.log('got nodes')
     parseNodeInfo(r.nodes).forEach(self._handleNode.bind(self))
   }
