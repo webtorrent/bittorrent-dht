@@ -20,4 +20,9 @@ test('Find nodes (Pride & Prejudice)', function (t) {
   // dht.on('peer', once(function (peer) {
   //   t.pass('Found at least one peer that has the file')
   // }))
+
+
+  setTimeout(function () {
+    t.end()
+  }, 60000)
 })
