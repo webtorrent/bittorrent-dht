@@ -21,8 +21,9 @@ test('Find nodes (Pride & Prejudice)', function (t) {
   //   t.pass('Found at least one peer that has the file')
   // }))
 
-
-  setTimeout(function () {
+  // 10 minute timeout
+  var timeout = setTimeout(function () {
     t.end()
   }, 600000)
+  timeout.unref()
 })
