@@ -105,7 +105,10 @@ function DHT (infoHash) {
 
 DHT.prototype.close = function () {
   var self = this
+  self.socket.unref()
   self.socket.close()
+
+  self._closed = true
 }
 
 /**
@@ -123,7 +126,7 @@ DHT.prototype._handleNode = function (addr) {
     self.emit('node', addr, self.infoHash.toString('hex'))
   })
 
-  if (self.missingPeers > 0) self.query(addr)
+  if (self.missingPeers > 0 && !self._closed) self.query(addr)
   // if (self.queue.length < 50) self.queue.push(addr) // TODO: remove this?
 }
 
