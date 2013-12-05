@@ -151,12 +151,11 @@ DHT.prototype._onData = function (data, rinfo) {
 
   var message
   try {
-    console.log('got response from ' + addr)
+    // console.log('got response from ' + addr)
     message = bencode.decode(data)
     if (!message) throw new Error('message is undefined')
   } catch (err) {
-    console.error('Failed to decode UDP data from node ' + addr)
-    console.error(err)
+    console.error('Failed to decode data from node ' + addr + ' ' + err.message)
     return
   }
 
@@ -206,6 +205,7 @@ DHT.prototype.findPeers = function (num) {
     if (Object.keys(self.nodes).length === 0) {
       console.log('No nodes replied, retry with bootstrap nodes')
       self.queue.push.apply(self.queue, BOOTSTRAP_NODES)
+      self.missingPeers -= num
       self.findPeers(num)
     }
   }, BOOTSTRAP_TIMEOUT)
