@@ -15,6 +15,8 @@ var is = require('core-util-is') // added in Node 0.12
 var util = require('util')
 
 var MAX_NODES = 5000
+var REQ_TIMEOUT = 2000
+var MAX_REQUESTS = 3
 var BOOTSTRAP_TIMEOUT = 5000
 var BOOTSTRAP_NODES = [
   'dht.transmissionbt.com:6881',
@@ -74,6 +76,7 @@ function DHT (infoHash) {
   self.infoHash = infoHash
   self.nodes = {}
   self.peers = {}
+  self.reqs = {}
   self.queue = [].concat(BOOTSTRAP_NODES)
 
   // Number of nodes we still need to find to satisfy the last call to findPeers
@@ -126,7 +129,7 @@ DHT.prototype._handleNode = function (addr) {
     self.emit('node', addr, self.infoHash.toString('hex'))
   })
 
-  if (self.missingPeers > 0 && !self._closed) self.query(addr)
+  self.query(addr)
   // if (self.queue.length < 50) self.queue.push(addr) // TODO: remove this?
 }
 
@@ -166,6 +169,7 @@ DHT.prototype._onData = function (data, rinfo) {
 
   // Mark that we've seen this node (the one we received data from)
   self.nodes[addr] = true
+  delete self.reqs[addr]
 
   var r = message && message.r
 
@@ -181,11 +185,19 @@ DHT.prototype._onData = function (data, rinfo) {
 
 DHT.prototype.query = function (addr) {
   var self = this
-  if (Object.keys(self.nodes).length > MAX_NODES) return
+  var numNodes = Object.keys(self.nodes).length
+  if (numNodes > MAX_NODES || self.missingPeers <= 0 || self._closed) return
 
   var host = addr.split(':')[0]
   var port = Number(addr.split(':')[1])
-  self.socket.send(self.message, 0, self.message.length, port, host)
+  self.socket.send(self.message, 0, self.message.length, port, host, function () {
+    setTimeout(function () {
+      self.reqs[addr] = (self.reqs[addr] || 0) + 1
+      if (!self.nodes[addr] && self.reqs[addr] < MAX_REQUESTS) {
+        self.query.call(self, addr);
+      }
+    }, REQ_TIMEOUT)
+  })
 }
 
 DHT.prototype.findPeers = function (num) {
