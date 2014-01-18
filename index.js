@@ -11,7 +11,6 @@ var compact2string = require('compact2string')
 var crypto = require('crypto')
 var dgram = require('dgram')
 var EventEmitter = require('events').EventEmitter
-var is = require('core-util-is') // added in Node 0.12
 var util = require('util')
 
 var MAX_NODES = 5000
@@ -67,9 +66,9 @@ function DHT (infoHash) {
   EventEmitter.call(self)
 
   // Support infoHash as string or Buffer
-  if (is.isString(infoHash)) {
+  if (typeof infoHash === 'string') {
     infoHash = new Buffer(infoHash, 'hex')
-  } else if (!is.isBuffer(infoHash)) {
+  } else if (!Buffer.isBuffer(infoHash)) {
     throw new Error('DHT() requires string or buffer infoHash')
   }
 
@@ -177,7 +176,7 @@ DHT.prototype._onData = function (data, rinfo) {
     // console.log('got nodes')
     parseNodeInfo(r.nodes).forEach(self._handleNode.bind(self))
   }
-  if (r && is.isArray(r.values)) {
+  if (r && Array.isArray(r.values)) {
     // console.log('got peers')
     parsePeerInfo(r.values).forEach(self._handlePeer.bind(self))
   }
@@ -222,13 +221,3 @@ DHT.prototype.findPeers = function (num) {
     }
   }, BOOTSTRAP_TIMEOUT)
 }
-
-DHT.prototype.__defineGetter__('peersFound', function() {
-  var self = this
-  return Object.keys(self.peers).length
-})
-
-DHT.prototype.__defineGetter__('nodesFound', function () {
-  var self = this
-  return Object.keys(self.nodes).length
-})
