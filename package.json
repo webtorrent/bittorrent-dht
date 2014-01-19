@@ -7,7 +7,7 @@
     "bitfield": "~0.1.0",
     "bncode": "~0.3.0",
     "chrome-dgram": "1.x",
-    "compact2string": "~1.1.0"
+    "compact2string": "~1.2.0"
   },
   "devDependencies": {
     "once": "1.x",
