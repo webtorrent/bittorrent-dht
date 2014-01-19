@@ -14,7 +14,8 @@
     "tape": "2.x"
   },
   "browser": {
-    "dgram": "./node_modules/chrome-dgram/index.js"
+    "dgram": "./node_modules/chrome-dgram/index.js",
+    "crypto": false
   },
   "scripts": {
     "test": "tape test/*.js"
