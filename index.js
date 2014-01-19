@@ -162,7 +162,7 @@ DHT.prototype._onData = function (data, rinfo) {
   }
 
   if (!message.t || (message.t.toString() !== self.requestId.toString())) {
-    console.log('wrong message requestId: ', message.t || message.t.toString(), self.requestId || self.requestId.toString(), addr)
+    console.log('wrong message requestId: ', message.t && message.t.toString(), self.requestId && self.requestId.toString(), addr)
     return
   }
 
