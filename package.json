@@ -4,14 +4,14 @@
   "description": "Simple, robust, BitTorrent DHT implementation",
   "main": "index.js",
   "dependencies": {
-    "bitfield": "0.x",
-    "bncode": "0.x",
+    "bitfield": "~0.1.0",
+    "bncode": "~0.3.0",
     "chrome-dgram": "1.x",
-    "compact2string": "~1.x"
+    "compact2string": "~1.1.0"
   },
   "devDependencies": {
-    "once": "~1.x",
-    "tape": "~2.x"
+    "once": "1.x",
+    "tape": "2.x"
   },
   "browser": {
     "dgram": "./node_modules/chrome-dgram/index.js"
