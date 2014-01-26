@@ -5,7 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "bitfield": "~0.1.0",
-    "bncode": "~0.3.0",
+    "bncode": "~0.5.2",
     "chrome-dgram": "1.x",
     "compact2string": "~1.2.0"
   },
@@ -34,7 +34,11 @@
     "p2p",
     "peer-to-peer"
   ],
-  "author": "Feross Aboukhadijeh <feross@feross.org> (http://feross.org/)",
+  "author": {
+    "name": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "http://feross.org/"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/feross/bittorrent-dht/issues"
