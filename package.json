@@ -8,7 +8,8 @@
     "bncode": "~0.5.2",
     "chrome-dgram": "1.x",
     "compact2string": "~1.2.0",
-    "inherits": "~2.0.1"
+    "inherits": "~2.0.1",
+    "hat": "0.0.3"
   },
   "devDependencies": {
     "once": "1.x",

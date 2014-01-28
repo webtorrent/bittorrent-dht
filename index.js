@@ -9,6 +9,7 @@ var bencode = require('bncode')
 var compact2string = require('compact2string')
 var crypto = require('crypto')
 var dgram = require('dgram')
+var hat = require('hat')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 
@@ -21,16 +22,6 @@ var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
   'router.utorrent.com:6881'
 ]
-
-function randomId () {
-  if (typeof window !== 'undefined') {
-    var array = new Uint8Array(20)
-    window.crypto.getRandomValues(array)
-    return new Buffer(array)
-  } else {
-    return crypto.randomBytes(20)
-  }
-}
 
 function parseNodeInfo (compact) {
   try {
@@ -80,8 +71,8 @@ function DHT (infoHash) {
   // Number of nodes we still need to find to satisfy the last call to findPeers
   self.missingPeers = 0
 
-  self.nodeId = randomId()
-  console.log('our node id: ' + self.nodeId.toString('hex'))
+  this.nodeId = hat(160)
+  console.log('DHT node id: ' + this.nodeId)
 
   self.requestId = 1
   self.pendingRequests = {}
