@@ -1,7 +1,6 @@
 // TODO:
 // - Use the same DHT object for looking up multiple torrents
 // - Persist the routing table for later bootstrapping
-// - Should work in Node, not just browser
 // - Use actual DHT data structure with "buckets" (follow spec)
 
 module.exports = DHT
@@ -11,7 +10,7 @@ var compact2string = require('compact2string')
 var crypto = require('crypto')
 var dgram = require('dgram')
 var EventEmitter = require('events').EventEmitter
-var util = require('util')
+var inherits = require('inherits')
 
 var MAX_NODES = 5000
 var REQ_TIMEOUT = 2000
@@ -55,7 +54,7 @@ function parsePeerInfo (list) {
   }
 }
 
-util.inherits(DHT, EventEmitter)
+inherits(DHT, EventEmitter)
 
 /**
  * Create a new DHT
