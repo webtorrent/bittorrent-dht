@@ -6,6 +6,10 @@
 
 ### Simple, robust, BitTorrent DHT implementation
 
+Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.org/beps/bep_0005.html).
+
+BitTorrent DHT is the main peer discovery layer for BitTorrent, which allows for trackerless torrents. This module is used by [WebTorrent](https://github.com/feross/WebTorrent).
+
 ## install
 
 ```
