@@ -2,6 +2,7 @@
 // - Use the same DHT object for looking up multiple torrents
 // - Persist the routing table for later bootstrapping
 // - Use actual DHT data structure with "buckets" (follow spec)
+// - Add the method that allows us to list ourselves in the DHT
 
 module.exports = DHT
 
@@ -55,14 +56,10 @@ function DHT (infoHash) {
   if (!(this instanceof DHT)) return new DHT(infoHash)
   EventEmitter.call(this)
 
-  // Support infoHash as string or Buffer
-  if (typeof infoHash === 'string') {
-    infoHash = new Buffer(infoHash, 'hex')
-  } else if (!Buffer.isBuffer(infoHash)) {
-    throw new Error('DHT() requires string or buffer infoHash')
-  }
+  this.infoHash = typeof infoHash === 'string'
+    ? new Buffer(infoHash, 'hex')
+    : infoHash
 
-  this.infoHash = infoHash
   this.nodes = {}
   this.peers = {}
   this.reqs = {}
@@ -71,8 +68,8 @@ function DHT (infoHash) {
   // Number of nodes we still need to find to satisfy the last call to findPeers
   this.missingPeers = 0
 
-  this.nodeId = hat(160)
-  console.log('DHT node id: ' + this.nodeId)
+  this.nodeId = new Buffer(hat(160), 'hex')
+  console.log('DHT node id: ' + this.nodeId.toString('hex'))
 
   this.requestId = 1
   this.pendingRequests = {}
@@ -82,7 +79,7 @@ function DHT (infoHash) {
     y: 'q',
     q: 'get_peers',
     a: {
-      id: new Buffer(this.nodeId, 'hex'),
+      id: this.nodeId,
       info_hash: this.infoHash
     }
   }
