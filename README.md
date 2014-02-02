@@ -1,8 +1,8 @@
 # bittorrent-dht
-[![Build Status](http://img.shields.io/travis/feross/bittorrent-dht.svg)](https://travis-ci.org/feross/bittorrent-dht)
-[![NPM Version](http://img.shields.io/npm/v/bittorrent-dht.svg)](https://npmjs.org/package/bittorrent-dht)
-[![NPM](http://img.shields.io/npm/dm/bittorrent-dht.svg)](https://npmjs.org/package/bittorrent-dht)
-[![Gittip](http://img.shields.io/gittip/feross.svg)](https://www.gittip.com/feross/)
+[![Build Status](http://img.shields.io/travis/feross/bittorrent-dht.png)](https://travis-ci.org/feross/bittorrent-dht)
+[![NPM Version](http://img.shields.io/npm/v/bittorrent-dht.png)](https://npmjs.org/package/bittorrent-dht)
+[![NPM](http://img.shields.io/npm/dm/bittorrent-dht.png)](https://npmjs.org/package/bittorrent-dht)
+[![Gittip](http://img.shields.io/gittip/feross.png)](https://www.gittip.com/feross/)
 
 ### Simple, robust, BitTorrent DHT implementation
 
