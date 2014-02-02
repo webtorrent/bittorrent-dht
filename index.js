@@ -3,6 +3,7 @@
 // - Persist the routing table for later bootstrapping
 // - Use actual DHT data structure with "buckets" (follow spec)
 // - Add the method that allows us to list ourselves in the DHT
+// - https://github.com/czzarr/node-bitwise-xor
 
 module.exports = DHT
 
