@@ -10,10 +10,13 @@ module.exports = DHT
 var bencode = require('bncode')
 var compact2string = require('compact2string')
 var crypto = require('crypto')
-var dgram = require('dgram')
-var hat = require('hat')
+var dgram = require('dgram') // or chrome-dgram
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
+var portfinder = require('portfinder') // or chrome-portfinder
+
+// Use random port above 1024
+portfinder.basePort = Math.floor(Math.random() * 60000) + 1025
 
 var MAX_NODES = 5000
 var REQ_TIMEOUT = 2000
@@ -66,14 +69,30 @@ function DHT (opts) {
   this.reqs = {}
   this.queue = [].concat(BOOTSTRAP_NODES)
 
+  this.port = 0
+  this.requestId = 1
+  this.pendingRequests = {}
   // Number of nodes we still need to find to satisfy the last call to findPeers
   this.missingPeers = 0
 
-  this.nodeId = new Buffer(hat(160), 'hex')
-  console.log('DHT node id: ' + this.nodeId.toString('hex'))
+  this.pendingRequests[this.requestId] = 1
 
-  this.requestId = 1
-  this.pendingRequests = {}
+  this.socket = dgram.createSocket('udp4')
+  this.socket.on('message', this._onData.bind(this))
+  this.socket.on('listening', this._onListening.bind(this))
+}
+
+DHT.prototype.close = function () {
+  this.listening = false
+  this._closed = true
+  this.socket.close()
+}
+
+// TODO: support setting multiple infohashes
+DHT.prototype.setInfoHash = function (infoHash) {
+  this.infoHash = typeof infoHash === 'string'
+    ? new Buffer(infoHash, 'hex')
+    : infoHash
 
   this.message = {
     t: this.requestId.toString(),
@@ -86,18 +105,72 @@ function DHT (opts) {
   }
   // console.log('Created DHT message: ' + JSON.stringify(this.message))
   this.message = bencode.encode(this.message)
-
-  this.pendingRequests[this.requestId] = 1
-
-  this.socket = dgram.createSocket('udp4')
-  this.socket.on('message', this._onData.bind(this))
 }
 
-DHT.prototype.close = function () {
-  this.socket.unref()
-  this.socket.close()
+DHT.prototype.query = function (addr) {
+  var numNodes = Object.keys(this.nodes).length
+  if (numNodes > MAX_NODES || this.missingPeers <= 0 || this._closed) return
 
-  this._closed = true
+  var host = addr.split(':')[0]
+  var port = Number(addr.split(':')[1])
+  this.socket.send(this.message, 0, this.message.length, port, host, function () {
+    setTimeout(function () {
+      this.reqs[addr] = (this.reqs[addr] || 0) + 1
+      if (!this.nodes[addr] && this.reqs[addr] < MAX_REQUESTS) {
+        this.query.call(this, addr);
+      }
+    }.bind(this), REQ_TIMEOUT)
+  }.bind(this))
+}
+
+DHT.prototype.findPeers = function (num) {
+  if (!num) num = 1
+
+  // TODO: keep track of missing nodes for each `findPeers` call separately!
+  this.missingPeers += num
+
+  while (this.queue.length) {
+    this.query(this.queue.pop())
+  }
+
+  // If we are connected to no nodes after timeout period, then retry with
+  // the bootstrap nodes.
+  setTimeout(function () {
+    if (Object.keys(this.nodes).length === 0) {
+      console.log('No DHT nodes replied, retry with bootstrap nodes')
+      this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
+      this.missingPeers -= num
+      this.findPeers(num)
+    }
+  }.bind(this), BOOTSTRAP_TIMEOUT)
+}
+
+DHT.prototype.listen = function (port, onlistening) {
+  if (typeof port === 'function') {
+    onlistening = port
+    port = undefined
+  }
+
+  if (onlistening)
+    this.once('listening', onlistening)
+
+  var onPort = function (err, port) {
+    if (err)
+      return this.emit('error', err)
+    this.port = port
+  }.bind(this)
+
+  if (port)
+    onPort(null, port)
+  else
+    portfinder.getPort(onPort)
+
+  this.socket.bind(port)
+}
+
+DHT.prototype._onListening = function () {
+  this.listening = true
+  this.emit('listening', this.port)
 }
 
 /**
@@ -159,42 +232,4 @@ DHT.prototype._onData = function (data, rinfo) {
     // console.log('got peers')
     parsePeerInfo(r.values).forEach(this._handlePeer.bind(this))
   }
-}
-
-DHT.prototype.query = function (addr) {
-  var numNodes = Object.keys(this.nodes).length
-  if (numNodes > MAX_NODES || this.missingPeers <= 0 || this._closed) return
-
-  var host = addr.split(':')[0]
-  var port = Number(addr.split(':')[1])
-  this.socket.send(this.message, 0, this.message.length, port, host, function () {
-    setTimeout(function () {
-      this.reqs[addr] = (this.reqs[addr] || 0) + 1
-      if (!this.nodes[addr] && this.reqs[addr] < MAX_REQUESTS) {
-        this.query.call(this, addr);
-      }
-    }.bind(this), REQ_TIMEOUT)
-  }.bind(this))
-}
-
-DHT.prototype.findPeers = function (num) {
-  if (!num) num = 1
-
-  // TODO: keep track of missing nodes for each `findPeers` call separately!
-  this.missingPeers += num
-
-  while (this.queue.length) {
-    this.query(this.queue.pop())
-  }
-
-  // If we are connected to no nodes after timeout period, then retry with
-  // the bootstrap nodes.
-  setTimeout(function () {
-    if (Object.keys(this.nodes).length === 0) {
-      console.log('No DHT nodes replied, retry with bootstrap nodes')
-      this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
-      this.missingPeers -= num
-      this.findPeers(num)
-    }
-  }.bind(this), BOOTSTRAP_TIMEOUT)
 }

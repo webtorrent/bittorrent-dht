@@ -8,8 +8,8 @@
     "url": "http://feross.org/"
   },
   "browser": {
-    "dgram": "./node_modules/chrome-dgram/index.js",
-    "crypto": false
+    "dgram": "chrome-dgram/index.js",
+    "portfinder": "chrome-portfinder/index.js"
   },
   "bugs": {
     "url": "https://github.com/feross/bittorrent-dht/issues"
@@ -18,9 +18,10 @@
     "bitfield": "~0.1.0",
     "bncode": "~0.5.2",
     "chrome-dgram": "1.x",
+    "chrome-portfinder": "0.x",
     "compact2string": "~1.2.0",
-    "hat": "0.0.3",
-    "inherits": "~2.0.1"
+    "inherits": "~2.0.1",
+    "portfinder": "~0.2.1"
   },
   "devDependencies": {
     "once": "1.x",
