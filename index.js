@@ -53,13 +53,13 @@ inherits(DHT, EventEmitter)
  * Create a new DHT
  * @param {string|Buffer} infoHash
  */
-function DHT (infoHash) {
-  if (!(this instanceof DHT)) return new DHT(infoHash)
+function DHT (opts) {
+  if (!(this instanceof DHT)) return new DHT(opts)
   EventEmitter.call(this)
 
-  this.infoHash = typeof infoHash === 'string'
-    ? new Buffer(infoHash, 'hex')
-    : infoHash
+  this.nodeId = typeof opts.nodeId === 'string'
+    ? new Buffer(opts.nodeId, 'hex')
+    : opts.nodeId
 
   this.nodes = {}
   this.peers = {}
