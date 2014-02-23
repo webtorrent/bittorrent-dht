@@ -20,6 +20,7 @@
     "chrome-dgram": "1.x",
     "chrome-portfinder": "0.x",
     "compact2string": "~1.2.0",
+    "hat": "0.0.3",
     "inherits": "~2.0.1",
     "portfinder": "~0.2.1"
   },

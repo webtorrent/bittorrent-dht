@@ -7,11 +7,12 @@
 
 module.exports = DHT
 
-var bencode = require('bncode')
+var bncode = require('bncode')
 var compact2string = require('compact2string')
 var crypto = require('crypto')
 var dgram = require('dgram') // or chrome-dgram
 var EventEmitter = require('events').EventEmitter
+var hat = require('hat')
 var inherits = require('inherits')
 var portfinder = require('portfinder') // or chrome-portfinder
 
@@ -60,6 +61,9 @@ function DHT (opts) {
   if (!(this instanceof DHT)) return new DHT(opts)
   EventEmitter.call(this)
 
+  if (!opts) opts = {}
+  if (!opts.nodeId) opts.nodeId = hat(160)
+
   this.nodeId = typeof opts.nodeId === 'string'
     ? new Buffer(opts.nodeId, 'hex')
     : opts.nodeId
@@ -104,7 +108,7 @@ DHT.prototype.setInfoHash = function (infoHash) {
     }
   }
   // console.log('Created DHT message: ' + JSON.stringify(this.message))
-  this.message = bencode.encode(this.message)
+  this.message = bncode.encode(this.message)
 }
 
 DHT.prototype.query = function (addr) {
@@ -206,7 +210,7 @@ DHT.prototype._onData = function (data, rinfo) {
   var message
   try {
     // console.log('got response from ' + addr)
-    message = bencode.decode(data)
+    message = bncode.decode(data)
     if (!message) throw new Error('message is undefined')
   } catch (err) {
     console.error('Failed to decode data from node ' + addr + ' ' + err.message)
