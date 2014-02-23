@@ -8,7 +8,8 @@ test('Find nodes (Pride & Prejudice)', function (t) {
   t.plan(2)
 
   var hash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
-  var dht = new DHT(new Buffer(hash, 'hex'))
+  var dht = new DHT()
+  dht.setInfoHash(hash)
   dht.findPeers(300)
 
   dht.on('node', once(function (peer) {
