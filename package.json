@@ -17,7 +17,7 @@
   "dependencies": {
     "bitfield": "~0.1.0",
     "bncode": "~0.5.2",
-    "chrome-dgram": "1.x",
+    "chrome-dgram": "2.x",
     "chrome-portfinder": "0.x",
     "compact2string": "~1.2.0",
     "hat": "0.0.3",
