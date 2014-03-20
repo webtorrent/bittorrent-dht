@@ -22,7 +22,8 @@
     "compact2string": "~1.2.0",
     "hat": "0.0.3",
     "inherits": "~2.0.1",
-    "portfinder": "~0.2.1"
+    "portfinder": "~0.2.1",
+    "debug": "^0.7.4"
   },
   "devDependencies": {
     "once": "1.x",
