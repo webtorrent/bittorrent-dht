@@ -15,6 +15,7 @@ var EventEmitter = require('events').EventEmitter
 var hat = require('hat')
 var inherits = require('inherits')
 var portfinder = require('portfinder') // or chrome-portfinder
+var debug = require('debug')('bittorrent-dht');
 
 // Use random port above 1024
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025
@@ -37,7 +38,7 @@ function parseNodeInfo (compact) {
     }
     return nodes
   } catch (err) {
-    console.warn('Invalid node info ' + compact)
+    debug('Invalid node info ' + compact)
     return []
   }
 }
@@ -46,7 +47,7 @@ function parsePeerInfo (list) {
   try {
     return list.map(compact2string)
   } catch (err) {
-    console.warn('Invalid peer info ' + list)
+    debug('Invalid peer info ' + list)
     return []
   }
 }
@@ -141,7 +142,7 @@ DHT.prototype.findPeers = function (num) {
   // the bootstrap nodes.
   setTimeout(function () {
     if (Object.keys(this.nodes).length === 0) {
-      console.log('No DHT nodes replied, retry with bootstrap nodes')
+      debug('No DHT nodes replied, retry with bootstrap nodes')
       this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
       this.missingPeers -= num
       this.findPeers(num)
@@ -213,7 +214,7 @@ DHT.prototype._onData = function (data, rinfo) {
     message = bncode.decode(data)
     if (!message) throw new Error('message is undefined')
   } catch (err) {
-    console.error('Failed to decode data from node ' + addr + ' ' + err.message)
+    debug('Failed to decode data from node ' + addr + ' ' + err.message)
     return
   }
 
