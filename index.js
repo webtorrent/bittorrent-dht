@@ -117,6 +117,7 @@ DHT.prototype.query = function (addr) {
 
   var host = addr.split(':')[0]
   var port = Number(addr.split(':')[1])
+  if (!(port > 0 && port < 65535)) return;
   this.socket.send(this.message, 0, this.message.length, port, host, function () {
     setTimeout(function () {
       this.reqs[addr] = (this.reqs[addr] || 0) + 1
