@@ -29,6 +29,8 @@ var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
   'router.utorrent.com:6881'
 ]
+var MAX_QUERY_PER_SECOND = 200
+var QUEUE_QUERY_INTERVAL = Math.floor(1000/MAX_QUERY_PER_SECOND)
 
 function parseNodeInfo (compact) {
   try {
@@ -129,15 +131,30 @@ DHT.prototype.query = function (addr) {
   }.bind(this))
 }
 
+DHT.prototype._queryQueue = function() {
+  if (this.queue.length) {
+    this.query(this.queue.pop())
+  } else {
+    clearInterval(this.queueInterval);
+    this.queueInterval = null;
+  }
+}
+
+/* Start querying queue, if not already */
+DHT.prototype.queryQueue = function() {
+  if (!this.queryInterval) {
+    this.queryInterval = setInterval(this._queryQueue.bind(this), QUEUE_QUERY_INTERVAL);
+  }
+}
+
 DHT.prototype.findPeers = function (num) {
   if (!num) num = 1
 
   // TODO: keep track of missing nodes for each `findPeers` call separately!
   this.missingPeers += num
 
-  while (this.queue.length) {
-    this.query(this.queue.pop())
-  }
+  // Start querying queue
+  this.queryQueue()
 
   // If we are connected to no nodes after timeout period, then retry with
   // the bootstrap nodes.
@@ -145,8 +162,7 @@ DHT.prototype.findPeers = function (num) {
     if (Object.keys(this.nodes).length === 0) {
       debug('No DHT nodes replied, retry with bootstrap nodes')
       this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
-      this.missingPeers -= num
-      this.findPeers(num)
+      this.queryQueue()
     }
   }.bind(this), BOOTSTRAP_TIMEOUT)
 }
@@ -188,8 +204,10 @@ DHT.prototype._handleNode = function (addr) {
     // console.log('already know about this node!')
     return
   }
-  this.query(addr)
-  // if (this.queue.length < 50) this.queue.push(addr) // TODO: remove this?
+
+  //if (this.queue.length < 10000) this.queue.push(addr) // TODO: Something like this might be needed for safety. (?)
+  this.queue.push(addr)
+  this.queryQueue()
 
   this.emit('node', addr, this.infoHash.toString('hex'))
 }
