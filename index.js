@@ -9,13 +9,12 @@ module.exports = DHT
 
 var bncode = require('bncode')
 var compact2string = require('compact2string')
-var crypto = require('crypto')
-var dgram = require('dgram') // or chrome-dgram
+var debug = require('debug')('bittorrent-dht')
+var dgram = require('dgram')
 var EventEmitter = require('events').EventEmitter
 var hat = require('hat')
 var inherits = require('inherits')
-var portfinder = require('portfinder') // or chrome-portfinder
-var debug = require('debug')('bittorrent-dht');
+var portfinder = require('portfinder')
 
 // Use random port above 1024
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025
