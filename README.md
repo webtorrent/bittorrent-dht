@@ -14,6 +14,10 @@ npm install bittorrent-dht
 
 ### example
 
+```
+npm install magnet-uri
+```
+
 ```javascript
 var DHT    = require('bittorrent-dht');
 var magnet = require('magnet-uri');
