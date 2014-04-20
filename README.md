@@ -6,14 +6,13 @@ Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.or
 
 Works in the browser with [browserify](http://browserify.org/) and [chrome-dgram](https://github.com/feross/chrome-dgram)! This module is used by [WebTorrent](https://github.com/feross/WebTorrent).
 
-## install
+### install
 
 ```
 npm install bittorrent-dht
 ```
 
-## example
-
+### example
 
 ```javascript
 var DHT    = require('bittorrent-dht');
@@ -40,56 +39,56 @@ dht.findPeers();
 
 
 
-## methods
+### methods
 
-### `setInfoHash(infoHash)`
+#### `setInfoHash(infoHash)`
 
 Associate an infoHash with the DHT object. Can be a String or Buffer.
 
 
-### `dht.listen([port], [callback])`
+#### `dht.listen([port], [callback])`
 
 Open the socket. If port is undefined, one is picked with [portfinder](https://github.com/indexzero/node-portfinder).
 `callback` is equivalent to `listening` event.
 
 
-### `findPeers([num])`
+#### `findPeers([num])`
 
 Get `num` peers from the DHT. Defaults to unlimited.
 
 
 
-## events
+### events
 
-### 'peer'
+#### 'peer'
 
     function (addr, infoHash){ ... }
 
 Called when a peer is found. `addr` is of the form `IP_ADDRESS:PORT`
 
 
-### 'message'
+#### 'message'
 
     function (data, rinfo){ ... }
 
 Called when a message is received. `rinfo` is an object with properties `address`, `port`
 
 
-### 'node'
+#### 'node'
 
     function (addr){ ... }
 
 Called when client finds a new DHT node.
 
-### 'listening'
+#### 'listening'
 
     function () { ... }
 
 
-### 'error'
+#### 'error'
 
     function (err){ ... }
 
-## license
+### license
 
 MIT. Copyright (c) [Feross Aboukhadijeh](http://feross.org).
