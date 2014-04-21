@@ -161,7 +161,8 @@ DHT.prototype.findPeers = function (num) {
     if (Object.keys(this.nodes).length === 0) {
       debug('No DHT nodes replied, retry with bootstrap nodes')
       this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
-      this.queryQueue()
+      this.missingPeers = 0
+      this.findPeers(num)
     }
   }.bind(this), BOOTSTRAP_TIMEOUT)
 }
