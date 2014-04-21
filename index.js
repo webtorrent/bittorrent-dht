@@ -143,6 +143,7 @@ DHT.prototype._queryQueue = function() {
 DHT.prototype.queryQueue = function() {
   if (!this.queryInterval) {
     this.queryInterval = setInterval(this._queryQueue.bind(this), QUEUE_QUERY_INTERVAL);
+    this.queryInterval.unref()
   }
 }
 
