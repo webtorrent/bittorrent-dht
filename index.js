@@ -19,17 +19,17 @@ var portfinder = require('portfinder')
 // Use random port above 1024
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025
 
-var MAX_NODES = 5000
-var REQ_TIMEOUT = 2000
-var MAX_REQUESTS = 3
-var BOOTSTRAP_TIMEOUT = 5000
 var BOOTSTRAP_NODES = [
   'dht.transmissionbt.com:6881',
   'router.bittorrent.com:6881',
   'router.utorrent.com:6881'
 ]
+var BOOTSTRAP_TIMEOUT = 5000
+var MAX_NODES = 5000
 var MAX_QUERY_PER_SECOND = 200
-var QUEUE_QUERY_INTERVAL = Math.floor(1000/MAX_QUERY_PER_SECOND)
+var MAX_REQUESTS = 3
+var QUEUE_QUERY_INTERVAL = Math.floor(1000 / MAX_QUERY_PER_SECOND)
+var REQ_TIMEOUT = 2000
 
 function parseNodeInfo (compact) {
   try {
@@ -78,7 +78,7 @@ function DHT (opts) {
   this.port = 0
   this.requestId = 1
   this.pendingRequests = {}
-  // Number of nodes we still need to find to satisfy the last call to findPeers
+  // Number of peers we still need to find to satisfy the last call to findPeers
   this.missingPeers = 0
 
   this.pendingRequests[this.requestId] = 1
@@ -134,15 +134,15 @@ DHT.prototype._queryQueue = function() {
   if (this.queue.length) {
     this.query(this.queue.pop())
   } else {
-    clearInterval(this.queueInterval);
-    this.queueInterval = null;
+    clearInterval(this.queueInterval)
+    this.queueInterval = null
   }
 }
 
 /* Start querying queue, if not already */
 DHT.prototype.queryQueue = function() {
   if (!this.queryInterval) {
-    this.queryInterval = setInterval(this._queryQueue.bind(this), QUEUE_QUERY_INTERVAL);
+    this.queryInterval = setInterval(this._queryQueue.bind(this), QUEUE_QUERY_INTERVAL)
     this.queryInterval.unref()
   }
 }
@@ -150,7 +150,7 @@ DHT.prototype.queryQueue = function() {
 DHT.prototype.findPeers = function (num) {
   if (!num) num = 1
 
-  // TODO: keep track of missing nodes for each `findPeers` call separately!
+  // TODO: keep track of missing peers for each `findPeers` call separately!
   this.missingPeers += num
 
   // Start querying queue
