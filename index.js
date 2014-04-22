@@ -86,6 +86,7 @@ function DHT (opts) {
   this.socket = dgram.createSocket('udp4')
   this.socket.on('message', this._onData.bind(this))
   this.socket.on('listening', this._onListening.bind(this))
+  this.socket.on('error', function () {}) // throw away errors
 }
 
 DHT.prototype.close = function () {
