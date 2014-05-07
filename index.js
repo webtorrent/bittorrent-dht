@@ -149,6 +149,7 @@ DHT.prototype.queryQueue = function() {
 }
 
 DHT.prototype.findPeers = function (num) {
+  if (this._closed) return
   if (!num) num = 1
 
   // TODO: keep track of missing peers for each `findPeers` call separately!
