@@ -71,6 +71,8 @@ function DHT (opts) {
     : opts.nodeId
 
   this.nodes = {}
+  this.nodesCounter = 0;
+  this.nodesList = null; //list cache
   this.peers = {}
   this.reqs = {}
   this.queue = [].concat(BOOTSTRAP_NODES)
@@ -113,13 +115,37 @@ DHT.prototype.setInfoHash = function (infoHash) {
   // console.log('Created DHT message: ' + JSON.stringify(this.message))
   this.message = bncode.encode(this.message)
 }
+var addrDataIndex = {};
+var getAddrData = function(addr) {
+  //less work for GC; can not recreate often used arrays (by respliting string)
+  if (!addrDataIndex[addr]) {
+    var array = addr.split(':');
+    array[1] = Number(array[1]);
+    addrDataIndex[addr] = array;
 
+  }
+  return addrDataIndex[addr];
+};
+
+DHT.prototype.getNodesNum = function() {
+  //we can return "this.getNodesList().length", but Object.keys is really heavy operation, so we use simple counter
+  return this.nodesCounter;
+};
+
+DHT.prototype.getNodesList = function() {
+  if (!this.nodesList) {
+    this.nodesList = Object.keys(this.nodes);
+  }
+  return this.nodesList;
+};
 DHT.prototype.query = function (addr) {
-  var numNodes = Object.keys(this.nodes).length
+  
+
+  var numNodes = this.getNodesNum();
   if (numNodes > MAX_NODES || this.missingPeers <= 0 || this._closed) return
 
-  var host = addr.split(':')[0]
-  var port = Number(addr.split(':')[1])
+  var host = getAddrData(addr)[0]
+  var port = getAddrData(addr)[1]
   if (!(port > 0 && port < 65535)) return
   this.socket.send(this.message, 0, this.message.length, port, host, function () {
     setTimeout(function () {
@@ -161,7 +187,7 @@ DHT.prototype.findPeers = function (num) {
   // If we are connected to no nodes after timeout period, then retry with
   // the bootstrap nodes.
   setTimeout(function () {
-    if (Object.keys(this.nodes).length === 0) {
+    if (this.getNodesNum() === 0) {
       debug('No DHT nodes replied, retry with bootstrap nodes')
       this.queue.push.apply(this.queue, BOOTSTRAP_NODES)
       this.missingPeers = 0
@@ -245,9 +271,22 @@ DHT.prototype._onData = function (data, rinfo) {
     return
   }
 
-  // Mark that we've seen this node (the one we received data from)
-  this.nodes[addr] = true
-  delete this.reqs[addr]
+  if (!this.nodes[addr]) {
+    //we invalidate cache and change counter only if something changes
+    this.nodesCounter++;
+
+
+    // Mark that we've seen this node (the one we received data from)
+    this.nodes[addr] = true;
+
+    //we must invalidate list cache, we will recalcalate list when we will need it (lazy)
+    this.nodesList = null; 
+  }
+
+  
+  
+
+  this.reqs[addr] = null;// null is better since "delete" invalidates inline cache
 
   var r = message && message.r
 
