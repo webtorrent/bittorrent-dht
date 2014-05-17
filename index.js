@@ -57,7 +57,7 @@ inherits(DHT, EventEmitter)
 
 /**
  * Create a new DHT
- * @param {string|Buffer} infoHash
+ * @param {string|Buffer} opts
  */
 function DHT (opts) {
   if (!(this instanceof DHT)) return new DHT(opts)
@@ -71,8 +71,8 @@ function DHT (opts) {
     : opts.nodeId
 
   this.nodes = {}
-  this.nodesCounter = 0;
-  this.nodesList = null; //list cache
+  this.nodesCounter = 0
+  this.nodesList = null // list cache
   this.peers = {}
   this.reqs = {}
   this.queue = [].concat(BOOTSTRAP_NODES)
@@ -115,33 +115,48 @@ DHT.prototype.setInfoHash = function (infoHash) {
   // console.log('Created DHT message: ' + JSON.stringify(this.message))
   this.message = bncode.encode(this.message)
 }
-var addrDataIndex = {};
-var getAddrData = function(addr) {
-  //less work for GC; can not recreate often used arrays (by respliting string)
-  if (!addrDataIndex[addr]) {
-    var array = addr.split(':');
-    array[1] = Number(array[1]);
-    addrDataIndex[addr] = array;
 
+// addr:string -> [host:string, port:number]
+var addrDataCache = {}
+
+/**
+ * Given an address/port string, return an array where arr[0] is host, and arr[1] is port
+ * (as a Number). This uses a cache, so we don't need to keep creating new arrays. This
+ * helps out the GC.
+ * @param  {string} addr
+ * @return {Array.<*>}
+ */
+function getAddrData (addr) {
+  if (!addrDataCache[addr]) {
+    var array = addr.split(':')
+    array[1] = Number(array[1])
+    addrDataCache[addr] = array
   }
-  return addrDataIndex[addr];
-};
+  return addrDataCache[addr]
+}
 
-DHT.prototype.getNodesNum = function() {
-  //we can return "this.getNodesList().length", but Object.keys is really heavy operation, so we use simple counter
-  return this.nodesCounter;
-};
+/**
+ * Get the number of nodes in the DHT. This uses a simple counter to avoid repeatedly
+ * creating new arrays with Object.keys.
+ * @return {number}
+ */
+DHT.prototype.getNodesNum = function () {
+  return this.nodesCounter
+}
 
-DHT.prototype.getNodesList = function() {
+/**
+ * Get a list of all nodes in the DHT. Uses a cached list when possible.
+ * @return {Array.<string>}
+ */
+DHT.prototype.getNodesList = function () {
   if (!this.nodesList) {
-    this.nodesList = Object.keys(this.nodes);
+    this.nodesList = Object.keys(this.nodes)
   }
-  return this.nodesList;
-};
-DHT.prototype.query = function (addr) {
-  
+  return this.nodesList
+}
 
-  var numNodes = this.getNodesNum();
+DHT.prototype.query = function (addr) {
+  var numNodes = this.getNodesNum()
   if (numNodes > MAX_NODES || this.missingPeers <= 0 || this._closed) return
 
   var host = getAddrData(addr)[0]
@@ -157,7 +172,7 @@ DHT.prototype.query = function (addr) {
   }.bind(this))
 }
 
-DHT.prototype._queryQueue = function() {
+DHT.prototype._queryQueue = function () {
   if (this.queue.length) {
     this.query(this.queue.pop())
   } else {
@@ -167,7 +182,7 @@ DHT.prototype._queryQueue = function() {
 }
 
 /* Start querying queue, if not already */
-DHT.prototype.queryQueue = function() {
+DHT.prototype.queryQueue = function () {
   if (!this.queryInterval) {
     this.queryInterval = setInterval(this._queryQueue.bind(this), QUEUE_QUERY_INTERVAL)
     this.queryInterval.unref()
@@ -230,11 +245,11 @@ DHT.prototype._onListening = function () {
  */
 DHT.prototype._handleNode = function (addr) {
   if (this.nodes[addr]) {
-    // console.log('already know about this node!')
     return
   }
 
-  //if (this.queue.length < 10000) this.queue.push(addr) // TODO: Something like this might be needed for safety. (?)
+  // TODO: Something like this might be needed for safety. (?)
+  //if (this.queue.length < 10000) this.queue.push(addr)
   this.queue.push(addr)
   this.queryQueue()
 
@@ -253,49 +268,49 @@ DHT.prototype._handlePeer = function (addr) {
   this.emit('peer', addr, this.infoHash.toString('hex'))
 }
 
+/**
+ * Called when someone sends us a UDP message
+ * @param {Buffer} data
+ * @param {Object} rinfo
+ */
 DHT.prototype._onData = function (data, rinfo) {
   var addr = rinfo.address + ':' + rinfo.port
 
   var message
   try {
-    // console.log('got response from ' + addr)
+    debug('Got DHT response from ' + addr)
     message = bncode.decode(data)
     if (!message) throw new Error('message is undefined')
   } catch (err) {
-    debug('Failed to decode data from node ' + addr + ' ' + err.message)
+    debug('Failed to decode DHT data from node ' + addr + ' ' + err.message)
     return
   }
 
   if (!message.t || (message.t.toString() !== this.requestId.toString())) {
-    // console.log('DHT received wrong message requestId: ', message.t && message.t.toString(), this.requestId && this.requestId.toString(), addr)
+    debug('DHT received wrong message requestId: ', message.t && message.t.toString(), this.requestId && this.requestId.toString(), addr)
     return
   }
 
   if (!this.nodes[addr]) {
-    //we invalidate cache and change counter only if something changes
-    this.nodesCounter++;
-
+    // If this is a new peer, then invalidate the cache (will be recalculated lazily)
+    // and update the counter.
+    this.nodesCounter++
+    this.nodesList = null
 
     // Mark that we've seen this node (the one we received data from)
-    this.nodes[addr] = true;
-
-    //we must invalidate list cache, we will recalcalate list when we will need it (lazy)
-    this.nodesList = null; 
+    this.nodes[addr] = true
   }
 
-  
-  
-
-  this.reqs[addr] = null;// null is better since "delete" invalidates inline cache
+  // Reset outstanding req count to 0 (better than using "delete" which invalidates
+  // the V8 inline cache
+  this.reqs[addr] = 0
 
   var r = message && message.r
 
   if (r && Buffer.isBuffer(r.nodes)) {
-    // console.log('got nodes')
     parseNodeInfo(r.nodes).forEach(this._handleNode.bind(this))
   }
   if (r && Array.isArray(r.values)) {
-    // console.log('got peers')
     parsePeerInfo(r.values).forEach(this._handlePeer.bind(this))
   }
 }
