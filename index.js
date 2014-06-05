@@ -97,7 +97,11 @@ function DHT (opts) {
 DHT.prototype.close = function () {
   this.listening = false
   this._closed = true
-  this.socket.close()
+  try {
+    this.socket.close()
+  } catch (err) {
+    // ignore error, socket was either already closed / not yet bound
+  }
 }
 
 // TODO: support setting multiple infohashes
