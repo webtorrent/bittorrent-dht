@@ -77,6 +77,9 @@ function DHT (opts) {
   this.reqs = {}
   this.queue = [].concat(BOOTSTRAP_NODES)
 
+  this.listening = false
+  this._closed = false
+
   this.port = 0
   this.requestId = 1
   this.pendingRequests = {}
@@ -215,6 +218,10 @@ DHT.prototype.listen = function (port, onlistening) {
   if (typeof port === 'function') {
     onlistening = port
     port = undefined
+  }
+
+  if (this._closed || this.listening) {
+    return
   }
 
   if (onlistening)
