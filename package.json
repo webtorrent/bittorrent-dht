@@ -13,7 +13,7 @@
   "dependencies": {
     "bncode": "^0.5.3",
     "compact2string": "^1.2.0",
-    "debug": "^0.8.0",
+    "debug": "^1.0.0",
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
     "portfinder": "^0.2.1"
