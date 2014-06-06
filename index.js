@@ -119,7 +119,6 @@ DHT.prototype.setInfoHash = function (infoHash) {
       info_hash: this.infoHash
     }
   }
-  // console.log('Created DHT message: ' + JSON.stringify(this.message))
   this.message = bncode.encode(this.message)
 }
 
