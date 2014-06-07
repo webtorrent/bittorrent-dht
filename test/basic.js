@@ -1,5 +1,4 @@
 var DHT = require('../')
-var once = require('once')
 var test = require('tape')
 
 // TODO: Improve reliability by not using live network
@@ -12,18 +11,12 @@ test('Find nodes (Pride & Prejudice)', function (t) {
   dht.setInfoHash(hash)
   dht.findPeers(300)
 
-  dht.on('node', once(function (peer) {
+  dht.once('node', function (peer) {
     t.pass('Found at least one other DHT node')
-  }))
+  })
 
-  dht.on('peer', once(function (peer) {
+  dht.once('peer', function (peer) {
     t.pass('Found at least one peer that has the file')
     dht.close()
-  }))
-
-  // 10 minute timeout
-  var timeout = setTimeout(function () {
-    t.end()
-  }, 600000)
-  timeout.unref()
+  })
 })

@@ -19,7 +19,6 @@
     "portfinder": "^0.2.1"
   },
   "devDependencies": {
-    "once": "^1.3.0",
     "tape": "^2.12.3"
   },
   "homepage": "http://webtorrent.io",
