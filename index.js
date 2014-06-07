@@ -20,9 +20,9 @@ var portfinder = require('portfinder')
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025
 
 var BOOTSTRAP_NODES = [
-  'dht.transmissionbt.com:6881',
   'router.bittorrent.com:6881',
-  'router.utorrent.com:6881'
+  'router.utorrent.com:6881',
+  'dht.transmissionbt.com:6881'
 ]
 var BOOTSTRAP_TIMEOUT = 5000
 var MAX_NODES = 5000
@@ -75,7 +75,14 @@ function DHT (opts) {
   this.nodesList = null // list cache
   this.peers = {}
   this.reqs = {}
-  this.queue = [].concat(BOOTSTRAP_NODES)
+
+  if (opts.bootstrap === false) {
+    this.queue = []
+  } else if (Array.isArray(opts.bootstrap)) {
+    this.queue = [].concat(opts.bootstrap)
+  } else {
+    this.queue = [].concat(BOOTSTRAP_NODES)
+  }
 
   this.listening = false
   this._closed = false
