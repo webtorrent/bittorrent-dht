@@ -4,7 +4,7 @@
 
 Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.org/beps/bep_0005.html). BitTorrent DHT is the main peer discovery layer for BitTorrent, which allows for trackerless torrents. DHTs are awesome!
 
-This module is used by [WebTorrent](https://github.com/feross/WebTorrent). Works in the browser with [browserify](http://browserify.org/) and a `dgram` shim (like [chrome-dgram](https://github.com/feross/chrome-dgram) for chrome apps).
+This module is used by [WebTorrent](http://webtorrent.io).
 
 ### install
 
