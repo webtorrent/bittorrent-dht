@@ -6,6 +6,8 @@ Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.or
 
 This module is used by [WebTorrent](http://webtorrent.io).
 
+### WARNING: Code in master differs from the published npm version! Refactor in progress!
+
 ### install
 
 ```
