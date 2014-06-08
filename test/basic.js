@@ -1,22 +1,59 @@
+var auto = require('run-auto')
 var DHT = require('../')
+var portfinder = require('portfinder')
+var Server = require('../').Server
 var test = require('tape')
 
-// TODO: Improve reliability by not using live network
+test('Ping', function (t) {
 
-test('Find nodes (Pride & Prejudice)', function (t) {
-  t.plan(2)
+  portfinder.getPort(function (err, port) {
+    t.error(err, 'got port')
 
-  var hash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
-  var dht = new DHT()
-  dht.setInfoHash(hash)
-  dht.findPeers(300)
+    var dht1 = new DHT({ bootstrap: [] })
+    var dht2 = new DHT({ bootstrap: [] })
 
-  dht.once('node', function (peer) {
-    t.pass('Found at least one other DHT node')
+    dht1.listen(port, function () {
+      dht2.ping('127.0.0.1', port, function (err, res) {
+        t.error(err, 'got response')
+        // TODO
+
+        dht1.destroy()
+        dht2.destroy()
+        t.end()
+      })
+    })
   })
 
-  dht.once('peer', function (peer) {
-    t.pass('Found at least one peer that has the file')
-    dht.close()
-  })
 })
+
+// var infoHash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
+
+// test('Find nodes (Pride & Prejudice)', function (t) {
+//   t.plan(2)
+
+//   // auto({
+//   //   port: function (cb) {
+//   //     portfinder.getPort(cb)
+//   //   },
+
+//   //   server: ['port', function (cb) {
+//   //     var server = new Server()
+//   //     server.listen
+//   //   }]
+//   // })
+
+//   var dht = new DHT({
+//     // bootstrap: []
+//   })
+//   dht.setInfoHash(infoHash)
+//   dht.findPeers(300)
+
+//   dht.once('node', function (peer) {
+//     t.pass('Found at least one other DHT node')
+//   })
+
+//   dht.once('peer', function (peer) {
+//     t.pass('Found at least one peer that has the file')
+//     dht.destroy()
+//   })
+// })

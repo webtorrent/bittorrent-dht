@@ -67,6 +67,12 @@ Open the socket. If port is undefined, one is picked with [portfinder](https://g
 `callback` is equivalent to `listening` event.
 
 
+#### `dht.destroy([callback])`
+
+Open the socket. If port is undefined, one is picked with [portfinder](https://github.com/indexzero/node-portfinder).
+`callback` is equivalent to `listening` event.
+
+
 #### `findPeers([num])`
 
 Get `num` peers from the DHT. Defaults to unlimited.
@@ -98,6 +104,11 @@ Called when client finds a new DHT node.
 #### 'listening'
 
     function () { ... }
+
+
+#### 'warning'
+
+    function (err){ ... }
 
 
 #### 'error'

@@ -16,7 +16,9 @@
     "debug": "^1.0.0",
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
-    "portfinder": "^0.2.1"
+    "k-bucket": "^0.4.0",
+    "portfinder": "^0.2.1",
+    "run-auto": "^1.0.0"
   },
   "devDependencies": {
     "tape": "^2.12.3"
