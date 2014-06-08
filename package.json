@@ -18,7 +18,8 @@
     "inherits": "^2.0.1",
     "k-bucket": "^0.4.0",
     "portfinder": "^0.2.1",
-    "run-auto": "^1.0.0"
+    "run-auto": "^1.0.0",
+    "string2compact": "^1.1.1"
   },
   "devDependencies": {
     "tape": "^2.12.3"

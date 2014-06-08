@@ -15,6 +15,7 @@ var EventEmitter = require('events').EventEmitter
 var hat = require('hat')
 var inherits = require('inherits')
 var KBucket = require('k-bucket')
+var string2compact = require('string2compact')
 var once = require('once')
 var portfinder = require('portfinder')
 
@@ -32,7 +33,17 @@ var MAX_REQUESTS = 3
 var QUEUE_QUERY_INTERVAL = Math.floor(1000 / MAX_QUERY_PER_SECOND)
 var SEND_TIMEOUT = 2000
 
-var MESSAGE_TYPE = { QUERY: 'q', RESPONSE: 'r', ERROR: 'e' }
+var MESSAGE_TYPE = {
+  QUERY: 'q',
+  RESPONSE: 'r',
+  ERROR: 'e'
+}
+var ERROR_TYPE = {
+  GENERIC: 201,
+  SERVER: 202,
+  PROTOCOL: 203, // malformed packet, invalid arguments, or bad token
+  METHOD_UNKNOWN: 204
+}
 
 inherits(DHT, EventEmitter)
 
@@ -104,6 +115,22 @@ DHT.prototype.destroy = function (cb) {
     // ignore error, socket was either already closed / not yet bound
   }
   cb(null)
+}
+
+DHT.prototype.addNode = function (nodeId, addr) {
+  var self = this
+  self.nodes.add({
+    id: nodeId,
+    addr: addr
+  })
+}
+
+DHT.prototype.removeNode = function (nodeId) {
+  var self = this
+  var contact = self.nodes.get(nodeId)
+  if (contact) {
+    self.nodes.remove(contact)
+  }
 }
 
 // TODO: support setting multiple infohashes
@@ -181,15 +208,15 @@ DHT.prototype._send = function (host, port, message, cb) {
 
 /**
  * Send "ping" query to given host and port.
- * @param  {string} host
- * @param  {number} port
+ * @param {string} host
+ * @param {number} port
+ * @param {function} cb called with response
  */
-DHT.prototype.ping = function (host, port, cb) {
+DHT.prototype._sendPing = function (host, port, cb) {
   var self = this
   var addr = host + ':' + port
 
   var transactionId = self._getTransactionId(addr, cb)
-  debug(transactionId)
   var message = {
     t: transactionIdToBuffer(transactionId),
     y: MESSAGE_TYPE.QUERY,
@@ -201,6 +228,12 @@ DHT.prototype.ping = function (host, port, cb) {
   self._send(host, port, message)
 }
 
+/**
+ * Called when another node sends us a "ping" query.
+ * @param  {string} host
+ * @param  {number} port
+ * @param  {Object} message
+ */
 DHT.prototype._onPing = function (host, port, message) {
   var self = this
   var res = {
@@ -212,6 +245,99 @@ DHT.prototype._onPing = function (host, port, message) {
   }
 
   self._send(host, port, res)
+}
+
+/**
+ * Send "find_node" query to given host and port.
+ * @param {string} host
+ * @param {number} port
+ * @param {Buffer} targetNodeId
+ * @param {function} cb called with response
+ */
+DHT.prototype._sendFindNode = function (host, port, targetNodeId, cb) {
+  var self = this
+  var addr = host + ':' + port
+
+  var transactionId = self._getTransactionId(addr, cb)
+  var message = {
+    t: transactionIdToBuffer(transactionId),
+    y: MESSAGE_TYPE.QUERY,
+    q: 'find_node',
+    a: {
+      id: self.nodeId,
+      target: targetNodeId
+    }
+  }
+  self._send(host, port, message)
+}
+
+/**
+ * Called when another node sends us a "find_node" query.
+ * @param  {string} host
+ * @param  {number} port
+ * @param  {Object} message
+ */
+DHT.prototype._onFindNode = function (host, port, message) {
+  var self = this
+
+  var targetNodeId = message.a && message.a.target
+
+  if (!targetNodeId) {
+    var errMessage = '`find_node` missing required `message.a.target` field'
+    debug(errMessage)
+    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    return
+  }
+
+  // Get the target node id if it exists in the routing table. Otherwise, get the
+  // 8 closest nodes.
+  var contacts = self.nodes.get(targetNodeId) || self.nodes.closest({ id: targetNodeId }, 8) || []
+
+  if (!Array.isArray(contacts)) {
+    contacts = [ contacts ]
+  }
+
+  var nodes = string2compact(contacts.map(function (contact) {
+    return contact.addr
+  }))
+
+  var res = {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: {
+      id: self.nodeId,
+      nodes: nodes
+    }
+  }
+
+  self._send(host, port, res)
+}
+
+/**
+ * Send an error to given host and port.
+ * @param  {string} host
+ * @param  {number} port
+ * @param  {Buffer|number} transactionId
+ * @param  {number} code
+ * @param  {string} message
+ */
+DHT.prototype._sendError = function (host, port, transactionId, code, message) {
+  var self = this
+
+  if (transactionId && !Buffer.isBuffer(transactionId)) {
+    transactionId = transactionIdToBuffer(transactionId)
+  }
+
+  var message = {
+    y: MESSAGE_TYPE.ERROR,
+    e: [code, message]
+  }
+
+  if (transactionId) {
+    message.t = transactionId
+  }
+
+  self._send(host, port, message)
 }
 
 /**
@@ -365,9 +491,8 @@ DHT.prototype._onData = function (data, rinfo) {
   var port = rinfo.port
   var addr = host + ':' + port
 
-  var message
   try {
-    message = bncode.decode(data)
+    var message = bncode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
     debug('bad message from ' + addr + ' ' + err.message)
@@ -379,36 +504,9 @@ DHT.prototype._onData = function (data, rinfo) {
   var type = message.y.toString()
 
   if (type === MESSAGE_TYPE.QUERY) {
-    var query = message.q.toString()
-    if (query === 'ping') {
-      self._onPing(host, port, message)
-    } else {
-      debug('unexpected query type ' + query)
-    }
-
+    self._onQuery(host, port, message)
   } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
-    var err
-    if (type === MESSAGE_TYPE.ERROR) {
-      err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
-    } else {
-      err = null
-    }
-
-    var reqs = self.requests[addr]
-    var transactionId = Buffer.isBuffer(message.t) && message.t.readUInt16BE(0)
-    var transaction = reqs && reqs[transactionId]
-    if (!transaction || !transaction.cb) {
-      if (type === MESSAGE_TYPE.ERROR) {
-        debug('got unexpected error from ' + addr + ' ' + err.message)
-      } else {
-        debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
-      }
-      return
-    }
-
-    transaction.cb(err, message.r)
-    clearTimeout(transaction.timeout)
-
+    self._onResponseOrError(host, port, type, message)
   } else {
     debug('unknown message type ' + type)
   }
@@ -428,6 +526,48 @@ DHT.prototype._onData = function (data, rinfo) {
   // if (r && Array.isArray(r.values)) {
   //   parsePeerInfo(r.values).forEach(self._handlePeer.bind(self))
   // }
+}
+
+DHT.prototype._onQuery = function (host, port, message) {
+  var self = this
+  var query = message.q.toString()
+
+  if (query === 'ping') {
+    self._onPing(host, port, message)
+  } else if (query === 'find_node') {
+    self._onFindNode(host, port, message)
+  } else {
+    var errMessage = 'unexpected query type ' + query
+    debug(errMessage)
+    self._sendError(host, port, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
+  }
+}
+
+DHT.prototype._onResponseOrError = function (host, port, type, message) {
+  var self = this
+  var addr = host + ':' + port
+
+  var err = null
+  if (type === MESSAGE_TYPE.ERROR) {
+    err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
+  }
+
+  var reqs = self.requests[addr]
+  var transactionId = Buffer.isBuffer(message.t) && message.t.readUInt16BE(0)
+  var transaction = reqs && reqs[transactionId]
+  if (transaction && transaction.cb) {
+    transaction.cb(err, message.r)
+    clearTimeout(transaction.timeout)
+  } else {
+    if (err) {
+      var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
+      debug(errMessage)
+      self.emit('warning', new Error(err))
+    } else {
+      debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
+      self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
+    }
+  }
 }
 
 function parseNodeInfo (nodeInfo) {
