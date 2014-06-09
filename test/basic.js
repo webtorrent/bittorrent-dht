@@ -1,4 +1,3 @@
-var auto = require('run-auto')
 var compact2string = require('compact2string')
 var DHT = require('../')
 var hat = require('hat')
@@ -131,9 +130,9 @@ test('`get_peers` query to node with peers in table', function (t) {
 
   var targetInfoHash = new Buffer(hat(160), 'hex')
 
-  dht1.addPeer(targetInfoHash, '1.1.1.1:6969')
-  dht1.addPeer(targetInfoHash, '10.10.10.10:6969')
-  dht1.addPeer(targetInfoHash, '255.255.255.255:6969')
+  dht1.addPeer('1.1.1.1:6969', targetInfoHash)
+  dht1.addPeer('10.10.10.10:6969', targetInfoHash)
+  dht1.addPeer('255.255.255.255:6969', targetInfoHash)
 
   portfinder.getPort(function (err, port) {
     t.error(err)
