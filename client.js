@@ -5,10 +5,14 @@
 // - Add the method that allows us to list ourselves in the DHT
 // - Use a fast Set to make addPeer / removePeer faster
 // - When receiving any message, attempt to add the node to the table
-// - unify addr vs host,port usage
+// - cleanup addr vs host,port usage
+// - Accept responses even after timeout. no point to throwing them away
+// - republish at regular intervals
+// - handle 'ping' event for when bucket gets full
 
 module.exports = DHT
 
+var arrayToBuffer = require('typedarray-to-buffer')
 var bncode = require('bncode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
@@ -26,22 +30,18 @@ var Rusha = require('rusha-browserify') // Fast SHA1 (works in browser)
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
 
 var BOOTSTRAP_NODES = [
-  'router.bittorrent.com:6881',
-  'router.utorrent.com:6881',
-  'dht.transmissionbt.com:6881'
+  { addr: 'router.bittorrent.com:6881' },
+  { addr: 'router.utorrent.com:6881' },
+  { addr: 'dht.transmissionbt.com:6881' }
 ]
+
 var BOOTSTRAP_TIMEOUT = 5000
-var MAX_QUERY_PER_SECOND = 200
-var MAX_REQUESTS = 3
-var QUEUE_QUERY_INTERVAL = Math.floor(1000 / MAX_QUERY_PER_SECOND)
-var SEND_TIMEOUT = 2000
-
-var SECRET_ENTROPY = 160 // entropy of token secrets
-var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
-
-var MAX_CONCURRENCY = 20 // α from Kademlia paper
-
 var K = 8 // number of nodes per bucket
+var MAX_CONCURRENCY = 3 // α from Kademlia paper
+var MAX_REQUESTS = 3 // TODO?
+var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
+var SECRET_ENTROPY = 160 // entropy of token secrets
+var SEND_TIMEOUT = 2000
 
 var MESSAGE_TYPE = {
   QUERY: 'q',
@@ -71,14 +71,6 @@ function DHT (opts) {
   if (!opts.nodeId) opts.nodeId = hat(160)
 
   self.nodeId = idToBuffer(opts.nodeId)
-
-  if (opts.bootstrap === false) {
-    self.queue = []
-  } else if (Array.isArray(opts.bootstrap)) {
-    self.queue = [].concat(opts.bootstrap)
-  } else {
-    self.queue = [].concat(BOOTSTRAP_NODES)
-  }
 
   self.listening = false
   self._closed = false
@@ -119,6 +111,10 @@ function DHT (opts) {
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
   self._rotateInterval.unref()
+
+  if (opts.bootstrap !== false) {
+    self._bootstrap(Array.isArray(opts.bootstrap) ? opts.bootstrap : BOOTSTRAP_NODES)
+  }
 }
 
 /**
@@ -180,6 +176,7 @@ DHT.prototype.destroy = function (cb) {
   self.peers = null
   self._addrData = null
 
+  clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
 
   try {
@@ -199,16 +196,12 @@ DHT.prototype.addNode = function (nodeId, addr) {
   var self = this
   nodeId = idToBuffer(nodeId)
 
-  if (addr === undefined) {
-    // we don't know node's address -- add node to queue
-    // TODO
-  } else {
-    // we know node's address -- add node to table
-    self.nodes.add({
-      id: nodeId,
-      addr: addr
-    })
+  var contact = {
+    id: nodeId,
+    addr: addr
   }
+  self.nodes.add(contact)
+  self.emit('node', addr, nodeId)
 }
 
 /**
@@ -223,7 +216,12 @@ DHT.prototype.removeNode = function (nodeId) {
   }
 }
 
-DHT.prototype.addPeer = function (infoHash, addr) {
+/**
+ * Store a peer in the DHT.
+ * @param {string} addr
+ * @param {Buffer|string} infoHash
+ */
+DHT.prototype.addPeer = function (addr, infoHash) {
   var self = this
   infoHash = idToHexString(infoHash)
 
@@ -242,8 +240,15 @@ DHT.prototype.addPeer = function (infoHash, addr) {
   if (!exists) {
     peers.push(compactPeerInfo)
   }
+
+  self.emit('peer', addr, infoHash)
 }
 
+/**
+ * Remove a peer from the DHT.
+ * @param  {Buffer|string} infoHash
+ * @param  {string} addr
+ */
 DHT.prototype.removePeer = function (infoHash, addr) {
   var self = this
   infoHash = idToHexString(infoHash)
@@ -262,44 +267,123 @@ DHT.prototype.removePeer = function (infoHash, addr) {
   }
 }
 
-// /**
-//  * Perform a recurive node lookup for the given nodeId. If isFindNode is true, then
-//  * `find_node` will be sent to each peer instead of `get_peers`.
-//  * @param {Buffer|string}  nodeId
-//  * @param {boolean} isFindNode
-//  * @param {function} cb called with K closest nodes (for `find_node`)
-//  */
-// DHT.prototype.lookup = function (nodeId, isFindNode, cb) {
-//   var self = this
-//   if (self._closed) return
+/**
+ * Join the DHT network. To join initially, connect to known nodes (either public
+ * bootstrap nodes, or known nodes from a previous run of bittorrent-client).
+ * @param  {Array.<string>} contacts
+ * @param  {function=} cb
+ */
+DHT.prototype._bootstrap = function (contacts, cb) {
+  var self = this
+  if (!cb) cb = function () {}
 
-//   nodeId = idToBuffer(nodeId)
+  // add all non-bootstrap nodes to routing table
+  contacts
+    .filter(function (contact) {
+      return !!contact.id
+    })
+    .forEach(function (contact) {
+      self.nodes.add(contact)
+    })
 
-//   var lookup = {
-//     nodes: self.nodes.closest({ id: nodeId }, MAX_CONCURRENCY),
-//     outstanding: 0,
-//   }
+  // get addresses of bootstrap nodes
+  var addrs = contacts
+    .filter(function (contact) {
+      return !contact.id
+    })
+    .map(function (contact) {
+      return contact.addr
+    })
 
-//   self._recursiveFindNode(nodes)
-// }
+  self.lookup(self.nodeId, {
+    findNode: true,
+    addrs: addrs.length ? addrs : null
+  }, cb)
 
-// DHT.prototype._recursiveFindNode = function (nodes) {
-//   var self = this
+  self._bootstrapTimeout = setTimeout(function () {
+    // If no nodes are in the table after a timeout, retry with bootstrap nodes
+    if (self.nodes.count() === 0) {
+      debug('no DHT nodes replied, retry with bootstrap nodes')
+      self._bootstrap(BOOTSTRAP_NODES)
+    }
+  }, BOOTSTRAP_TIMEOUT)
+  self._bootstrapTimeout.unref()
+}
 
-//   nodes.forEach(function (node) {
-//     var addrData = self._getAddrData(node.addr)
-//     self._sendFindNode(addrData[0], addrData[1], nodeId, done)
-//   })
+/**
+ * Perform a recurive node lookup for the given nodeId. If isFindNode is true, then
+ * `find_node` will be sent to each peer instead of `get_peers`.
+ * @param {Buffer|string} id node id or info hash
+ * @param {Object=} opts
+ * @param {boolean} opts.findNode
+ * @param {function} cb called with K closest nodes (for `find_node`)
+ */
+DHT.prototype.lookup = function (id, opts, cb) {
+  var self = this
+  if (self._closed) return
 
-//   function done (err, res) {
-//     if (err) {
-//       self.reqs[addr] = (self.reqs[addr] || 0) + 1
-//       if (!self.nodes[addr] && self.reqs[addr] < MAX_REQUESTS) {
-//         self.query.call(self, addr)
-//       }
-//     }
-//   }
-// }
+  id = idToBuffer(id)
+
+  if (typeof opts === 'function') {
+    cb = opts
+    opts = {}
+  }
+  if (!opts) opts = {}
+  if (!cb) cb = function () {}
+
+  var queried = {}
+  var pending = 0 // pending queries
+
+  function query (addr) {
+    debug('querying ' + addr)
+    pending += 1
+    queried[addr] = true
+    var addrData = self._getAddrData(addr)
+
+    if (opts.findNode) {
+      self._sendFindNode(addrData[0], addrData[1], id, onResponse)
+    } else {
+      self._sendGetPeers(addrData[0], addrData[1], id, onResponse)
+    }
+  }
+
+  function onResponse (err, res) {
+    // ignore errors -- they're just timeouts. ignore responses -- they're handled by
+    // `_sendFindNode` or `_sendGetPeers` and new nodes are inserted into the routing
+    // table. recursive lookup will terminate when there are no more closer nodes to find.
+
+    pending -= 1
+
+    // find closest unqueried nodes
+    var candidates = self.nodes.closest({ id: id }, K)
+      .filter(function (contact) {
+        return !queried[contact.addr]
+      })
+
+    while (pending < MAX_CONCURRENCY && candidates.length) {
+      // query as many candidates as our concurrency limit will allow
+      var addr = candidates.pop().addr
+      query(addr)
+    }
+
+    if (pending === 0 && candidates.length === 0) {
+      // recursive lookup should terminate because there are no closer nodes to find
+      debug('terminating recursive lookup')
+      cb(null)
+    }
+  }
+
+  if (opts.addrs) {
+    // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
+    opts.addrs.forEach(function (addr) {
+      query(addr)
+    })
+  } else {
+    // kick off lookup with nodes in the table, so just call done()
+    pending += 1 // small hack
+    onResponse()
+  }
+}
 
 /**
  * Called when someone sends a UDP message
@@ -338,15 +422,6 @@ DHT.prototype._onData = function (data, rinfo) {
   // // Reset outstanding req count to 0 (better than using "delete" which invalidates
   // // the V8 inline cache
   // self.reqs[addr] = 0
-
-  // var r = message && message.r
-
-  // if (r && Buffer.isBuffer(r.nodes)) {
-  //   parseNodeInfo(r.nodes).forEach(self._handleNode.bind(self))
-  // }
-  // if (r && Array.isArray(r.values)) {
-  //   parsePeerInfo(r.values).forEach(self._handlePeer.bind(self))
-  // }
 }
 
 DHT.prototype._onQuery = function (host, port, message) {
@@ -461,10 +536,10 @@ DHT.prototype._onPing = function (host, port, message) {
  * Send "find_node" query to given host and port.
  * @param {string} host
  * @param {number} port
- * @param {Buffer} targetNodeId
+ * @param {Buffer} nodeId
  * @param {function} cb called with response
  */
-DHT.prototype._sendFindNode = function (host, port, targetNodeId, cb) {
+DHT.prototype._sendFindNode = function (host, port, nodeId, cb) {
   var self = this
   var addr = host + ':' + port
 
@@ -481,7 +556,7 @@ DHT.prototype._sendFindNode = function (host, port, targetNodeId, cb) {
     q: 'find_node',
     a: {
       id: self.nodeId,
-      target: targetNodeId
+      target: nodeId
     }
   }
   self._send(host, port, message)
@@ -496,9 +571,9 @@ DHT.prototype._sendFindNode = function (host, port, targetNodeId, cb) {
 DHT.prototype._onFindNode = function (host, port, message) {
   var self = this
 
-  var targetNodeId = message.a && message.a.target
+  var nodeId = message.a && message.a.target
 
-  if (!targetNodeId) {
+  if (!nodeId) {
     var errMessage = '`find_node` missing required `a.target` field'
     debug(errMessage)
     self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
@@ -507,8 +582,8 @@ DHT.prototype._onFindNode = function (host, port, message) {
 
   // Get the target node id if it exists in the routing table. Otherwise, get the
   // K closest nodes.
-  var contacts = self.nodes.get(targetNodeId)
-    || self.nodes.closest({ id: targetNodeId }, K)
+  var contacts = self.nodes.get(nodeId)
+    || self.nodes.closest({ id: nodeId }, K)
     || []
 
   if (!Array.isArray(contacts)) {
@@ -804,80 +879,6 @@ DHT.prototype._rotateSecrets = function () {
   self.secrets[0] = createSecret()
 }
 
-// DHT.prototype._queryQueue = function () {
-//   var self = this
-//   if (self.queue.length) {
-//     self.query(self.queue.pop())
-//   } else {
-//     clearInterval(self.queueInterval)
-//     self.queueInterval = null
-//   }
-// }
-
-// /* Start querying queue, if not already */
-// DHT.prototype.queryQueue = function () {
-//   var self = this
-//   if (!self.queryInterval) {
-//     self.queryInterval = setInterval(self._queryQueue.bind(self), QUEUE_QUERY_INTERVAL)
-//     self.queryInterval.unref()
-//   }
-// }
-
-// DHT.prototype.findPeers = function (num) {
-//   var self = this
-//   if (self._closed) return
-//   if (!num) num = 1
-
-//   // TODO: keep track of missing peers for each `findPeers` call separately!
-//   self.missingPeers += num
-
-//   // Start querying queue
-//   self.queryQueue()
-
-//   // If we are connected to no nodes after timeout period, then retry with
-//   // the bootstrap nodes.
-//   setTimeout(function () {
-//     if (self.nodes.count() === 0) {
-//       debug('No DHT nodes replied, retry with bootstrap nodes')
-//       self.queue.push.apply(self.queue, BOOTSTRAP_NODES)
-//       self.missingPeers = 0
-//       self.findPeers(num)
-//     }
-//   }, BOOTSTRAP_TIMEOUT)
-// }
-
-
-// /**
-//  * Called when client finds a new DHT node
-//  * @param  {string} addr
-//  */
-// DHT.prototype._handleNode = function (addr) {
-//   var self = this
-//   if (self.nodes[addr]) {
-//     return
-//   }
-
-//   // TODO: Something like this might be needed for safety. (?)
-//   //if (self.queue.length < 10000) self.queue.push(addr)
-//   self.queue.push(addr)
-//   self.queryQueue()
-
-//   self.emit('node', addr, self.infoHash.toString('hex'))
-// }
-
-// /**
-//  * Called when client finds a new peer
-//  * @param  {string} addr
-//  */
-// DHT.prototype._handlePeer = function (addr) {
-//   var self = this
-//   if (self.peers[addr]) return
-//   self.peers[addr] = true
-//   self.missingPeers = Math.max(0, self.missingPeers - 1)
-
-//   self.emit('peer', addr, self.infoHash.toString('hex'))
-// }
-
 /**
  * Convert "contacts" from the routing table into "compact node info" representation.
  * @param  {Array.<Object>} contacts
@@ -967,5 +968,6 @@ function idToHexString (id) {
 }
 
 function sha1 (buf) {
-  return new Buffer(new Uint8Array((new Rusha()).rawDigest(buf).buffer))
+  // this converts the Int8Array returned from Rusha to a Buffer without a copy
+  return arrayToBuffer(new Uint8Array((new Rusha()).rawDigest(buf).buffer))
 }
