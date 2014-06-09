@@ -18,14 +18,16 @@ var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
 var debug = require('debug')('bittorrent-dht')
 var dgram = require('dgram')
+var dns = require('dns')
 var EventEmitter = require('events').EventEmitter
 var hat = require('hat')
 var inherits = require('inherits')
 var KBucket = require('k-bucket')
-var string2compact = require('string2compact')
 var once = require('once')
+var parallel = require('run-parallel')
 var portfinder = require('portfinder')
 var Rusha = require('rusha-browserify') // Fast SHA1 (works in browser)
+var string2compact = require('string2compact')
 
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
 
@@ -113,7 +115,27 @@ function DHT (opts) {
   self._rotateInterval.unref()
 
   if (opts.bootstrap !== false) {
-    self._bootstrap(Array.isArray(opts.bootstrap) ? opts.bootstrap : BOOTSTRAP_NODES)
+    if (Array.isArray(opts.bootstrap)) {
+      self._bootstrap(opts.bootstrap)
+    } else {
+      var tasks = BOOTSTRAP_NODES.map(function (contact) {
+        return function (cb) {
+          var addrData = self._getAddrData(contact.addr)
+          dns.lookup(addrData[0], 4, function (err, addr) {
+            cb(null, err ? null : addr + ':' + addrData[1])
+          })
+        }
+      })
+      parallel(tasks, function (err, addrs) {
+        console.log(addrs)
+        var contacts = addrs
+          .filter(function (addr) { return !!addr }) // filter out bad domains
+          .map(function (addr) {
+            return { addr: addr }
+          })
+        self._bootstrap(contacts)
+      })
+    }
   }
 }
 
@@ -404,7 +426,7 @@ DHT.prototype._onData = function (data, rinfo) {
     return
   }
 
-  debug('got message from ' + addr + ' ' + JSON.stringify(message))
+  // debug('got message from ' + addr + ' ' + JSON.stringify(message))
 
   var type = message.y.toString()
 
@@ -463,6 +485,7 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
       debug(errMessage)
       self.emit('warning', new Error(err))
     } else {
+      console.log(self.transactions)
       debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
       self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
     }
@@ -511,6 +534,7 @@ DHT.prototype._sendPing = function (host, port, cb) {
     }
   }
   self._send(host, port, message)
+  debug('sent ping to ' + addr)
 }
 
 /**
@@ -530,6 +554,7 @@ DHT.prototype._onPing = function (host, port, message) {
   }
 
   self._send(host, port, res)
+  debug('got ping from ' + host + ':' + port)
 }
 
 /**
@@ -560,6 +585,7 @@ DHT.prototype._sendFindNode = function (host, port, nodeId, cb) {
     }
   }
   self._send(host, port, message)
+  debug('sent find_node ' + idToHexString(nodeId) + ' to ' + addr)
 }
 
 /**
@@ -603,6 +629,7 @@ DHT.prototype._onFindNode = function (host, port, message) {
   }
 
   self._send(host, port, res)
+  debug('got find_node ' + idToHexString(nodeId) + ' from ' + host + ':' + port)
 }
 
 /**
@@ -619,8 +646,18 @@ DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
 
   function done (err, res) {
     if (err) return cb(err)
-    if (res.nodes) res.nodes = parseNodeInfo(res.nodes)
-    if (res.values) res.values = parsePeerInfo(res.values)
+    if (res.nodes) {
+      res.nodes = parseNodeInfo(res.nodes)
+      res.nodes.forEach(function (node) {
+        self.addNode(node)
+      })
+    }
+    if (res.values) {
+      res.values = parsePeerInfo(res.values)
+      res.values.forEach(function (addr) {
+        self.addPeer(addr, infoHash)
+      })
+    }
     cb(null, res)
   }
 
@@ -635,6 +672,7 @@ DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
     }
   }
   self._send(host, port, message)
+  debug('sent get_peers ' + idToHexString(infoHash) + ' from ' + addr)
 }
 
 /**
@@ -646,8 +684,8 @@ DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
 DHT.prototype._onGetPeers = function (host, port, message) {
   var self = this
 
-  var targetInfoHash = idToHexString(message.a && message.a.info_hash)
-  if (!targetInfoHash) {
+  var infoHash = idToHexString(message.a && message.a.info_hash)
+  if (!infoHash) {
     var errMessage = '`get_peers` missing required `a.info_hash` field'
     debug(errMessage)
     self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
@@ -663,19 +701,20 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     }
   }
 
-  var peers = self.peers[targetInfoHash]
+  var peers = self.peers[infoHash]
   if (peers) {
     // We know of peers for the target info hash. Peers are stored as an array of
     // compact peer info, so return it as-is.
     res.r.values = peers
   } else {
     // No peers, so return the K closest nodes instead.
-    var contacts = self.nodes.closest({ id: targetInfoHash }, K)
+    var contacts = self.nodes.closest({ id: infoHash }, K)
     // Convert nodes to "compact node info" representation
     res.r.nodes = convertToNodeInfo(contacts)
   }
 
   self._send(host, port, res)
+  debug('got get_peers ' + infoHash + ' from ' + host + ':' + port)
 }
 
 /**
