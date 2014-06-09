@@ -4,6 +4,8 @@
 // - Use actual DHT data structure with "buckets" (follow spec)
 // - Add the method that allows us to list ourselves in the DHT
 // - Use a fast Set to make addPeer / removePeer faster
+// - When receiving any message, attempt to add the node to the table
+// - unify addr vs host,port usage
 
 module.exports = DHT
 
@@ -34,7 +36,7 @@ var MAX_REQUESTS = 3
 var QUEUE_QUERY_INTERVAL = Math.floor(1000 / MAX_QUERY_PER_SECOND)
 var SEND_TIMEOUT = 2000
 
-var SECRET_ENTROPY = 128 // entropy of token secrets
+var SECRET_ENTROPY = 160 // entropy of token secrets
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
 var K = 8 // number of nodes per bucket
@@ -284,6 +286,100 @@ DHT.prototype.removePeer = function (infoHash, addr) {
 // }
 
 /**
+ * Called when someone sends a UDP message
+ * @param {Buffer} data
+ * @param {Object} rinfo
+ */
+DHT.prototype._onData = function (data, rinfo) {
+  var self = this
+  var host = rinfo.address
+  var port = rinfo.port
+  var addr = host + ':' + port
+
+  try {
+    var message = bncode.decode(data)
+    if (!message) throw new Error('message is empty')
+  } catch (err) {
+    debug('bad message from ' + addr + ' ' + err.message)
+    return
+  }
+
+  debug('got message from ' + addr + ' ' + JSON.stringify(message))
+
+  var type = message.y.toString()
+
+  if (type === MESSAGE_TYPE.QUERY) {
+    self._onQuery(host, port, message)
+  } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
+    self._onResponseOrError(host, port, type, message)
+  } else {
+    debug('unknown message type ' + type)
+  }
+
+  // // Mark that we've seen this node (the one we received data from)
+  // self.nodes[addr] = true
+
+  // // Reset outstanding req count to 0 (better than using "delete" which invalidates
+  // // the V8 inline cache
+  // self.reqs[addr] = 0
+
+  // var r = message && message.r
+
+  // if (r && Buffer.isBuffer(r.nodes)) {
+  //   parseNodeInfo(r.nodes).forEach(self._handleNode.bind(self))
+  // }
+  // if (r && Array.isArray(r.values)) {
+  //   parsePeerInfo(r.values).forEach(self._handlePeer.bind(self))
+  // }
+}
+
+DHT.prototype._onQuery = function (host, port, message) {
+  var self = this
+  var query = message.q.toString()
+
+  if (query === 'ping') {
+    self._onPing(host, port, message)
+  } else if (query === 'find_node') {
+    self._onFindNode(host, port, message)
+  } else if (query === 'get_peers') {
+    self._onGetPeers(host, port, message)
+  } else if (query === 'announce_peer') {
+    self._onAnnouncePeer(host, port, message)
+  } else {
+    var errMessage = 'unexpected query type ' + query
+    debug(errMessage)
+    self._sendError(host, port, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
+  }
+}
+
+DHT.prototype._onResponseOrError = function (host, port, type, message) {
+  var self = this
+
+  var addr = host + ':' + port
+  var transactionId = Buffer.isBuffer(message.t) && message.t.readUInt16BE(0)
+
+  var transaction = self.transactions[addr] && self.transactions[addr][transactionId]
+
+  var err = null
+  if (type === MESSAGE_TYPE.ERROR) {
+    err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
+  }
+
+  if (transaction && transaction.cb) {
+    transaction.cb(err, message.r)
+  } else {
+    if (err) {
+      var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
+      debug(errMessage)
+      self.emit('warning', new Error(err))
+    } else {
+      debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
+      self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
+    }
+  }
+}
+
+/**
  * Send a UDP message to the given host and port.
  * @param  {string} host
  * @param  {number} port
@@ -375,7 +471,7 @@ DHT.prototype._onFindNode = function (host, port, message) {
   var targetNodeId = message.a && message.a.target
 
   if (!targetNodeId) {
-    var errMessage = '`find_node` missing required `message.a.target` field'
+    var errMessage = '`find_node` missing required `a.target` field'
     debug(errMessage)
     self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
@@ -442,7 +538,7 @@ DHT.prototype._onGetPeers = function (host, port, message) {
 
   var targetInfoHash = idToHexString(message.a && message.a.info_hash)
   if (!targetInfoHash) {
-    var errMessage = '`get_peers` missing required `message.a.info_hash` field'
+    var errMessage = '`get_peers` missing required `a.info_hash` field'
     debug(errMessage)
     self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
@@ -453,7 +549,7 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     y: MESSAGE_TYPE.RESPONSE,
     r: {
       id: self.nodeId,
-      token: self._getToken(host)
+      token: self._generateToken(host)
     }
   }
 
@@ -469,6 +565,78 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     res.r.nodes = self._contactsToCompact(contacts)
   }
 
+  self._send(host, port, res)
+}
+
+/**
+ * Send "announce_peer" query to given host and port.
+ * @param {string} host
+ * @param {number} port
+ * @param {Buffer|string} infoHash
+ * @param {number} myPort
+ * @param {Buffer} token
+ * @param {function} cb called with response
+ */
+DHT.prototype._sendAnnouncePeer = function (host, port, infoHash, myPort, token, cb) {
+  var self = this
+  var addr = host + ':' + port
+  infoHash = idToBuffer(infoHash)
+
+  var transactionId = self._getTransactionId(addr, cb)
+  var message = {
+    t: transactionIdToBuffer(transactionId),
+    y: MESSAGE_TYPE.QUERY,
+    q: 'announce_peer',
+    a: {
+      id: self.nodeId,
+      info_hash: infoHash,
+      port: myPort,
+      token: token,
+      implied_port: 1
+    }
+  }
+  self._send(host, port, message)
+}
+
+/**
+ * Called when another node sends a "announce_peer" query.
+ * @param  {string} host
+ * @param  {number} port
+ * @param  {Object} message
+ */
+DHT.prototype._onAnnouncePeer = function (host, port, message) {
+  var self = this
+  var errMessage
+
+  var infoHash = idToHexString(message.a && message.a.info_hash)
+  if (!infoHash) {
+    errMessage = '`announce_peer` missing required `a.info_hash` field'
+    debug(errMessage)
+    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    return
+  }
+
+  var token = message.a && message.a.token
+  if (!self._isValidToken(token, host)) {
+    errMessage = 'cannot `announce_peer` with bad token'
+    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    return
+  }
+
+  var port = message.a.implied_port !== 0
+    ? port // use port of udp packet
+    : message.a.port // use port in `announce_peer` message
+
+  // self.emit('announce_peer', self._emit.bind())
+
+  // send acknowledgement
+  var res = {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: {
+      id: self.nodeId
+    }
+  }
   self._send(host, port, res)
 }
 
@@ -558,7 +726,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
  * @param {Buffer=} secret force token to use this secret, otherwise use current one
  * @return {Buffer}
  */
-DHT.prototype._getToken = function (host, secret) {
+DHT.prototype._generateToken = function (host, secret) {
   var self = this
   if (!secret) secret = self.secrets[0]
   return sha1(Buffer.concat([new Buffer(host, 'utf8'), secret]))
@@ -573,8 +741,8 @@ DHT.prototype._getToken = function (host, secret) {
  */
 DHT.prototype._isValidToken = function (token, host) {
   var self = this
-  var validToken0 = self._getToken(host, self.secrets[0])
-  var validToken1 = self._getToken(host, self.secrets[1])
+  var validToken0 = self._generateToken(host, self.secrets[0])
+  var validToken1 = self._generateToken(host, self.secrets[1])
   return bufferEqual(token, validToken0) || bufferEqual(token, validToken1)
 }
 
@@ -603,7 +771,7 @@ DHT.prototype._rotateSecrets = function () {
 
 /**
  * Convert "contacts" from the routing table into "compact node info" representation.
- * @param  {Array.<Object>} nodes
+ * @param  {Array.<Object>} contacts
  * @return {Buffer}
  */
 DHT.prototype._contactsToCompact = function (contacts) {
@@ -687,98 +855,6 @@ DHT.prototype._contactsToCompact = function (contacts) {
 //   self.emit('peer', addr, self.infoHash.toString('hex'))
 // }
 
-/**
- * Called when someone sends a UDP message
- * @param {Buffer} data
- * @param {Object} rinfo
- */
-DHT.prototype._onData = function (data, rinfo) {
-  var self = this
-  var host = rinfo.address
-  var port = rinfo.port
-  var addr = host + ':' + port
-
-  try {
-    var message = bncode.decode(data)
-    if (!message) throw new Error('message is empty')
-  } catch (err) {
-    debug('bad message from ' + addr + ' ' + err.message)
-    return
-  }
-
-  debug('got message from ' + addr + ' ' + JSON.stringify(message))
-
-  var type = message.y.toString()
-
-  if (type === MESSAGE_TYPE.QUERY) {
-    self._onQuery(host, port, message)
-  } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
-    self._onResponseOrError(host, port, type, message)
-  } else {
-    debug('unknown message type ' + type)
-  }
-
-  // // Mark that we've seen this node (the one we received data from)
-  // self.nodes[addr] = true
-
-  // // Reset outstanding req count to 0 (better than using "delete" which invalidates
-  // // the V8 inline cache
-  // self.reqs[addr] = 0
-
-  // var r = message && message.r
-
-  // if (r && Buffer.isBuffer(r.nodes)) {
-  //   parseNodeInfo(r.nodes).forEach(self._handleNode.bind(self))
-  // }
-  // if (r && Array.isArray(r.values)) {
-  //   parsePeerInfo(r.values).forEach(self._handlePeer.bind(self))
-  // }
-}
-
-DHT.prototype._onQuery = function (host, port, message) {
-  var self = this
-  var query = message.q.toString()
-
-  if (query === 'ping') {
-    self._onPing(host, port, message)
-  } else if (query === 'find_node') {
-    self._onFindNode(host, port, message)
-  } else if (query === 'get_peers') {
-    self._onGetPeers(host, port, message)
-  } else {
-    var errMessage = 'unexpected query type ' + query
-    debug(errMessage)
-    self._sendError(host, port, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
-  }
-}
-
-DHT.prototype._onResponseOrError = function (host, port, type, message) {
-  var self = this
-
-  var addr = host + ':' + port
-  var transactionId = Buffer.isBuffer(message.t) && message.t.readUInt16BE(0)
-
-  var transaction = self.transactions[addr] && self.transactions[addr][transactionId]
-
-  var err = null
-  if (type === MESSAGE_TYPE.ERROR) {
-    err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
-  }
-
-  if (transaction && transaction.cb) {
-    transaction.cb(err, message.r)
-  } else {
-    if (err) {
-      var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
-      debug(errMessage)
-      self.emit('warning', new Error(err))
-    } else {
-      debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
-      self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
-    }
-  }
-}
-
 // function parseNodeInfo (nodeInfo) {
 //   try {
 //     var nodes = []
@@ -844,5 +920,5 @@ function idToHexString (id) {
 }
 
 function sha1 (buf) {
-  return (new Rusha()).digestFromBuffer(buf)
+  return new Buffer(new Uint8Array((new Rusha()).rawDigest(buf).buffer))
 }
