@@ -46,7 +46,10 @@ test('`find_node` query for exact match (with one in table)', function (t) {
       dht2._sendFindNode('127.0.0.1', port, targetNodeId, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
-        t.equal(compact2string(res.nodes), '255.255.255.255:6969')
+        t.deepEqual(
+          res.nodes.map(function (node) { return node.addr }),
+          [ '255.255.255.255:6969' ]
+        )
 
         dht1.destroy()
         dht2.destroy()
@@ -75,8 +78,8 @@ test('`find_node` query for exact match (with many in table)', function (t) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.deepEqual(
-          compact2string.multi(res.nodes).sort(),
-          ['1.1.1.1:6969', '10.10.10.10:6969', '255.255.255.255:6969'].sort()
+          res.nodes.map(function (node) { return node.addr }).sort(),
+          [ '1.1.1.1:6969', '10.10.10.10:6969', '255.255.255.255:6969' ]
         )
 
         dht1.destroy()
@@ -95,6 +98,7 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   dht2.on('warning', function (err) { t.fail(err) })
 
   dht1.addNode(new Buffer(hat(160), 'hex'), '1.1.1.1:6969')
+  dht1.addNode(new Buffer(hat(160), 'hex'), '2.2.2.2:6969')
 
   portfinder.getPort(function (err, port) {
     t.error(err)
@@ -104,7 +108,10 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.ok(Buffer.isBuffer(res.token))
-        t.equal(compact2string(res.nodes), '1.1.1.1:6969')
+        t.deepEqual(
+          res.nodes.map(function (node) { return node.addr }).sort(),
+          [ '1.1.1.1:6969', '2.2.2.2:6969' ]
+        )
 
         dht1.destroy()
         dht2.destroy()
@@ -136,7 +143,7 @@ test('`get_peers` query to node with peers in table', function (t) {
         t.deepEqual(res.id, dht1.nodeId)
         t.ok(Buffer.isBuffer(res.token))
         t.deepEqual(
-          res.values.map(compact2string),
+          res.values.sort(),
           ['1.1.1.1:6969', '10.10.10.10:6969', '255.255.255.255:6969']
         )
 
@@ -213,21 +220,8 @@ test('`announce_peer` query gets ack response', function (t) {
 // test('Find nodes (Pride & Prejudice)', function (t) {
 //   t.plan(2)
 
-//   // auto({
-//   //   port: function (cb) {
-//   //     portfinder.getPort(cb)
-//   //   },
-
-//   //   server: ['port', function (cb) {
-//   //     var server = new Server()
-//   //     server.listen
-//   //   }]
-//   // })
-
-//   var dht = new DHT({
-//     // bootstrap: []
-//   })
-//   dht.setInfoHash(infoHash)
+//   var dht = new DHT({ bootstrap: [] })
+//   dht.lookup(infoHash)
 //   dht.findPeers(300)
 
 //   dht.once('node', function (peer) {

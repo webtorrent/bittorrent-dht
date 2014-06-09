@@ -39,6 +39,8 @@ var SEND_TIMEOUT = 2000
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
+var MAX_CONCURRENCY = 20 // α from Kademlia paper
+
 var K = 8 // number of nodes per bucket
 
 var MESSAGE_TYPE = {
@@ -82,6 +84,10 @@ function DHT (opts) {
   self._closed = false
   self.port = null
 
+  /**
+   * Routing table
+   * @type {KBucket}
+   */
   self.nodes = new KBucket({
     localNodeId: self.nodeId
   })
@@ -103,11 +109,6 @@ function DHT (opts) {
    * @type {Object} infoHash:string -> Set of peers
    */
   self.peers = {}
-
-  self.reqs = {} // ?
-
-  // Number of peers we still need to find to satisfy the last call to findPeers
-  self.missingPeers = 0 // ?
 
   // Create socket and attach listeners
   self.socket = dgram.createSocket('udp4')
@@ -261,28 +262,43 @@ DHT.prototype.removePeer = function (infoHash, addr) {
   }
 }
 
-// TODO: remove
-// DHT.prototype.query = function (addr) {
+// /**
+//  * Perform a recurive node lookup for the given nodeId. If isFindNode is true, then
+//  * `find_node` will be sent to each peer instead of `get_peers`.
+//  * @param {Buffer|string}  nodeId
+//  * @param {boolean} isFindNode
+//  * @param {function} cb called with K closest nodes (for `find_node`)
+//  */
+// DHT.prototype.lookup = function (nodeId, isFindNode, cb) {
 //   var self = this
-//   if (self.missingPeers <= 0 || self._closed)
-//     return
+//   if (self._closed) return
 
-//   var addrData = getAddrData(addr)
-//   var host = addrData[0]
-//   var port = addrData[1]
+//   nodeId = idToBuffer(nodeId)
 
-//   if (!(port > 0 && port < 65535)) {
-//     return
+//   var lookup = {
+//     nodes: self.nodes.closest({ id: nodeId }, MAX_CONCURRENCY),
+//     outstanding: 0,
 //   }
 
-//   self._send(self.message, host, port, function () {
-//     setTimeout(function () {
+//   self._recursiveFindNode(nodes)
+// }
+
+// DHT.prototype._recursiveFindNode = function (nodes) {
+//   var self = this
+
+//   nodes.forEach(function (node) {
+//     var addrData = self._getAddrData(node.addr)
+//     self._sendFindNode(addrData[0], addrData[1], nodeId, done)
+//   })
+
+//   function done (err, res) {
+//     if (err) {
 //       self.reqs[addr] = (self.reqs[addr] || 0) + 1
 //       if (!self.nodes[addr] && self.reqs[addr] < MAX_REQUESTS) {
 //         self.query.call(self, addr)
 //       }
-//     }, SEND_TIMEOUT)
-//   })
+//     }
+//   }
 // }
 
 /**
@@ -365,9 +381,8 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
     err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
   }
 
-  if (transaction && transaction.cb) {
-    transaction.cb(err, message.r)
-  } else {
+  if (!transaction || !transaction.cb) {
+    // unexpected message!
     if (err) {
       var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
       debug(errMessage)
@@ -376,7 +391,10 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
       debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
       self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
     }
+    return
   }
+
+  transaction.cb(err, message.r)
 }
 
 /**
@@ -389,6 +407,10 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
 DHT.prototype._send = function (host, port, message, cb) {
   var self = this
   if (!cb) cb = function () {}
+
+  if (!(port > 0 && port < 65535)) {
+    return
+  }
 
   message = bncode.encode(message)
   self.socket.send(message, 0, message.length, port, host, cb)
@@ -446,7 +468,13 @@ DHT.prototype._sendFindNode = function (host, port, targetNodeId, cb) {
   var self = this
   var addr = host + ':' + port
 
-  var transactionId = self._getTransactionId(addr, cb)
+  function done (err, res) {
+    if (err) return cb(err)
+    res.nodes = parseNodeInfo(res.nodes)
+    cb(null, res)
+  }
+
+  var transactionId = self._getTransactionId(addr, done)
   var message = {
     t: transactionIdToBuffer(transactionId),
     y: MESSAGE_TYPE.QUERY,
@@ -488,7 +516,7 @@ DHT.prototype._onFindNode = function (host, port, message) {
   }
 
   // Convert nodes to "compact node info" representation
-  var nodes = self._contactsToCompact(contacts)
+  var nodes = convertToNodeInfo(contacts)
 
   var res = {
     t: message.t,
@@ -514,7 +542,14 @@ DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
   var addr = host + ':' + port
   infoHash = idToBuffer(infoHash)
 
-  var transactionId = self._getTransactionId(addr, cb)
+  function done (err, res) {
+    if (err) return cb(err)
+    if (res.nodes) res.nodes = parseNodeInfo(res.nodes)
+    if (res.values) res.values = parsePeerInfo(res.values)
+    cb(null, res)
+  }
+
+  var transactionId = self._getTransactionId(addr, done)
   var message = {
     t: transactionIdToBuffer(transactionId),
     y: MESSAGE_TYPE.QUERY,
@@ -562,7 +597,7 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     // No peers, so return the K closest nodes instead.
     var contacts = self.nodes.closest({ id: targetInfoHash }, K)
     // Convert nodes to "compact node info" representation
-    res.r.nodes = self._contactsToCompact(contacts)
+    res.r.nodes = convertToNodeInfo(contacts)
   }
 
   self._send(host, port, res)
@@ -729,7 +764,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
 DHT.prototype._generateToken = function (host, secret) {
   var self = this
   if (!secret) secret = self.secrets[0]
-  return sha1(Buffer.concat([new Buffer(host, 'utf8'), secret]))
+  return sha1(Buffer.concat([ new Buffer(host, 'utf8'), secret ]))
 }
 
 /**
@@ -767,18 +802,6 @@ DHT.prototype._rotateSecrets = function () {
 
   self.secrets[1] = self.secrets[0]
   self.secrets[0] = createSecret()
-}
-
-/**
- * Convert "contacts" from the routing table into "compact node info" representation.
- * @param  {Array.<Object>} contacts
- * @return {Buffer}
- */
-DHT.prototype._contactsToCompact = function (contacts) {
-  var self = this
-  return string2compact(contacts.map(function (contact) {
-    return contact.addr
-  }))
 }
 
 // DHT.prototype._queryQueue = function () {
@@ -855,27 +878,51 @@ DHT.prototype._contactsToCompact = function (contacts) {
 //   self.emit('peer', addr, self.infoHash.toString('hex'))
 // }
 
-// function parseNodeInfo (nodeInfo) {
-//   try {
-//     var nodes = []
-//     for (var i = 0; i < nodeInfo.length; i += 26) {
-//       nodes.push(compact2string(nodeInfo.slice(i + 20, i + 26)))
-//     }
-//     return nodes
-//   } catch (err) {
-//     debug('Error parsing node info ' + nodeInfo)
-//     return []
-//   }
-// }
+/**
+ * Convert "contacts" from the routing table into "compact node info" representation.
+ * @param  {Array.<Object>} contacts
+ * @return {Buffer}
+ */
+function convertToNodeInfo (contacts) {
+  var self = this
+  return Buffer.concat(contacts.map(function (contact) {
+    return Buffer.concat([ contact.id, string2compact(contact.addr) ])
+  }))
+}
 
-// function parsePeerInfo (list) {
-//   try {
-//     return list.map(compact2string)
-//   } catch (err) {
-//     debug('Error parsing peer info ' + list)
-//     return []
-//   }
-// }
+/**
+ * Parse "compact node info" representation into "contacts".
+ * @param  {Buffer} nodeInfo
+ * @return {Array.<string>}  array of
+ */
+function parseNodeInfo (nodeInfo) {
+  var contacts = []
+  try {
+    for (var i = 0; i < nodeInfo.length; i += 26) {
+      contacts.push({
+        id: nodeInfo.slice(i, i + 20),
+        addr: compact2string(nodeInfo.slice(i + 20, i + 26))
+      })
+    }
+  } catch (err) {
+    debug('error parsing node info ' + nodeInfo)
+  }
+  return contacts
+}
+
+/**
+ * Parse list of "compact addr info" into an array of addr "host:port" strings.
+ * @param  {Array.<Buffer>} list
+ * @return {Array.<string>}
+ */
+function parsePeerInfo (list) {
+  try {
+    return list.map(compact2string)
+  } catch (err) {
+    debug('error parsing peer info ' + list)
+    return []
+  }
+}
 
 /**
  * Ensure a transacation id is a 16-bit buffer, so it can be sent on the wire as
