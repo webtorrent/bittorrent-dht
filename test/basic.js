@@ -37,7 +37,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
 
-  dht1.addNode(targetNodeId, '255.255.255.255:6969')
+  dht1.addNode('255.255.255.255:6969', targetNodeId)
 
   portfinder.getPort(function (err, port) {
     t.error(err)
@@ -57,7 +57,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   })
 })
 
-test('`find_node` query for exact match (with many in table)', function (t) {
+test('`find_node` query (with many in table)', function (t) {
   t.plan(4)
   var dht1 = new DHT({ bootstrap: [] })
   var dht2 = new DHT({ bootstrap: [] })
@@ -65,9 +65,9 @@ test('`find_node` query for exact match (with many in table)', function (t) {
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
 
-  dht1.addNode(new Buffer(hat(160), 'hex'), '1.1.1.1:6969')
-  dht1.addNode(new Buffer(hat(160), 'hex'), '10.10.10.10:6969')
-  dht1.addNode(new Buffer(hat(160), 'hex'), '255.255.255.255:6969')
+  dht1.addNode('1.1.1.1:6969', new Buffer(hat(160), 'hex'))
+  dht1.addNode('10.10.10.10:6969', new Buffer(hat(160), 'hex'))
+  dht1.addNode('255.255.255.255:6969', new Buffer(hat(160), 'hex'))
 
   portfinder.getPort(function (err, port) {
     t.error(err)
@@ -96,8 +96,8 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
 
-  dht1.addNode(new Buffer(hat(160), 'hex'), '1.1.1.1:6969')
-  dht1.addNode(new Buffer(hat(160), 'hex'), '2.2.2.2:6969')
+  dht1.addNode('1.1.1.1:6969', new Buffer(hat(160), 'hex'))
+  dht1.addNode('2.2.2.2:6969', new Buffer(hat(160), 'hex'))
 
   portfinder.getPort(function (err, port) {
     t.error(err)
@@ -213,22 +213,20 @@ test('`announce_peer` query gets ack response', function (t) {
 })
 
 
+test('Find nodes (Pride & Prejudice)', function (t) {
+  t.plan(2)
 
-// var infoHash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
+  var infoHash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
 
-// test('Find nodes (Pride & Prejudice)', function (t) {
-//   t.plan(2)
+  var dht = new DHT()
+  dht.lookup(infoHash)
 
-//   var dht = new DHT({ bootstrap: [] })
-//   dht.lookup(infoHash)
-//   dht.findPeers(300)
+  dht.once('node', function (node) {
+    t.pass('Found at least one other DHT node')
+  })
 
-//   dht.once('node', function (peer) {
-//     t.pass('Found at least one other DHT node')
-//   })
-
-//   dht.once('peer', function (peer) {
-//     t.pass('Found at least one peer that has the file')
-//     dht.destroy()
-//   })
-// })
+  dht.once('peer', function (peer) {
+    t.pass('Found at least one peer that has the file')
+    dht.destroy()
+  })
+})
