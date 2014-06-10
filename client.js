@@ -238,6 +238,7 @@ DHT.prototype.addNode = function (addr, nodeId) {
   }
   self.nodes.add(contact)
   self.emit('node', addr, nodeId)
+  debug('adding node ' + addr + ' ' + idToHexString(nodeId))
 }
 
 /**
@@ -249,6 +250,7 @@ DHT.prototype.removeNode = function (nodeId) {
   var contact = self.nodes.get(idToBuffer(nodeId))
   if (contact) {
     self.nodes.remove(contact)
+    debug('removing node ' + contact.addr + ' ' + contact.nodeId)
   }
 }
 
@@ -278,6 +280,7 @@ DHT.prototype.addPeer = function (addr, infoHash) {
   }
 
   self.emit('peer', addr, infoHash)
+  debug('adding peer ' + addr + ' ' + infoHash)
 }
 
 /**
@@ -297,6 +300,7 @@ DHT.prototype.removePeer = function (infoHash, addr) {
     peers.some(function (peer, index) {
       if (bufferEqual(peer, compactPeerInfo)) {
         peers.splice(removeIndex, 1)
+        debug('removing peer ' + addr)
         return true // abort early
       }
     })
@@ -357,6 +361,7 @@ DHT.prototype._bootstrap = function (contacts, cb) {
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
   if (self._closed) return
+  debug('lookup ' + idToHexString(id))
 
   id = idToBuffer(id)
 
@@ -388,6 +393,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
     // `_sendFindNode` or `_sendGetPeers` and new nodes are inserted into the routing
     // table. recursive lookup will terminate when there are no more closer nodes to find.
 
+    // if (err) {
+    //   debug('got err response ' + JSON.stringify(err.message || err))
+    // } else {
+    //   debug('got response ' + JSON.stringify(res))
+    // }
+
     pending -= 1
 
     // find closest unqueried nodes
@@ -405,6 +416,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
       debug('terminating recursive lookup')
+      debug('K closest nodes are:')
+      self.nodes.closest({ id: id }, K).forEach(function (contact) {
+        debug(contact.addr + ' ' + idToHexString(contact.id))
+      })
       cb(null)
     }
   }
