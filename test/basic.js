@@ -7,8 +7,8 @@ var test = require('tape')
 
 test('`ping` query send and response', function (t) {
   t.plan(3)
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
@@ -31,8 +31,8 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   t.plan(4)
   var targetNodeId = new Buffer(hat(160), 'hex')
 
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
@@ -59,8 +59,8 @@ test('`find_node` query for exact match (with one in table)', function (t) {
 
 test('`find_node` query (with many in table)', function (t) {
   t.plan(4)
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
@@ -90,8 +90,8 @@ test('`find_node` query (with many in table)', function (t) {
 
 test('`get_peers` query to node with *no* peers in table', function (t) {
   t.plan(5)
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
@@ -122,8 +122,8 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
 test('`get_peers` query to node with peers in table', function (t) {
   t.plan(5)
 
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
@@ -158,8 +158,8 @@ test('`announce_peer` query with bad token', function (t) {
   portfinder.getPort(function (err, port) {
     t.error(err)
 
-    var dht1 = new DHT({ bootstrap: [] })
-    var dht2 = new DHT({ bootstrap: [] })
+    var dht1 = new DHT({ bootstrap: false })
+    var dht2 = new DHT({ bootstrap: false })
 
     dht1.on('warning', function (err) { t.fail(err) })
     dht2.on('warning', function (err) { t.fail(err) })
@@ -182,8 +182,8 @@ test('`announce_peer` query with bad token', function (t) {
 test('`announce_peer` query gets ack response', function (t) {
   t.plan(6)
 
-  var dht1 = new DHT({ bootstrap: [] })
-  var dht2 = new DHT({ bootstrap: [] })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
 
   dht1.on('warning', function (err) { t.fail(err) })
   dht2.on('warning', function (err) { t.fail(err) })
