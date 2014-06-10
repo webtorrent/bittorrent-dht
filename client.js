@@ -356,12 +356,13 @@ DHT.prototype._bootstrap = function (contacts, cb) {
  * @param {Buffer|string} id node id or info hash
  * @param {Object=} opts
  * @param {boolean} opts.findNode
+ * @param {Array.<string>} opts.addrs
  * @param {function} cb called with K closest nodes (for `find_node`)
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
   if (self._closed) return
-  debug('lookup ' + idToHexString(id))
+  debug('start recusive lookup for ' + idToHexString(id))
 
   id = idToBuffer(id)
 
@@ -376,7 +377,6 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var pending = 0 // pending queries
 
   function query (addr) {
-    debug('querying ' + addr)
     pending += 1
     queried[addr] = true
     var addrData = self._getAddrData(addr)
@@ -415,7 +415,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
-      debug('terminating recursive lookup')
+      debug('terminating recursive lookup for ' + idToHexString(id))
       debug('K closest nodes are:')
       self.nodes.closest({ id: id }, K).forEach(function (contact) {
         debug(contact.addr + ' ' + idToHexString(contact.id))
@@ -429,10 +429,18 @@ DHT.prototype.lookup = function (id, opts, cb) {
     opts.addrs.forEach(function (addr) {
       query(addr)
     })
-  } else {
-    // kick off lookup with nodes in the table, so just call done()
+  } else if (self.nodes.count() > 0) {
+    // kick off lookup with nodes in the table
     pending += 1 // small hack
     onResponse()
+  } else {
+    // TODO: wait until at least K nodes are available - in case there's only one node
+    // and it's bad -- then lookup will terminate early. we want to wait until
+    // bootstrapping has found some peers
+    pending += 1 // small hack
+    self.once('node', function () {
+      onResponse()
+    })
   }
 }
 
@@ -515,7 +523,6 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
       debug(errMessage)
       self.emit('warning', new Error(err))
     } else {
-      console.log(self.transactions)
       debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
       self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
     }
