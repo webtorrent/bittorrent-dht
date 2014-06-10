@@ -1,7 +1,5 @@
 // TODO:
-// - Use the same DHT object for looking up multiple torrents
 // - Persist the routing table for later bootstrapping
-// - Use actual DHT data structure with "buckets" (follow spec)
 // - Add the method that allows us to list ourselves in the DHT
 // - Use a fast Set to make addPeer / removePeer faster
 // - When receiving any message, attempt to add the node to the table
@@ -9,6 +7,8 @@
 // - Accept responses even after timeout. no point to throwing them away
 // - republish at regular intervals
 // - handle 'ping' event for when bucket gets full
+// - create new kbucket for each lookup, or else we'll never get enough density around
+//   the infoHash we're trying to find
 
 module.exports = DHT
 
