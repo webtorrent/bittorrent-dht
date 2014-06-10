@@ -498,7 +498,8 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
   var self = this
 
   var addr = host + ':' + port
-  var transactionId = Buffer.isBuffer(message.t) && message.t.readUInt16BE(0)
+  var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
+    && message.t.readUInt16BE(0)
 
   var transaction = self.transactions[addr] && self.transactions[addr][transactionId]
 
