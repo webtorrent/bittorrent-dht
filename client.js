@@ -31,7 +31,7 @@ var string2compact = require('string2compact')
 
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
 
-var BOOTSTRAP_NODES = [
+var BOOTSTRAP_CONTACTS = [
   { addr: 'router.bittorrent.com:6881' },
   { addr: 'router.utorrent.com:6881' },
   { addr: 'dht.transmissionbt.com:6881' }
@@ -118,25 +118,39 @@ function DHT (opts) {
     if (Array.isArray(opts.bootstrap)) {
       self._bootstrap(opts.bootstrap)
     } else {
-      var tasks = BOOTSTRAP_NODES.map(function (contact) {
-        return function (cb) {
-          var addrData = self._getAddrData(contact.addr)
-          dns.lookup(addrData[0], 4, function (err, addr) {
-            cb(null, err ? null : addr + ':' + addrData[1])
-          })
-        }
-      })
-      parallel(tasks, function (err, addrs) {
-        console.log(addrs)
-        var contacts = addrs
-          .filter(function (addr) { return !!addr }) // filter out bad domains
-          .map(function (addr) {
-            return { addr: addr }
-          })
+      self._resolveContacts(BOOTSTRAP_CONTACTS, function (err, contacts) {
+        if (err) return self.emit('error', err)
+        BOOTSTRAP_CONTACTS = contacts
         self._bootstrap(contacts)
       })
     }
   }
+}
+
+/**
+ * Resolve the DNS for "contacts" with domain name addresses (like bootstrap nodes).
+ * @param  {Array.<Object>} contacts array of contact objects with domain addresses
+ * @param  {function} cb
+ */
+DHT.prototype._resolveContacts = function (contacts, cb) {
+  var self = this
+  var tasks = contacts.map(function (contact) {
+    return function (cb) {
+      var addrData = self._getAddrData(contact.addr)
+      dns.lookup(addrData[0], 4, function (err, addr) {
+        cb(null, err ? null : addr + ':' + addrData[1])
+      })
+    }
+  })
+  parallel(tasks, function (err, addrs) {
+    if (err) return cb(err)
+    contacts = addrs
+      .filter(function (addr) { return !!addr }) // filter out bad domains
+      .map(function (addr) {
+        return { addr: addr }
+      })
+    cb(null, contacts)
+  })
 }
 
 /**
@@ -326,7 +340,7 @@ DHT.prototype._bootstrap = function (contacts, cb) {
     // If no nodes are in the table after a timeout, retry with bootstrap nodes
     if (self.nodes.count() === 0) {
       debug('no DHT nodes replied, retry with bootstrap nodes')
-      self._bootstrap(BOOTSTRAP_NODES)
+      self._bootstrap(BOOTSTRAP_CONTACTS)
     }
   }, BOOTSTRAP_TIMEOUT)
   self._bootstrapTimeout.unref()
