@@ -380,6 +380,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
   if (!opts) opts = {}
   if (!cb) cb = function () {}
 
+  var table = new KBucket({
+    localNodeId: id,
+    numberOfNodesPerKBucket: K,
+    numberOfNodesToPing: MAX_CONCURRENCY
+  })
+
   var queried = {}
   var pending = 0 // pending queries
 
@@ -409,8 +415,14 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     pending -= 1
 
+    if (res && res.nodes) {
+      res.nodes.forEach(function (contact) {
+        table.add(contact)
+      })
+    }
+
     // find closest unqueried nodes
-    var candidates = self.nodes.closest({ id: id }, K)
+    var candidates = table.closest({ id: id }, K)
       .filter(function (contact) {
         return !queried[contact.addr]
       })
@@ -424,11 +436,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
       debug('terminating recursive lookup for ' + idToHexString(id))
+      var closest = table.closest({ id: id }, K)
       debug('K closest nodes are:')
-      self.nodes.closest({ id: id }, K).forEach(function (contact) {
+      closest.forEach(function (contact) {
         debug(contact.addr + ' ' + idToHexString(contact.id))
       })
-      cb(null)
+      cb(null, closest)
     }
   }
 
@@ -438,16 +451,16 @@ DHT.prototype.lookup = function (id, opts, cb) {
       query(addr)
     })
   } else if (self.nodes.count() > 0) {
-    // kick off lookup with nodes in the table
-    pending += 1 // small hack
-    onResponse()
+    // kick off lookup with nodes in the main table
+    self.nodes.closest({ id: id }, K).forEach(function (contact) {
+      query(contact.addr)
+    })
   } else {
     // TODO: wait until at least K nodes are available - in case there's only one node
     // and it's bad -- then lookup will terminate early. we want to wait until
     // bootstrapping has found some peers
-    pending += 1 // small hack
-    self.once('node', function () {
-      onResponse()
+    self.once('node', function (addr) {
+      query(addr)
     })
   }
 }
