@@ -3,12 +3,9 @@
 // - Add the method that allows us to list ourselves in the DHT
 // - Use a fast Set to make addPeer / removePeer faster
 // - When receiving any message, attempt to add the node to the table
-// - cleanup addr vs host,port usage
 // - Accept responses even after timeout. no point to throwing them away
 // - republish at regular intervals
 // - handle 'ping' event for when bucket gets full
-// - create new kbucket for each lookup, or else we'll never get enough density around
-//   the infoHash we're trying to find
 
 module.exports = DHT
 
@@ -290,10 +287,10 @@ DHT.prototype.addPeer = function (addr, infoHash) {
 
 /**
  * Remove a peer from the DHT.
- * @param  {Buffer|string} infoHash
  * @param  {string} addr
+ * @param  {Buffer|string} infoHash
  */
-DHT.prototype.removePeer = function (infoHash, addr) {
+DHT.prototype.removePeer = function (addr, infoHash) {
   var self = this
   if (self._destroyed) return
 
@@ -392,12 +389,11 @@ DHT.prototype.lookup = function (id, opts, cb) {
   function query (addr) {
     pending += 1
     queried[addr] = true
-    var addrData = self._getAddrData(addr)
 
     if (opts.findNode) {
-      self._sendFindNode(addrData[0], addrData[1], id, onResponse)
+      self._sendFindNode(addr, id, onResponse)
     } else {
-      self._sendGetPeers(addrData[0], addrData[1], id, onResponse)
+      self._sendGetPeers(addr, id, onResponse)
     }
   }
 
@@ -466,15 +462,13 @@ DHT.prototype.lookup = function (id, opts, cb) {
 }
 
 /**
- * Called when someone sends a UDP message
+ * Called when another node sends a UDP message
  * @param {Buffer} data
  * @param {Object} rinfo
  */
 DHT.prototype._onData = function (data, rinfo) {
   var self = this
-  var host = rinfo.address
-  var port = rinfo.port
-  var addr = host + ':' + port
+  var addr = rinfo.address + ':' + rinfo.port
 
   try {
     var message = bncode.decode(data)
@@ -489,9 +483,9 @@ DHT.prototype._onData = function (data, rinfo) {
   var type = message.y.toString()
 
   if (type === MESSAGE_TYPE.QUERY) {
-    self._onQuery(host, port, message)
+    self._onQuery(addr, message)
   } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
-    self._onResponseOrError(host, port, type, message)
+    self._onResponseOrError(addr, type, message)
   } else {
     debug('unknown message type ' + type)
   }
@@ -504,29 +498,39 @@ DHT.prototype._onData = function (data, rinfo) {
   // self.reqs[addr] = 0
 }
 
-DHT.prototype._onQuery = function (host, port, message) {
+/**
+ * Called when another node sends a query.
+ * @param  {string} addr
+ * @param  {Object} message
+ */
+DHT.prototype._onQuery = function (addr, message) {
   var self = this
   var query = message.q.toString()
 
   if (query === 'ping') {
-    self._onPing(host, port, message)
+    self._onPing(addr, message)
   } else if (query === 'find_node') {
-    self._onFindNode(host, port, message)
+    self._onFindNode(addr, message)
   } else if (query === 'get_peers') {
-    self._onGetPeers(host, port, message)
+    self._onGetPeers(addr, message)
   } else if (query === 'announce_peer') {
-    self._onAnnouncePeer(host, port, message)
+    self._onAnnouncePeer(addr, message)
   } else {
     var errMessage = 'unexpected query type ' + query
     debug(errMessage)
-    self._sendError(host, port, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
+    self._sendError(addr, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
   }
 }
 
-DHT.prototype._onResponseOrError = function (host, port, type, message) {
+/**
+ * Called when another node sends a response or error.
+ * @param  {string} addr
+ * @param  {string} type
+ * @param  {Object} message
+ */
+DHT.prototype._onResponseOrError = function (addr, type, message) {
   var self = this
 
-  var addr = host + ':' + port
   var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
     && message.t.readUInt16BE(0)
 
@@ -545,7 +549,7 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
       self.emit('warning', new Error(err))
     } else {
       debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
-      self._sendError(host, port, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
+      self._sendError(addr, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
     }
     return
   }
@@ -554,15 +558,17 @@ DHT.prototype._onResponseOrError = function (host, port, type, message) {
 }
 
 /**
- * Send a UDP message to the given host and port.
- * @param  {string} host
- * @param  {number} port
+ * Send a UDP message to the given addr.
+ * @param  {string} addr
  * @param  {Object} message
  * @param  {function=} cb  called once message has been sent
  */
-DHT.prototype._send = function (host, port, message, cb) {
+DHT.prototype._send = function (addr, message, cb) {
   var self = this
   if (!cb) cb = function () {}
+  var addrData = self._getAddrData(addr)
+  var host = addrData[0]
+  var port = addrData[1]
 
   if (!(port > 0 && port < 65535)) {
     return
@@ -573,14 +579,12 @@ DHT.prototype._send = function (host, port, message, cb) {
 }
 
 /**
- * Send "ping" query to given host and port.
- * @param {string} host
- * @param {number} port
+ * Send "ping" query to given addr.
+ * @param {string} addr
  * @param {function} cb called with response
  */
-DHT.prototype._sendPing = function (host, port, cb) {
+DHT.prototype._sendPing = function (addr, cb) {
   var self = this
-  var addr = host + ':' + port
 
   var transactionId = self._getTransactionId(addr, cb)
   var message = {
@@ -591,17 +595,16 @@ DHT.prototype._sendPing = function (host, port, cb) {
       id: self.nodeId
     }
   }
-  self._send(host, port, message)
+  self._send(addr, message)
   debug('sent ping to ' + addr)
 }
 
 /**
  * Called when another node sends a "ping" query.
- * @param  {string} host
- * @param  {number} port
+ * @param  {string} addr
  * @param  {Object} message
  */
-DHT.prototype._onPing = function (host, port, message) {
+DHT.prototype._onPing = function (addr, message) {
   var self = this
   var res = {
     t: message.t,
@@ -611,20 +614,18 @@ DHT.prototype._onPing = function (host, port, message) {
     }
   }
 
-  self._send(host, port, res)
-  debug('got ping from ' + host + ':' + port)
+  self._send(addr, res)
+  debug('got ping from ' + addr)
 }
 
 /**
- * Send "find_node" query to given host and port.
- * @param {string} host
- * @param {number} port
+ * Send "find_node" query to given addr.
+ * @param {string} addr
  * @param {Buffer} nodeId
  * @param {function} cb called with response
  */
-DHT.prototype._sendFindNode = function (host, port, nodeId, cb) {
+DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
   var self = this
-  var addr = host + ':' + port
 
   function done (err, res) {
     if (err) return cb(err)
@@ -647,17 +648,16 @@ DHT.prototype._sendFindNode = function (host, port, nodeId, cb) {
       target: nodeId
     }
   }
-  self._send(host, port, message)
+  self._send(addr, message)
   debug('sent find_node ' + idToHexString(nodeId) + ' to ' + addr)
 }
 
 /**
  * Called when another node sends a "find_node" query.
- * @param  {string} host
- * @param  {number} port
+ * @param  {string} addr
  * @param  {Object} message
  */
-DHT.prototype._onFindNode = function (host, port, message) {
+DHT.prototype._onFindNode = function (addr, message) {
   var self = this
 
   var nodeId = message.a && message.a.target
@@ -665,7 +665,7 @@ DHT.prototype._onFindNode = function (host, port, message) {
   if (!nodeId) {
     var errMessage = '`find_node` missing required `a.target` field'
     debug(errMessage)
-    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
 
@@ -691,20 +691,18 @@ DHT.prototype._onFindNode = function (host, port, message) {
     }
   }
 
-  self._send(host, port, res)
-  debug('got find_node ' + idToHexString(nodeId) + ' from ' + host + ':' + port)
+  self._send(addr, res)
+  debug('got find_node ' + idToHexString(nodeId) + ' from ' + addr)
 }
 
 /**
- * Send "get_peers" query to given host and port.
- * @param {string} host
- * @param {number} port
+ * Send "get_peers" query to given addr.
+ * @param {string} addr
  * @param {Buffer|string} infoHash
  * @param {function} cb called with response
  */
-DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
+DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
-  var addr = host + ':' + port
   infoHash = idToBuffer(infoHash)
 
   function done (err, res) {
@@ -734,24 +732,24 @@ DHT.prototype._sendGetPeers = function (host, port, infoHash, cb) {
       info_hash: infoHash
     }
   }
-  self._send(host, port, message)
+  self._send(addr, message)
   debug('sent get_peers ' + idToHexString(infoHash) + ' from ' + addr)
 }
 
 /**
  * Called when another node sends a "get_peers" query.
- * @param  {string} host
- * @param  {number} port
+ * @param  {string} addr
  * @param  {Object} message
  */
-DHT.prototype._onGetPeers = function (host, port, message) {
+DHT.prototype._onGetPeers = function (addr, message) {
   var self = this
+  var addrData = self._getAddrData(addr)
 
   var infoHash = idToHexString(message.a && message.a.info_hash)
   if (!infoHash) {
     var errMessage = '`get_peers` missing required `a.info_hash` field'
     debug(errMessage)
-    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
 
@@ -760,7 +758,7 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     y: MESSAGE_TYPE.RESPONSE,
     r: {
       id: self.nodeId,
-      token: self._generateToken(host)
+      token: self._generateToken(addrData[0])
     }
   }
 
@@ -776,22 +774,20 @@ DHT.prototype._onGetPeers = function (host, port, message) {
     res.r.nodes = convertToNodeInfo(contacts)
   }
 
-  self._send(host, port, res)
-  debug('got get_peers ' + infoHash + ' from ' + host + ':' + port)
+  self._send(addr, res)
+  debug('got get_peers ' + infoHash + ' from ' + addr)
 }
 
 /**
  * Send "announce_peer" query to given host and port.
- * @param {string} host
- * @param {number} port
+ * @param {string} addr
  * @param {Buffer|string} infoHash
  * @param {number} myPort
  * @param {Buffer} token
  * @param {function} cb called with response
  */
-DHT.prototype._sendAnnouncePeer = function (host, port, infoHash, myPort, token, cb) {
+DHT.prototype._sendAnnouncePeer = function (addr, infoHash, myPort, token, cb) {
   var self = this
-  var addr = host + ':' + port
   infoHash = idToBuffer(infoHash)
 
   var transactionId = self._getTransactionId(addr, cb)
@@ -807,36 +803,36 @@ DHT.prototype._sendAnnouncePeer = function (host, port, infoHash, myPort, token,
       implied_port: 1
     }
   }
-  self._send(host, port, message)
+  self._send(addr, message)
 }
 
 /**
  * Called when another node sends a "announce_peer" query.
- * @param  {string} host
- * @param  {number} port
+ * @param  {string} addr
  * @param  {Object} message
  */
-DHT.prototype._onAnnouncePeer = function (host, port, message) {
+DHT.prototype._onAnnouncePeer = function (addr, message) {
   var self = this
   var errMessage
+  var addrData = self._getAddrData(addr)
 
   var infoHash = idToHexString(message.a && message.a.info_hash)
   if (!infoHash) {
     errMessage = '`announce_peer` missing required `a.info_hash` field'
     debug(errMessage)
-    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
 
   var token = message.a && message.a.token
-  if (!self._isValidToken(token, host)) {
+  if (!self._isValidToken(token, addrData[0])) {
     errMessage = 'cannot `announce_peer` with bad token'
-    self._sendError(host, port, message.t, ERROR_TYPE.PROTOCOL, errMessage)
+    self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
 
   var port = message.a.implied_port !== 0
-    ? port // use port of udp packet
+    ? addrData[1] // use port of udp packet
     : message.a.port // use port in `announce_peer` message
 
   // self.emit('announce_peer', self._emit.bind())
@@ -849,18 +845,17 @@ DHT.prototype._onAnnouncePeer = function (host, port, message) {
       id: self.nodeId
     }
   }
-  self._send(host, port, res)
+  self._send(addr, res)
 }
 
 /**
  * Send an error to given host and port.
- * @param  {string} host
- * @param  {number} port
+ * @param  {string} addr
  * @param  {Buffer|number} transactionId
  * @param  {number} code
  * @param  {string} message
  */
-DHT.prototype._sendError = function (host, port, transactionId, code, message) {
+DHT.prototype._sendError = function (addr, transactionId, code, message) {
   var self = this
 
   if (transactionId && !Buffer.isBuffer(transactionId)) {
@@ -876,7 +871,7 @@ DHT.prototype._sendError = function (host, port, transactionId, code, message) {
     message.t = transactionId
   }
 
-  self._send(host, port, message)
+  self._send(addr, message)
 }
 
 /**

@@ -14,7 +14,7 @@ test('`ping` query send and response', function (t) {
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      dht2._sendPing('127.0.0.1', port, function (err, res) {
+      dht2._sendPing('127.0.0.1:' + port, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
 
@@ -40,7 +40,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      dht2._sendFindNode('127.0.0.1', port, targetNodeId, function (err, res) {
+      dht2._sendFindNode('127.0.0.1:' + port, targetNodeId, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.deepEqual(
@@ -71,7 +71,7 @@ test('`find_node` query (with many in table)', function (t) {
     t.error(err)
     dht1.listen(port, function () {
       var targetNodeId = new Buffer(hat(160), 'hex')
-      dht2._sendFindNode('127.0.0.1', port, targetNodeId, function (err, res) {
+      dht2._sendFindNode('127.0.0.1:' + port, targetNodeId, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.deepEqual(
@@ -101,7 +101,7 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
     t.error(err)
     dht1.listen(port, function () {
       var targetInfoHash = new Buffer(hat(160), 'hex')
-      dht2._sendGetPeers('127.0.0.1', port, targetInfoHash, function (err, res) {
+      dht2._sendGetPeers('127.0.0.1:' + port, targetInfoHash, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.ok(Buffer.isBuffer(res.token))
@@ -135,7 +135,7 @@ test('`get_peers` query to node with peers in table', function (t) {
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      dht2._sendGetPeers('127.0.0.1', port, targetInfoHash, function (err, res) {
+      dht2._sendGetPeers('127.0.0.1:' + port, targetInfoHash, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
         t.ok(Buffer.isBuffer(res.token))
@@ -166,7 +166,7 @@ test('`announce_peer` query with bad token', function (t) {
 
     dht1.listen(port, function () {
       var token = new Buffer('bad token')
-      dht2._sendAnnouncePeer('127.0.0.1', port, infoHash, 9999, token, function (err, res) {
+      dht2._sendAnnouncePeer('127.0.0.1:' + port, infoHash, 9999, token, function (err, res) {
         t.ok(err, 'got error')
         t.ok(err.message.indexOf('bad token') !== -1)
 
@@ -187,17 +187,17 @@ test('`announce_peer` query gets ack response', function (t) {
   dht2.on('warning', function (err) { t.fail(err) })
 
   var infoHash = new Buffer(hat(160), 'hex')
-  var host = '127.0.0.1'
+  var host =
 
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      dht2._sendGetPeers(host, port, infoHash, function (err, res1) {
+      dht2._sendGetPeers('127.0.0.1:' + port, infoHash, function (err, res1) {
         t.error(err)
         t.deepEqual(res1.id, dht1.nodeId)
         t.ok(Buffer.isBuffer(res1.token))
 
-        dht2._sendAnnouncePeer(host, port, infoHash, 9999, res1.token, function (err, res2) {
+        dht2._sendAnnouncePeer('127.0.0.1:' + port, infoHash, 9999, res1.token, function (err, res2) {
             t.error(err)
             t.deepEqual(res1.id, dht1.nodeId)
 
