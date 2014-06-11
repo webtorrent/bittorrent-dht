@@ -75,7 +75,7 @@ function DHT (opts) {
   self.nodeId = idToBuffer(opts.nodeId)
 
   self.listening = false
-  self._closed = false
+  self._destroyed = false
   self.port = null
 
   /**
@@ -167,9 +167,7 @@ DHT.prototype.listen = function (port, onlistening) {
     port = undefined
   }
 
-  if (self._closed || self.listening) {
-    return
-  }
+  if (self._destroyed || self.listening) return
 
   if (onlistening)
     self.once('listening', onlistening)
@@ -203,10 +201,10 @@ DHT.prototype._onListening = function () {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
+  if (self._destroyed) return
   if (!cb) cb = function () {}
 
-  self.listening = false
-  self._closed = true
+  self._destroyed = true
   self.port = null
 
   // garbage collect large data structures
@@ -217,6 +215,7 @@ DHT.prototype.destroy = function (cb) {
   clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
 
+  self.listening = false
   try {
     self.socket.close()
   } catch (err) {
@@ -232,6 +231,7 @@ DHT.prototype.destroy = function (cb) {
  */
 DHT.prototype.addNode = function (addr, nodeId) {
   var self = this
+  if (self._destroyed) return
   nodeId = idToBuffer(nodeId)
 
   var contact = {
@@ -249,6 +249,7 @@ DHT.prototype.addNode = function (addr, nodeId) {
  */
 DHT.prototype.removeNode = function (nodeId) {
   var self = this
+  if (self._destroyed) return
   var contact = self.nodes.get(idToBuffer(nodeId))
   if (contact) {
     self.nodes.remove(contact)
@@ -263,6 +264,8 @@ DHT.prototype.removeNode = function (nodeId) {
  */
 DHT.prototype.addPeer = function (addr, infoHash) {
   var self = this
+  if (self._destroyed) return
+
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
@@ -292,6 +295,8 @@ DHT.prototype.addPeer = function (addr, infoHash) {
  */
 DHT.prototype.removePeer = function (infoHash, addr) {
   var self = this
+  if (self._destroyed) return
+
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
@@ -363,11 +368,11 @@ DHT.prototype._bootstrap = function (contacts, cb) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
-  if (self._closed) return
+  if (self._destroyed) return
+
   debug('start recusive lookup for ' + idToHexString(id))
 
   id = idToBuffer(id)
-
   if (typeof opts === 'function') {
     cb = opts
     opts = {}
@@ -391,6 +396,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
 
   function onResponse (err, res) {
+    if (self._destroyed) return
     // ignore errors -- they're just timeouts. ignore responses -- they're handled by
     // `_sendFindNode` or `_sendGetPeers` and new nodes are inserted into the routing
     // table. recursive lookup will terminate when there are no more closer nodes to find.
