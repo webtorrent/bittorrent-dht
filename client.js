@@ -38,7 +38,7 @@ var BOOTSTRAP_CONTACTS = [
 ]
 
 var BOOTSTRAP_TIMEOUT = 5000
-var K = 8 // number of nodes per bucket
+var K = 20 // number of nodes per bucket
 var MAX_CONCURRENCY = 3 // α from Kademlia paper
 var MAX_REQUESTS = 3 // TODO?
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
@@ -83,7 +83,9 @@ function DHT (opts) {
    * @type {KBucket}
    */
   self.nodes = new KBucket({
-    localNodeId: self.nodeId
+    localNodeId: self.nodeId,
+    numberOfNodesPerKBucket: K,
+    numberOfNodesToPing: MAX_CONCURRENCY
   })
 
   /**

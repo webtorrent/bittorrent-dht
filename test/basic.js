@@ -1,8 +1,6 @@
-var compact2string = require('compact2string')
 var DHT = require('../')
 var hat = require('hat')
 var portfinder = require('portfinder')
-var Server = require('../').Server
 var test = require('tape')
 
 test('`ping` query send and response', function (t) {
@@ -209,24 +207,5 @@ test('`announce_peer` query gets ack response', function (t) {
         )
       })
     })
-  })
-})
-
-
-test('Find nodes (Pride & Prejudice)', function (t) {
-  t.plan(2)
-
-  var infoHash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
-
-  var dht = new DHT()
-  dht.lookup(infoHash)
-
-  dht.once('node', function (node) {
-    t.pass('Found at least one other DHT node')
-  })
-
-  dht.once('peer', function (peer) {
-    t.pass('Found at least one peer that has the file')
-    dht.destroy()
   })
 })
