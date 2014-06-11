@@ -29,7 +29,10 @@ test('Find nodes (Pride & Prejudice)', function (t) {
   var infoHash = '1E69917FBAA2C767BCA463A96B5572785C6D8A12' // Pride & Prejudice
 
   var dht = new DHT()
-  dht.lookup(infoHash)
+  setTimeout(function () {
+    // HACK HACK HACK
+    dht.lookup(infoHash)
+  }, 10000)
 
   dht.once('node', function (node) {
     t.pass('Found at least one other DHT node')
