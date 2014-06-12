@@ -12,6 +12,7 @@ This module is used by [WebTorrent](http://webtorrent.io).
 - follows [the spec](http://www.bittorrent.org/beps/bep_0005.html)
 - robust and well-tested (comprehensive test suite, and used by [WebTorrent](http://webtorrent.io) and [peerflix](https://github.com/mafintosh/peerflix))
 - efficient recursive lookup algorithm minimizes UDP traffic
+- supports multiple, concurrent lookups using the same routing table
 
 ### install
 
@@ -86,6 +87,27 @@ Make the DHT listen on the given `port`. If `port` is undefined, an available po
 automatically picked with [portfinder](https://github.com/indexzero/node-portfinder).
 
 If `onlistening` is defined, it is attached to the `listening` event.
+
+
+#### `arr = dht.toArray()`
+
+Returns the nodes in the DHT as an array. This is useful for persisting the DHT
+to disk between restarts of a BitTorrent client (as recommended by the spec). Each node in the array is an object with `id` (hex string) and `addr` (string) properties.
+
+To restore the DHT nodes when instantiating a new `DHT` object, simply pass in the array as the value of the `bootstrap` option.
+
+```js
+var dht1 = new DHT()
+
+// some time passes ...
+
+// destroy the dht
+var arr = dht1.toArray()
+dht1.destroy()
+
+// initialize a new dht with the same routing table as the first
+var dht2 = new DHT({ bootstrap: arr })
+```
 
 
 #### `dht.destroy([callback])`

@@ -1,5 +1,4 @@
 // TODO:
-// - Persist the routing table for later bootstrapping
 // - Add the method that allows us to list ourselves in the DHT
 // - republish at regular intervals
 // - When receiving any message, attempt to add the node to the table
@@ -125,7 +124,7 @@ function DHT (opts) {
   } else if (typeof opts.bootstrap === 'string') {
     self._bootstrap([ opts.bootstrap ])
   } else if (Array.isArray(opts.bootstrap)) {
-    self._bootstrap(opts.bootstrap)
+    self._bootstrap(self._fromArray(opts.bootstrap))
   } else {
     // opts.bootstrap is undefined or true
     self._bootstrap(BOOTSTRAP_NODES)
@@ -305,6 +304,8 @@ DHT.prototype._bootstrap = function (nodes) {
   var contacts = nodes.map(function (obj) {
     if (typeof obj === 'string') {
       return { addr: obj }
+    } else {
+      return obj
     }
   })
 
@@ -334,7 +335,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        self.nodes.add(contact)
+        self.addNode(contact.addr, contact.id)
       })
 
     // get addresses of bootstrap nodes
@@ -841,7 +842,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, myPort, token, cb) {
       info_hash: infoHash,
       port: myPort,
       token: token,
-      implied_port: 1
+      implied_port: 0
     }
   }
   self._send(addr, message)
@@ -1013,6 +1014,38 @@ DHT.prototype._rotateSecrets = function () {
 
   self.secrets[1] = self.secrets[0]
   self.secrets[0] = createSecret()
+}
+
+/**
+ * Get a string that can be used to initialize and bootstrap the DHT in the
+ * future.
+ * @return {Array.<Object>}
+ */
+DHT.prototype.toArray = function () {
+  var self = this
+  var nodes = self.nodes.toArray().map(function (contact) {
+    // to remove properties added by k-bucket, like `distance`, etc.
+    return {
+      id: contact.id.toString('hex'),
+      addr: contact.addr
+    }
+  })
+  return nodes
+}
+
+/**
+ * Parse saved string
+ * @param  {Array.<Object>} nodes
+ * @return {Buffer}
+ */
+DHT.prototype._fromArray = function (nodes) {
+  var self = this
+  nodes.forEach(function (node) {
+    if (node.id) {
+      node.id = idToBuffer(node.id)
+    }
+  })
+  return nodes
 }
 
 /**
