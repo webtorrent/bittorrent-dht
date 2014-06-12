@@ -10,7 +10,7 @@
 module.exports = DHT
 
 var arrayToBuffer = require('typedarray-to-buffer')
-var bncode = require('bncode')
+var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
 var debug = require('debug')('bittorrent-dht')
@@ -471,7 +471,7 @@ DHT.prototype._onData = function (data, rinfo) {
   var addr = rinfo.address + ':' + rinfo.port
 
   try {
-    var message = bncode.decode(data)
+    var message = bencode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
     debug('bad message from ' + addr + ' ' + err.message)
@@ -574,7 +574,7 @@ DHT.prototype._send = function (addr, message, cb) {
     return
   }
 
-  message = bncode.encode(message)
+  message = bencode.encode(message)
   self.socket.send(message, 0, message.length, port, host, cb)
 }
 
