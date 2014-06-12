@@ -440,10 +440,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
 
   function onResponse (err, res) {
+    // ignore errors - they're just timeouts. ignore responses - they're handled by
+    // `_sendFindNode` or `_sendGetPeers` which handle inserting new nodes into
+    // the routing table. recursive lookup will terminate when there are no more closer
+    // nodes to find.
+
     if (self._destroyed) return
-    // ignore errors -- they're just timeouts. ignore responses -- they're handled by
-    // `_sendFindNode` or `_sendGetPeers` and new nodes are inserted into the routing
-    // table. recursive lookup will terminate when there are no more closer nodes to find.
 
     // if (err) {
     //   debug('got err response ' + JSON.stringify(err.message || err))
@@ -531,13 +533,6 @@ DHT.prototype._onData = function (data, rinfo) {
   } else {
     debug('unknown message type ' + type)
   }
-
-  // // Mark that we've seen this node (the one we received data from)
-  // self.nodes[addr] = true
-
-  // // Reset outstanding req count to 0 (better than using "delete" which invalidates
-  // // the V8 inline cache
-  // self.reqs[addr] = 0
 }
 
 /**
