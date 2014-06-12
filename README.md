@@ -150,6 +150,12 @@ informational.
 Emitted when the DHT has a fatal error.
 
 
+### further reading
+
+- [BitTorrent DHT protocol](http://www.bittorrent.org/beps/bep_0005.html)
+- [Kademlia: A Peer-to-peer Information System Based on the XOR Metric](http://www.cs.rice.edu/Conferences/IPTPS02/109.pdf)
+
+
 ### license
 
 MIT. Copyright (c) [Feross Aboukhadijeh](http://feross.org).
