@@ -1,11 +1,12 @@
 // TODO:
 // - Persist the routing table for later bootstrapping
 // - Add the method that allows us to list ourselves in the DHT
+// - republish at regular intervals
 // - When receiving any message, attempt to add the node to the table
 // - Accept responses even after timeout. no point to throwing them away
-// - republish at regular intervals
 // - handle 'ping' event for when bucket gets full
 // - Use a fast Set to make addPeer / removePeer faster
+// - dht should support adding a node when you don't know the nodeId (for PORT message)
 
 module.exports = DHT
 
@@ -204,6 +205,7 @@ DHT.prototype.destroy = function (cb) {
  * Add a DHT node to the routing table.
  * @param {string=} addr
  * @param {string|Buffer} nodeId
+ *
  */
 DHT.prototype.addNode = function (addr, nodeId) {
   var self = this
