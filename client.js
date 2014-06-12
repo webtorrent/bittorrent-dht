@@ -1,11 +1,11 @@
 // TODO:
 // - Persist the routing table for later bootstrapping
 // - Add the method that allows us to list ourselves in the DHT
-// - Use a fast Set to make addPeer / removePeer faster
 // - When receiving any message, attempt to add the node to the table
 // - Accept responses even after timeout. no point to throwing them away
 // - republish at regular intervals
 // - handle 'ping' event for when bucket gets full
+// - Use a fast Set to make addPeer / removePeer faster
 
 module.exports = DHT
 
@@ -28,14 +28,14 @@ var string2compact = require('string2compact')
 
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
 
-var BOOTSTRAP_CONTACTS = [
-  { addr: 'router.bittorrent.com:6881' },
-  { addr: 'router.utorrent.com:6881' },
-  { addr: 'dht.transmissionbt.com:6881' }
+var BOOTSTRAP_NODES = [
+  'router.bittorrent.com:6881',
+  'router.utorrent.com:6881',
+  'dht.transmissionbt.com:6881'
 ]
 
 var BOOTSTRAP_TIMEOUT = 5000
-var K = 20 // number of nodes per bucket
+var K = module.exports.K = 20 // number of nodes per bucket
 var MAX_CONCURRENCY = 3 // α from Kademlia paper
 var MAX_REQUESTS = 3 // TODO?
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
@@ -71,6 +71,7 @@ function DHT (opts) {
 
   self.nodeId = idToBuffer(opts.nodeId)
 
+  self.ready = false
   self.listening = false
   self._destroyed = false
   self.port = null
@@ -113,43 +114,21 @@ function DHT (opts) {
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
   self._rotateInterval.unref()
 
-  if (opts.bootstrap !== false) {
-    if (Array.isArray(opts.bootstrap)) {
-      self._bootstrap(opts.bootstrap)
-    } else {
-      self._resolveContacts(BOOTSTRAP_CONTACTS, function (err, contacts) {
-        if (err) return self.emit('error', err)
-        BOOTSTRAP_CONTACTS = contacts
-        self._bootstrap(contacts)
+  if (opts.bootstrap === false) {
+      // Emit `ready` right away because the user does not want to bootstrap. Presumably,
+      // the user will call addNode() to populate the routing table manually.
+      process.nextTick(function () {
+        self.ready = true
+        self.emit('ready')
       })
-    }
+  } else if (typeof opts.bootstrap === 'string') {
+    self._bootstrap([ opts.bootstrap ])
+  } else if (Array.isArray(opts.bootstrap)) {
+    self._bootstrap(opts.bootstrap)
+  } else {
+    // opts.bootstrap is undefined or true
+    self._bootstrap(BOOTSTRAP_NODES)
   }
-}
-
-/**
- * Resolve the DNS for "contacts" with domain name addresses (like bootstrap nodes).
- * @param  {Array.<Object>} contacts array of contact objects with domain addresses
- * @param  {function} cb
- */
-DHT.prototype._resolveContacts = function (contacts, cb) {
-  var self = this
-  var tasks = contacts.map(function (contact) {
-    return function (cb) {
-      var addrData = self._getAddrData(contact.addr)
-      dns.lookup(addrData[0], 4, function (err, addr) {
-        cb(null, err ? null : addr + ':' + addrData[1])
-      })
-    }
-  })
-  parallel(tasks, function (err, addrs) {
-    if (err) return cb(err)
-    contacts = addrs
-      .filter(function (addr) { return !!addr }) // filter out bad domains
-      .map(function (addr) {
-        return { addr: addr }
-      })
-    cb(null, contacts)
-  })
 }
 
 /**
@@ -314,44 +293,104 @@ DHT.prototype.removePeer = function (addr, infoHash) {
 /**
  * Join the DHT network. To join initially, connect to known nodes (either public
  * bootstrap nodes, or known nodes from a previous run of bittorrent-client).
- * @param  {Array.<string>} contacts
- * @param  {function=} cb
+ * @param  {Array.<string|Object>} nodes
  */
-DHT.prototype._bootstrap = function (contacts, cb) {
+DHT.prototype._bootstrap = function (nodes) {
   var self = this
-  if (!cb) cb = function () {}
 
-  // add all non-bootstrap nodes to routing table
-  contacts
-    .filter(function (contact) {
-      return !!contact.id
-    })
-    .forEach(function (contact) {
-      self.nodes.add(contact)
-    })
+  debug('boostrapping with ' + JSON.stringify(nodes))
 
-  // get addresses of bootstrap nodes
-  var addrs = contacts
-    .filter(function (contact) {
-      return !contact.id
-    })
-    .map(function (contact) {
-      return contact.addr
-    })
-
-  self.lookup(self.nodeId, {
-    findNode: true,
-    addrs: addrs.length ? addrs : null
-  }, cb)
-
-  self._bootstrapTimeout = setTimeout(function () {
-    // If no nodes are in the table after a timeout, retry with bootstrap nodes
-    if (self.nodes.count() === 0) {
-      debug('no DHT nodes replied, retry with bootstrap nodes')
-      self._bootstrap(BOOTSTRAP_CONTACTS)
+  var contacts = nodes.map(function (obj) {
+    if (typeof obj === 'string') {
+      return { addr: obj }
     }
-  }, BOOTSTRAP_TIMEOUT)
-  self._bootstrapTimeout.unref()
+  })
+
+  self._resolveContacts(contacts, function (err, contacts) {
+    if (err) return self.emit('error', err)
+    debug('resolved contacts ' + JSON.stringify(contacts))
+    // emit `ready` once K nodes are in the routing table so that lookups will have a
+    // good chance of succeeding
+    var numNodes = 0
+    function onNode () {
+      numNodes += 1
+      if (numNodes >= K) {
+        self.removeListener('node', onNode)
+        process.nextTick(function () {
+          if (!self.ready) {
+            self.ready = true
+            self.emit('ready')
+          }
+        })
+      }
+    }
+    self.on('node', onNode)
+
+    // add all non-bootstrap nodes to routing table
+    contacts
+      .filter(function (contact) {
+        return !!contact.id
+      })
+      .forEach(function (contact) {
+        self.nodes.add(contact)
+      })
+
+    // get addresses of bootstrap nodes
+    var addrs = contacts
+      .filter(function (contact) {
+        return !contact.id
+      })
+      .map(function (contact) {
+        return contact.addr
+      })
+
+    self.lookup(self.nodeId, {
+      findNode: true,
+      addrs: addrs.length ? addrs : null
+    }, function (err) {
+      // if the recursive lookup terminates and we still haven't found K initial nodes
+      // (i.e. 'ready' hasn't been emitted) then emit it now.
+      if (!self.ready) {
+        self.removeListener('node', onNode)
+        self.ready = true
+        self.emit('ready')
+      }
+    })
+
+    self._bootstrapTimeout = setTimeout(function () {
+      // If no nodes are in the table after a timeout, retry with bootstrap nodes
+      if (self.nodes.count() === 0) {
+        debug('no DHT nodes replied, retry with public bootstrap nodes')
+        self._bootstrap(BOOTSTRAP_NODES)
+      }
+    }, BOOTSTRAP_TIMEOUT)
+    self._bootstrapTimeout.unref()
+  })
+}
+
+/**
+ * Resolve the DNS for nodes whose hostname is a domain name (often the case for
+ * bootstrap nodes).
+ * @param  {Array.<Object>} contacts array of contact objects with domain addresses
+ * @param  {function} cb
+ */
+DHT.prototype._resolveContacts = function (contacts, cb) {
+  var self = this
+  var tasks = contacts.map(function (contact) {
+    return function (cb) {
+      var addrData = self._getAddrData(contact.addr)
+      dns.lookup(addrData[0], 4, function (err, host) {
+        if (err) return cb(null, null)
+        contact.addr = host + ':' + addrData[1]
+        cb(null, contact)
+      })
+    }
+  })
+  parallel(tasks, function (err, contacts) {
+    if (err) return cb(err)
+    // filter out hosts that don't resolve
+    cb(null, contacts.filter(function (addr) { return !!addr }))
+  })
 }
 
 /**
@@ -367,7 +406,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
   if (self._destroyed) return
 
-  debug('start recusive lookup for ' + idToHexString(id))
+  debug('start recursive lookup for ' + idToHexString(id))
 
   id = idToBuffer(id)
   if (typeof opts === 'function') {
@@ -452,10 +491,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
       query(contact.addr)
     })
   } else {
-    // TODO: wait until at least K nodes are available - in case there's only one node
-    // and it's bad -- then lookup will terminate early. we want to wait until
-    // bootstrapping has found some peers
-    self.once('node', function (addr) {
+    // Wait until at least K nodes are available, so we're more confident that a
+    // lookup will succeed. If there were not many nodes and most/all were bad, then
+    // lookup would terminate early. We want wait until bootstrapping has found peers.
+    self.once('ready', function (addr) {
       query(addr)
     })
   }

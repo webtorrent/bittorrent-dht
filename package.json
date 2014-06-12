@@ -26,6 +26,7 @@
     "typedarray-to-buffer": "^1.0.2"
   },
   "devDependencies": {
+    "ip": "^0.3.0",
     "tape": "^2.12.3"
   },
   "homepage": "http://webtorrent.io",
