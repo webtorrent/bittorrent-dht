@@ -64,11 +64,13 @@ If `opts` is specified, then the default options (shown below) will be overridde
 
 #### `dht.lookup(infoHash)`
 
-Find peers for the given infoHash. This does a recursive lookup in the DHT. `infoHash` can
-be a string or Buffer.
+Find peers for the given infoHash. `infoHash` can be a string or Buffer.
 
-`lookup` should only be called after the ready event has fired, otherwise the lookup may
-fail because the DHT routing table doesn't contain enough nodes.
+This does a recursive lookup in the DHT. Potential peers that are discovered are emitted
+as `peer` events. See the `peer` event below for more info.
+
+`dht.lookup()` should only be called after the ready event has fired, otherwise the lookup
+may fail because the DHT routing table doesn't contain enough nodes.
 
 
 #### `dht.listen([port], [onlistening])`
