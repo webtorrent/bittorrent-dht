@@ -876,8 +876,6 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
     ? addrData[1] // use port of udp packet
     : message.a.port // use port in `announce_peer` message
 
-  // self.emit('announce_peer', self._emit.bind())
-
   // send acknowledgement
   var res = {
     t: message.t,

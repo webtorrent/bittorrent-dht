@@ -6,8 +6,6 @@ Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.or
 
 This module is used by [WebTorrent](http://webtorrent.io).
 
-### WARNING: Code in master differs from the published npm version! Refactor in progress!
-
 ### install
 
 ```
@@ -24,23 +22,29 @@ npm install magnet-uri
 var DHT    = require('bittorrent-dht')
 var magnet = require('magnet-uri')
 
-var uri = "magnet:?xt=urn:btih:e3811b9539cacff680e418124272177c47477157&dn=Ubuntu+13.10+Desktop+Live+ISO+amd64"
+var uri = 'magnet:?xt=urn:btih:e3811b9539cacff680e418124272177c47477157'
 var parsed = magnet(uri)
+
+console.log(parsed.infoHash) // 'e3811b9539cacff680e418124272177c47477157'
 
 var dht = new DHT()
 
+dht.listen(20000, function () {
+  console.log('now listening')
+})
+
+dht.on('ready', function () {
+  // DHT is ready to use (i.e. the routing table contains at least K nodes, discovered
+  // via the bootstrap nodes)
+
+  // find peers for the given torrent info hash
+  dht.lookup(parsed.infoHash)
+})
+
 dht.on('peer', function (addr, hash) {
-  console.log('Found peer at ' + addr + '!')
+  console.log('found potential peer ' + addr)
 })
 
-dht.setInfoHash(parsed.infoHash)
-
-var port = 20000
-dht.listen(port, function (port) {
-  console.log("Now listening on port " + port)
-})
-
-dht.findPeers()
 ```
 
 ### api
@@ -58,64 +62,61 @@ If `opts` is specified, then the default options (shown below) will be overridde
 }
 ```
 
-#### `dht.setInfoHash(infoHash)`
+#### `dht.lookup(infoHash)`
 
-Associate an infoHash with the DHT object. Can be a string or Buffer.
+Find peers for the given infoHash. This does a recursive lookup in the DHT. `infoHash` can
+be a string or Buffer.
+
+`lookup` should only be called after the ready event has fired, otherwise the lookup may
+fail because the DHT routing table doesn't contain enough nodes.
 
 
-#### `dht.listen([port], [callback])`
+#### `dht.listen([port], [onlistening])`
 
-Open the socket. If port is undefined, one is picked with [portfinder](https://github.com/indexzero/node-portfinder).
-`callback` is equivalent to `listening` event.
+Make the DHT listen on the given `port`. If `port` is undefined, an available port is
+automatically picked with [portfinder](https://github.com/indexzero/node-portfinder).
+
+If `onlistening` is defined, it is attached to the `listening` event.
 
 
 #### `dht.destroy([callback])`
 
-Open the socket. If port is undefined, one is picked with [portfinder](https://github.com/indexzero/node-portfinder).
-`callback` is equivalent to `listening` event.
-
-
-#### `findPeers([num])`
-
-Get `num` peers from the DHT. Defaults to unlimited.
+Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
 
 ### events
 
-#### 'peer'
+#### self.on('ready', function () { ... })
 
-    function (addr, infoHash){ ... }
-
-Called when a peer is found. `addr` is of the form `IP_ADDRESS:PORT`
+Emitted when the DHT is ready to handle lookups (i.e. the routing table contains at least K nodes, discovered via the bootstrap nodes).
 
 
-#### 'message'
+#### self.on('peer', function (addr, infoHash) { ... })
 
-    function (data, rinfo){ ... }
-
-Called when a message is received. `rinfo` is an object with properties `address`, `port`
-
-
-#### 'node'
-
-    function (addr){ ... }
-
-Called when client finds a new DHT node.
+Emitted when a potential peer is found. `addr` is of the form `IP_ADDRESS:PORT`.
+`infoHash` is the torrent info hash of the swarm that the peer belongs to. Emitted
+in response to a `lookup(infoHash)` call.
 
 
-#### 'listening'
+#### self.on('node', function (addr) { ... })
 
-    function () { ... }
-
-
-#### 'warning'
-
-    function (err){ ... }
+Emitted when the DHT finds a new node.
 
 
-#### 'error'
+#### self.on('listening', function () { ... })
 
-    function (err){ ... }
+Emitted when the DHT is listening.
+
+
+#### self.on('warning', function (err) { ... })
+
+Emitted when the DHT gets an unexpected message from another DHT node. This is purely
+informational.
+
+
+#### self.on('error', function (err) { ... })
+
+Emitted when the DHT has a fatal error.
 
 
 ### license
