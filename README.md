@@ -117,35 +117,35 @@ Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
 ### events
 
-#### self.on('ready', function () { ... })
+#### `self.on('ready', function () { ... })`
 
 Emitted when the DHT is ready to handle lookups (i.e. the routing table contains at least K nodes, discovered via the bootstrap nodes).
 
 
-#### self.on('peer', function (addr, infoHash) { ... })
+#### `self.on('peer', function (addr, infoHash) { ... })`
 
 Emitted when a potential peer is found. `addr` is of the form `IP_ADDRESS:PORT`.
 `infoHash` is the torrent info hash of the swarm that the peer belongs to. Emitted
 in response to a `lookup(infoHash)` call.
 
 
-#### self.on('node', function (addr) { ... })
+#### `self.on('node', function (addr) { ... })`
 
 Emitted when the DHT finds a new node.
 
 
-#### self.on('listening', function () { ... })
+#### `self.on('listening', function () { ... })`
 
 Emitted when the DHT is listening.
 
 
-#### self.on('warning', function (err) { ... })
+#### `self.on('warning', function (err) { ... })`
 
 Emitted when the DHT gets an unexpected message from another DHT node. This is purely
 informational.
 
 
-#### self.on('error', function (err) { ... })
+#### `self.on('error', function (err) { ... })`
 
 Emitted when the DHT has a fatal error.
 
