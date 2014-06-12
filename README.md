@@ -6,6 +6,13 @@ Node.js implementation of the [BitTorrent DHT protocol](http://www.bittorrent.or
 
 This module is used by [WebTorrent](http://webtorrent.io).
 
+### features
+
+- complete implementation of the DHT protocol in JavaScript
+- follows [the spec](http://www.bittorrent.org/beps/bep_0005.html)
+- robust and well-tested (comprehensive test suite, and used by [WebTorrent](http://webtorrent.io) and [peerflix](https://github.com/mafintosh/peerflix))
+- efficient recursive lookup algorithm minimizes UDP traffic
+
 ### install
 
 ```
