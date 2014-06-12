@@ -485,6 +485,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
     }
   }
 
+  function queryClosest () {
+    self.nodes.closest({ id: id }, K).forEach(function (contact) {
+      query(contact.addr)
+    })
+  }
+
   if (opts.addrs) {
     // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
     opts.addrs.forEach(function (addr) {
@@ -492,15 +498,13 @@ DHT.prototype.lookup = function (id, opts, cb) {
     })
   } else if (self.nodes.count() > 0) {
     // kick off lookup with nodes in the main table
-    self.nodes.closest({ id: id }, K).forEach(function (contact) {
-      query(contact.addr)
-    })
+    queryClosest()
   } else {
     // Wait until at least K nodes are available, so we're more confident that a
     // lookup will succeed. If there were not many nodes and most/all were bad, then
     // lookup would terminate early. We want wait until bootstrapping has found peers.
-    self.once('ready', function (addr) {
-      query(addr)
+    self.once('ready', function () {
+      queryClosest()
     })
   }
 }
@@ -752,8 +756,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     }
     if (res.values) {
       res.values = parsePeerInfo(res.values)
-      res.values.forEach(function (addr) {
-        self.addPeer(addr, infoHash)
+      res.values.forEach(function (_addr) {
+        self.addPeer(_addr, infoHash)
       })
     }
     cb(null, res)
