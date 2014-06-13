@@ -13,6 +13,18 @@ exports.randomAddr = function () {
   return host + ':' + port
 }
 
-exports.randomNodeId = function () {
+exports.randomId = function () {
   return new Buffer(hat(160), 'hex')
+}
+
+exports.addRandomNodes = function (dht, num) {
+  for (var i = 0; i < num; i++) {
+    dht.addNode(exports.randomAddr(), exports.randomId())
+  }
+}
+
+exports.addRandomPeers = function (dht, num) {
+  for (var i = 0; i < num; i++) {
+    dht.addPeer(exports.randomAddr(), exports.randomId())
+  }
 }

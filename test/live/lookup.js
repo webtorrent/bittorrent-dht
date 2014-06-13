@@ -1,4 +1,4 @@
-var DHT = require('../')
+var DHT = require('../../')
 var hat = require('hat')
 var portfinder = require('portfinder')
 var test = require('tape')
@@ -19,7 +19,6 @@ test('Default bootstrap server returns at least one node', function (t) {
 
 test('Default bootstrap server returns a peer for one torrent', function (t) {
   t.plan(4)
-
 
   var dht = new DHT()
 

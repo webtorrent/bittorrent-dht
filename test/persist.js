@@ -21,6 +21,6 @@ test('persist dht', function (t) {
   })
 
   for (var i = 0; i < DHT.K; i++) {
-    dht1.addNode(common.randomAddr(), common.randomNodeId())
+    dht1.addNode(common.randomAddr(), common.randomId())
   }
 })

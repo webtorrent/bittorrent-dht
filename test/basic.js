@@ -4,7 +4,7 @@ var portfinder = require('portfinder')
 var test = require('tape')
 
 test('explicitly set nodeId', function (t) {
-  var nodeId = common.randomNodeId()
+  var nodeId = common.randomId()
 
   var dht = new DHT({
     nodeId: nodeId,
@@ -16,7 +16,6 @@ test('explicitly set nodeId', function (t) {
   t.equal(dht.nodeId, nodeId)
   t.end()
 })
-
 
 test('`ping` query send and response', function (t) {
   t.plan(3)
@@ -42,7 +41,7 @@ test('`ping` query send and response', function (t) {
 
 test('`find_node` query for exact match (with one in table)', function (t) {
   t.plan(4)
-  var targetNodeId = common.randomNodeId()
+  var targetNodeId = common.randomId()
 
   var dht1 = new DHT({ bootstrap: false })
   var dht2 = new DHT({ bootstrap: false })
@@ -78,14 +77,14 @@ test('`find_node` query (with many in table)', function (t) {
   common.failOnWarningOrError(dht1, t)
   common.failOnWarningOrError(dht2, t)
 
-  dht1.addNode('1.1.1.1:6969', common.randomNodeId())
-  dht1.addNode('10.10.10.10:6969', common.randomNodeId())
-  dht1.addNode('255.255.255.255:6969', common.randomNodeId())
+  dht1.addNode('1.1.1.1:6969', common.randomId())
+  dht1.addNode('10.10.10.10:6969', common.randomId())
+  dht1.addNode('255.255.255.255:6969', common.randomId())
 
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      var targetNodeId = common.randomNodeId()
+      var targetNodeId = common.randomId()
       dht2._sendFindNode('127.0.0.1:' + port, targetNodeId, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
@@ -109,13 +108,13 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   common.failOnWarningOrError(dht1, t)
   common.failOnWarningOrError(dht2, t)
 
-  dht1.addNode('1.1.1.1:6969', common.randomNodeId())
-  dht1.addNode('2.2.2.2:6969', common.randomNodeId())
+  dht1.addNode('1.1.1.1:6969', common.randomId())
+  dht1.addNode('2.2.2.2:6969', common.randomId())
 
   portfinder.getPort(function (err, port) {
     t.error(err)
     dht1.listen(port, function () {
-      var targetInfoHash = common.randomNodeId()
+      var targetInfoHash = common.randomId()
       dht2._sendGetPeers('127.0.0.1:' + port, targetInfoHash, function (err, res) {
         t.error(err)
         t.deepEqual(res.id, dht1.nodeId)
@@ -141,7 +140,7 @@ test('`get_peers` query to node with peers in table', function (t) {
   common.failOnWarningOrError(dht1, t)
   common.failOnWarningOrError(dht2, t)
 
-  var targetInfoHash = common.randomNodeId()
+  var targetInfoHash = common.randomId()
 
   dht1.addPeer('1.1.1.1:6969', targetInfoHash)
   dht1.addPeer('10.10.10.10:6969', targetInfoHash)
@@ -177,7 +176,7 @@ test('`announce_peer` query with bad token', function (t) {
     common.failOnWarningOrError(dht1, t)
     common.failOnWarningOrError(dht2, t)
 
-    var infoHash = common.randomNodeId()
+    var infoHash = common.randomId()
 
     dht1.listen(port, function () {
       var token = new Buffer('bad token')
@@ -201,7 +200,7 @@ test('`announce_peer` query gets ack response', function (t) {
   common.failOnWarningOrError(dht1, t)
   common.failOnWarningOrError(dht2, t)
 
-  var infoHash = common.randomNodeId()
+  var infoHash = common.randomId()
   var host =
 
   portfinder.getPort(function (err, port) {

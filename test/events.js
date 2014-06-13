@@ -3,6 +3,70 @@ var DHT = require('../')
 var portfinder = require('portfinder')
 var test = require('tape')
 
+test('`node` event fires for each added node (100x)', function (t) {
+  var dht = new DHT({ bootstrap: false })
+  common.failOnWarningOrError(t, dht)
+
+  var numNodes = 0
+  dht.on('node', function () {
+    numNodes += 1
+    if (numNodes === 100) {
+      t.pass('100 nodes added, 100 `node` events emitted')
+      t.end()
+    }
+  })
+
+  common.addRandomNodes(dht, 100)
+})
+
+test('`node` event fires for each added node (100000x)', function (t) {
+  var dht = new DHT({ bootstrap: false })
+  common.failOnWarningOrError(t, dht)
+
+  var numNodes = 0
+  dht.on('node', function () {
+    numNodes += 1
+    if (numNodes === 100000) {
+      t.pass('100000 nodes added, 100000 `node` events emitted')
+      t.end()
+    }
+  })
+
+  common.addRandomNodes(dht, 100000)
+})
+
+test('`peer` event fires for each added peer (100x)', function (t) {
+  var dht = new DHT({ bootstrap: false })
+  common.failOnWarningOrError(t, dht)
+
+  var numPeers = 0
+  dht.on('peer', function () {
+    numPeers += 1
+    if (numPeers === 100) {
+      t.pass('100 peers added, 100 `peer` events emitted')
+      t.end()
+    }
+  })
+
+  common.addRandomPeers(dht, 100)
+})
+
+test('`peer` event fires for each added peer (100000x)', function (t) {
+  var dht = new DHT({ bootstrap: false })
+  common.failOnWarningOrError(t, dht)
+
+  var numPeers = 0
+  dht.on('peer', function () {
+    numPeers += 1
+    if (numPeers === 100000) {
+      t.pass('100000 peers added, 100000 `peer` events emitted')
+      t.end()
+    }
+  })
+
+  common.addRandomPeers(dht, 100000)
+})
+
 test('`listening` event fires', function (t) {
   t.plan(3)
   var dht = new DHT({ bootstrap: false })
@@ -45,9 +109,7 @@ test('`ready` event fires when there are K nodes', function (t) {
   })
 
   // add K nodes to dht1
-  for (var i = 0; i < DHT.K; i++) {
-    dht1.addNode(common.randomAddr(), common.randomNodeId())
-  }
+  common.addRandomNodes(dht1, DHT.K)
 
   portfinder.getPort(function (err, port) {
     t.error(err)
