@@ -204,7 +204,6 @@ DHT.prototype.destroy = function (cb) {
  * Add a DHT node to the routing table.
  * @param {string=} addr
  * @param {string|Buffer} nodeId
- *
  */
 DHT.prototype.addNode = function (addr, nodeId) {
   var self = this
@@ -239,7 +238,7 @@ DHT.prototype.removeNode = function (nodeId) {
  * @param {string} addr
  * @param {Buffer|string} infoHash
  */
-DHT.prototype.addPeer = function (addr, infoHash) {
+DHT.prototype._addPeer = function (addr, infoHash) {
   var self = this
   if (self._destroyed) return
 
@@ -757,7 +756,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (_addr) {
-        self.addPeer(_addr, infoHash)
+        self._addPeer(_addr, infoHash)
       })
     }
     cb(null, res)

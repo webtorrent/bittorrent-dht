@@ -25,6 +25,6 @@ exports.addRandomNodes = function (dht, num) {
 
 exports.addRandomPeers = function (dht, num) {
   for (var i = 0; i < num; i++) {
-    dht.addPeer(exports.randomAddr(), exports.randomId())
+    dht._addPeer(exports.randomAddr(), exports.randomId())
   }
 }

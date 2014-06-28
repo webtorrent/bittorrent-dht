@@ -142,9 +142,9 @@ test('`get_peers` query to node with peers in table', function (t) {
 
   var targetInfoHash = common.randomId()
 
-  dht1.addPeer('1.1.1.1:6969', targetInfoHash)
-  dht1.addPeer('10.10.10.10:6969', targetInfoHash)
-  dht1.addPeer('255.255.255.255:6969', targetInfoHash)
+  dht1._addPeer('1.1.1.1:6969', targetInfoHash)
+  dht1._addPeer('10.10.10.10:6969', targetInfoHash)
+  dht1._addPeer('255.255.255.255:6969', targetInfoHash)
 
   portfinder.getPort(function (err, port) {
     t.error(err)
