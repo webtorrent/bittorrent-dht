@@ -346,24 +346,27 @@ DHT.prototype._bootstrap = function (nodes) {
         return contact.addr
       })
 
-    self.lookup(self.nodeId, {
-      findNode: true,
-      addrs: addrs.length ? addrs : null
-    }, function (err) {
-      // if the recursive lookup terminates and we still haven't found K initial nodes
-      // (i.e. 'ready' hasn't been emitted) then emit it now.
-      if (!self.ready) {
-        self.removeListener('node', onNode)
-        self.ready = true
-        self.emit('ready')
-      }
-    })
+    function lookup () {
+      self.lookup(self.nodeId, {
+        findNode: true,
+        addrs: addrs.length ? addrs : null
+      }, function (err) {
+        // if the recursive lookup terminates and we still haven't found K initial nodes
+        // (i.e. 'ready' hasn't been emitted) then emit it now.
+        if (!self.ready) {
+          self.removeListener('node', onNode)
+          self.ready = true
+          self.emit('ready')
+        }
+      })
+    }
+    lookup()
 
     self._bootstrapTimeout = setTimeout(function () {
       // If no nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
-        debug('no DHT nodes replied, retry with public bootstrap nodes')
-        self._bootstrap(contacts)
+        debug('no DHT bootstrap nodes replied, let\'s retry')
+        lookup()
       }
     }, BOOTSTRAP_TIMEOUT)
     self._bootstrapTimeout.unref()
@@ -374,9 +377,9 @@ DHT.prototype._bootstrap = function (nodes) {
  * Resolve the DNS for nodes whose hostname is a domain name (often the case for
  * bootstrap nodes).
  * @param  {Array.<Object>} contacts array of contact objects with domain addresses
- * @param  {function} cb
+ * @param  {function} done
  */
-DHT.prototype._resolveContacts = function (contacts, cb) {
+DHT.prototype._resolveContacts = function (contacts, done) {
   var self = this
   var tasks = contacts.map(function (contact) {
     return function (cb) {
@@ -389,9 +392,9 @@ DHT.prototype._resolveContacts = function (contacts, cb) {
     }
   })
   parallel(tasks, function (err, contacts) {
-    if (err) return cb(err)
+    if (err) return done(err)
     // filter out hosts that don't resolve
-    cb(null, contacts.filter(function (addr) { return !!addr }))
+    done(null, contacts.filter(function (addr) { return !!addr }))
   })
 }
 
