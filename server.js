@@ -1,8 +1,7 @@
-module.exports = Server
-
 /**
- * DHT Bootstrap Server
+ * TODO: DHT Bootstrap Server
+ *
+ * For now, just export the client, which will work just fine. But, later, it'll
+ * be important to give out nodes evenly from across the DHT.
  */
-function Server () {
-
-}
+module.exports = require('./client')
