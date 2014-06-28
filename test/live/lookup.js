@@ -1,5 +1,4 @@
 var DHT = require('../../')
-var hat = require('hat')
 var portfinder = require('portfinder')
 var test = require('tape')
 
