@@ -109,6 +109,15 @@ dht1.destroy()
 var dht2 = new DHT({ bootstrap: arr })
 ```
 
+#### `dht.addNode(addr, [nodeId])`
+
+Manually add a node to the DHT routing table. If there is space in the routing table (or
+an unresponsive node can be evicted to make space), the node will be added. If not, the
+node will not be added. This is useful to call when a peer wire sends a `PORT` message to
+share their DHT port.
+
+If `nodeId` is undefined, then the peer will be pinged to learn their node id. If the peer does not respond, the will not be added to the routing table.
+
 
 #### `dht.destroy([callback])`
 
