@@ -9,10 +9,10 @@
 
 module.exports = DHT
 
-var arrayToBuffer = require('typedarray-to-buffer')
 var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
+var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
 var dgram = require('dgram')
 var dns = require('dns')
@@ -23,7 +23,6 @@ var KBucket = require('k-bucket')
 var once = require('once')
 var parallel = require('run-parallel')
 var portfinder = require('portfinder')
-var Rusha = require('rusha-browserify') // Fast SHA1 (works in browser)
 var string2compact = require('string2compact')
 
 portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
@@ -1137,7 +1136,7 @@ function idToHexString (id) {
   }
 }
 
+// Return sha1 hash **as a buffer**
 function sha1 (buf) {
-  // this converts the Int8Array returned from Rusha to a Buffer without a copy
-  return arrayToBuffer(new Uint8Array((new Rusha()).rawDigest(buf).buffer))
+  return crypto.createHash('sha1').update(buf).digest()
 }
