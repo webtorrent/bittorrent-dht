@@ -941,7 +941,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
   var reqs = self.transactions[addr]
   if (!reqs) {
     reqs = self.transactions[addr] = []
-    reqs.nextTransactionId = 1
+    reqs.nextTransactionId = 0
   }
   var transactionId = reqs.nextTransactionId
   reqs.nextTransactionId += 1
