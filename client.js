@@ -237,7 +237,7 @@ DHT.prototype.removeNode = function (nodeId) {
  * @param {string} addr
  * @param {Buffer|string} infoHash
  */
-DHT.prototype._addPeer = function (addr, infoHash) {
+DHT.prototype._addPeer = function (addr, infoHash, from) {
   var self = this
   if (self._destroyed) return
 
@@ -259,8 +259,8 @@ DHT.prototype._addPeer = function (addr, infoHash) {
     peers.push(compactPeerInfo)
   }
 
-  self.emit('peer', addr, infoHash)
-  debug('adding peer ' + addr + ' ' + infoHash)
+  self.emit('peer', addr, infoHash, from)
+  debug('adding peer ' + addr + ' ' + infoHash + ' discovered through ' + from)
 }
 
 /**
@@ -758,7 +758,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (_addr) {
-        self._addPeer(_addr, infoHash)
+        self._addPeer(_addr, infoHash, addr)
       })
     }
     cb(null, res)

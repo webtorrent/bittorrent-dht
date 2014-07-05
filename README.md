@@ -49,8 +49,8 @@ dht.on('ready', function () {
   dht.lookup(parsed.infoHash)
 })
 
-dht.on('peer', function (addr, hash) {
-  console.log('found potential peer ' + addr)
+dht.on('peer', function (addr, hash, from) {
+  console.log('found potential peer ' + addr + ' through ' + from)
 })
 
 ```
