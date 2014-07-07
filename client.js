@@ -204,18 +204,19 @@ DHT.prototype.destroy = function (cb) {
  * @param {string=} addr
  * @param {string|Buffer} nodeId
  */
-DHT.prototype.addNode = function (addr, nodeId) {
+DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
   if (self._destroyed) return
   nodeId = idToBuffer(nodeId)
 
   var contact = {
     id: nodeId,
-    addr: addr
+    addr: addr,
+    from: from
   }
   self.nodes.add(contact)
-  self.emit('node', addr, nodeId)
-  debug('adding node ' + addr + ' ' + idToHexString(nodeId))
+  self.emit('node', addr, nodeId, from)
+  debug('adding node ' + addr + ' ' + idToHexString(nodeId) + 'discovered through ' + from)
 }
 
 /**
@@ -333,7 +334,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        self.addNode(contact.addr, contact.id)
+        self.addNode(contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -674,7 +675,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id)
+        self.addNode(node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -752,7 +753,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id)
+        self.addNode(node.addr, node.id, addr)
       })
     }
     if (res.values) {
