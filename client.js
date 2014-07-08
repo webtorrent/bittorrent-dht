@@ -529,10 +529,8 @@ DHT.prototype._onData = function (data, rinfo) {
 
   // debug('got message from ' + addr + ' ' + JSON.stringify(message))
 
-  var type;
-  
   if (message.y) {
-    type = message.y.toString()
+    var type = message.y.toString()
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
