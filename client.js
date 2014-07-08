@@ -204,18 +204,19 @@ DHT.prototype.destroy = function (cb) {
  * @param {string=} addr
  * @param {string|Buffer} nodeId
  */
-DHT.prototype.addNode = function (addr, nodeId) {
+DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
   if (self._destroyed) return
   nodeId = idToBuffer(nodeId)
 
   var contact = {
     id: nodeId,
-    addr: addr
+    addr: addr,
+    from: from
   }
   self.nodes.add(contact)
-  self.emit('node', addr, nodeId)
-  debug('adding node ' + addr + ' ' + idToHexString(nodeId))
+  self.emit('node', addr, nodeId, from)
+  debug('adding node ' + addr + ' ' + idToHexString(nodeId) + 'discovered through ' + from)
 }
 
 /**
@@ -237,7 +238,7 @@ DHT.prototype.removeNode = function (nodeId) {
  * @param {string} addr
  * @param {Buffer|string} infoHash
  */
-DHT.prototype._addPeer = function (addr, infoHash) {
+DHT.prototype._addPeer = function (addr, infoHash, from) {
   var self = this
   if (self._destroyed) return
 
@@ -259,8 +260,8 @@ DHT.prototype._addPeer = function (addr, infoHash) {
     peers.push(compactPeerInfo)
   }
 
-  self.emit('peer', addr, infoHash)
-  debug('adding peer ' + addr + ' ' + infoHash)
+  self.emit('peer', addr, infoHash, from)
+  debug('adding peer ' + addr + ' ' + infoHash + ' discovered through ' + from)
 }
 
 /**
@@ -333,7 +334,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        self.addNode(contact.addr, contact.id)
+        self.addNode(contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -529,7 +530,11 @@ DHT.prototype._onData = function (data, rinfo) {
 
   // debug('got message from ' + addr + ' ' + JSON.stringify(message))
 
-  var type = message.y.toString()
+  var type;
+  
+  if (message.y) {
+    type = message.y.toString()
+  }
 
   if (type === MESSAGE_TYPE.QUERY) {
     self._onQuery(addr, message)
@@ -674,7 +679,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id)
+        self.addNode(node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -752,13 +757,13 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id)
+        self.addNode(node.addr, node.id, addr)
       })
     }
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (_addr) {
-        self._addPeer(_addr, infoHash)
+        self._addPeer(_addr, infoHash, addr)
       })
     }
     cb(null, res)
@@ -941,7 +946,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
   var reqs = self.transactions[addr]
   if (!reqs) {
     reqs = self.transactions[addr] = []
-    reqs.nextTransactionId = 1
+    reqs.nextTransactionId = 0
   }
   var transactionId = reqs.nextTransactionId
   reqs.nextTransactionId += 1
