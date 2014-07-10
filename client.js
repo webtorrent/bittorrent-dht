@@ -203,6 +203,7 @@ DHT.prototype.destroy = function (cb) {
  * Add a DHT node to the routing table.
  * @param {string=} addr
  * @param {string|Buffer} nodeId
+ * @param {string=} from addr
  */
 DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
@@ -211,13 +212,12 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
 
   var contact = {
     id: nodeId,
-    addr: addr,
-    from: from
+    addr: addr
   }
   self.nodes.add(contact)
   // TODO: only emit this event for new nodes
   self.emit('node', addr, nodeId, from)
-  debug('adding node ' + addr + ' ' + idToHexString(nodeId) + 'discovered through ' + from)
+  debug('adding node ' + addr + ' ' + idToHexString(nodeId) + (from ? ' discovered from ' + from : ''))
 }
 
 /**
@@ -238,6 +238,7 @@ DHT.prototype.removeNode = function (nodeId) {
  * Store a peer in the DHT.
  * @param {string} addr
  * @param {Buffer|string} infoHash
+ * @param {string} from addr
  */
 DHT.prototype._addPeer = function (addr, infoHash, from) {
   var self = this
@@ -260,7 +261,7 @@ DHT.prototype._addPeer = function (addr, infoHash, from) {
   if (!exists) {
     peers.push(compactPeerInfo)
     self.emit('peer', addr, infoHash, from)
-    debug('adding peer ' + addr + ' ' + infoHash + ' discovered through ' + from)
+    debug('adding peer ' + addr + ' ' + infoHash + ' discovered from ' + from)
   }
 }
 
