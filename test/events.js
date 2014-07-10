@@ -19,20 +19,20 @@ test('`node` event fires for each added node (100x)', function (t) {
   common.addRandomNodes(dht, 100)
 })
 
-test('`node` event fires for each added node (100000x)', function (t) {
+test('`node` event fires for each added node (10000x)', function (t) {
   var dht = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht)
 
   var numNodes = 0
   dht.on('node', function () {
     numNodes += 1
-    if (numNodes === 100000) {
-      t.pass('100000 nodes added, 100000 `node` events emitted')
+    if (numNodes === 10000) {
+      t.pass('10000 nodes added, 10000 `node` events emitted')
       t.end()
     }
   })
 
-  common.addRandomNodes(dht, 100000)
+  common.addRandomNodes(dht, 10000)
 })
 
 test('`peer` event fires for each added peer (100x)', function (t) {
@@ -51,20 +51,20 @@ test('`peer` event fires for each added peer (100x)', function (t) {
   common.addRandomPeers(dht, 100)
 })
 
-test('`peer` event fires for each added peer (100000x)', function (t) {
+test('`peer` event fires for each added peer (10000x)', function (t) {
   var dht = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht)
 
   var numPeers = 0
   dht.on('peer', function () {
     numPeers += 1
-    if (numPeers === 100000) {
-      t.pass('100000 peers added, 100000 `peer` events emitted')
+    if (numPeers === 10000) {
+      t.pass('10000 peers added, 10000 `peer` events emitted')
       t.end()
     }
   })
 
-  common.addRandomPeers(dht, 100000)
+  common.addRandomPeers(dht, 10000)
 })
 
 test('`listening` event fires', function (t) {
