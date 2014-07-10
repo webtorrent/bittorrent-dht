@@ -214,6 +214,7 @@ DHT.prototype.addNode = function (addr, nodeId) {
     addr: addr
   }
   self.nodes.add(contact)
+  // TODO: only emit this event for new nodes
   self.emit('node', addr, nodeId)
   debug('adding node ' + addr + ' ' + idToHexString(nodeId))
 }
@@ -257,10 +258,9 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 
   if (!exists) {
     peers.push(compactPeerInfo)
+    self.emit('peer', addr, infoHash)
+    debug('adding peer ' + addr + ' ' + infoHash)
   }
-
-  self.emit('peer', addr, infoHash)
-  debug('adding peer ' + addr + ' ' + infoHash)
 }
 
 /**
