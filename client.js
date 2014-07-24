@@ -1,5 +1,4 @@
 // TODO:
-// - Add the method that allows us to list ourselves in the DHT
 // - republish at regular intervals
 // - When receiving any message, attempt to add the node to the table
 // - Accept responses even after timeout. no point to throwing them away
@@ -86,6 +85,14 @@ function DHT (opts) {
   })
 
   /**
+   * Cache of routing tables used during a lookup. Saved in this object so we can access
+   * each node's unique token for announces later.
+   * TODO: Clean up tables after 5 minutes.
+   * @type {Object} infoHash:string -> KBucket
+   */
+  self.tables = {}
+
+  /**
    * Lookup cache to prevent excessive GC.
    * @type {Object} addr:string -> [host:string, port:number]
    */
@@ -99,7 +106,7 @@ function DHT (opts) {
 
   /**
    * Peer address data (tracker storage)
-   * @type {Object} infoHash:string -> Set of peers
+   * @type {Object} infoHash:string -> array of peers
    */
   self.peers = {}
 
@@ -123,7 +130,7 @@ function DHT (opts) {
   } else if (typeof opts.bootstrap === 'string') {
     self._bootstrap([ opts.bootstrap ])
   } else if (Array.isArray(opts.bootstrap)) {
-    self._bootstrap(self._fromArray(opts.bootstrap))
+    self._bootstrap(fromArray(opts.bootstrap))
   } else {
     // opts.bootstrap is undefined or true
     self._bootstrap(BOOTSTRAP_NODES)
@@ -157,6 +164,34 @@ DHT.prototype.listen = function (port, onlistening) {
     onPort(null, port)
   } else {
     portfinder.getPort(onPort)
+  }
+}
+
+/**
+ * Announce that the peer, controlling the querying node, is downloading a torrent on a
+ * port.
+ * @param  {string|Buffer} infoHawh
+ * @param  {number} port
+ * @param  {function} cb
+ */
+DHT.prototype.announce = function (infoHash, port, cb) {
+  var self = this
+  var infoHashHex = idToHexString(infoHash)
+
+  // TODO: it would be nice to not use a table when a lookup is in progress
+  var table = self.tables[infoHashHex]
+  if (table) {
+    onClosest(null, table.closest({ id: infoHash }, K))
+  } else {
+    self.lookup(infoHash, onClosest)
+  }
+
+  function onClosest (err, closest) {
+    if (err) return cb(err)
+    closest.forEach(function (contact) {
+      self._sendAnnouncePeer(contact.addr, infoHash, port, contact.token)
+    })
+    cb(null)
   }
 }
 
@@ -406,13 +441,14 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  * @param {Object=} opts
  * @param {boolean} opts.findNode
  * @param {Array.<string>} opts.addrs
- * @param {function} cb called with K closest nodes (for `find_node`)
+ * @param {function} cb called with K closest nodes
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
   if (self._destroyed) return
 
-  debug('start recursive lookup for ' + idToHexString(id))
+  var idHex = idToHexString(id)
+  debug('start recursive lookup for ' + idHex)
 
   id = idToBuffer(id)
   if (typeof opts === 'function') {
@@ -422,7 +458,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   if (!opts) opts = {}
   if (!cb) cb = function () {}
 
-  var table = new KBucket({
+  var table = self.tables[idHex] = new KBucket({
     localNodeId: id,
     numberOfNodesPerKBucket: K,
     numberOfNodesToPing: MAX_CONCURRENCY
@@ -430,6 +466,23 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
   var queried = {}
   var pending = 0 // pending queries
+
+  if (opts.addrs) {
+    // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
+    opts.addrs.forEach(function (addr) {
+      query(addr)
+    })
+  } else if (self.nodes.count() > 0) {
+    // kick off lookup with nodes in the main table
+    queryClosest()
+  } else {
+    // Wait until at least K nodes are available, so we're more confident that a
+    // lookup will succeed. If there were not many nodes and most/all were bad, then
+    // lookup would terminate early. We want wait until bootstrapping has found peers.
+    self.once('ready', function () {
+      queryClosest()
+    })
+  }
 
   function query (addr) {
     pending += 1
@@ -440,6 +493,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
     } else {
       self._sendGetPeers(addr, id, onResponse)
     }
+  }
+
+  function queryClosest () {
+    self.nodes.closest({ id: id }, K).forEach(function (contact) {
+      query(contact.addr)
+    })
   }
 
   function onResponse (err, res) {
@@ -458,6 +517,15 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     pending -= 1
 
+    // add token to the node that sent this response
+    var node = table.get(res.nodeId)
+    if (node) {
+      node.token = res.token
+    } else {
+      console.error('should not happen! got response with nodeId not in lookup table')
+    }
+
+    // add nodes to this routing table for this lookup
     if (res && res.nodes) {
       res.nodes.forEach(function (contact) {
         table.add(contact)
@@ -486,29 +554,6 @@ DHT.prototype.lookup = function (id, opts, cb) {
       })
       cb(null, closest)
     }
-  }
-
-  function queryClosest () {
-    self.nodes.closest({ id: id }, K).forEach(function (contact) {
-      query(contact.addr)
-    })
-  }
-
-  if (opts.addrs) {
-    // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
-    opts.addrs.forEach(function (addr) {
-      query(addr)
-    })
-  } else if (self.nodes.count() > 0) {
-    // kick off lookup with nodes in the main table
-    queryClosest()
-  } else {
-    // Wait until at least K nodes are available, so we're more confident that a
-    // lookup will succeed. If there were not many nodes and most/all were bad, then
-    // lookup would terminate early. We want wait until bootstrapping has found peers.
-    self.once('ready', function () {
-      queryClosest()
-    })
   }
 }
 
@@ -600,7 +645,9 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     return
   }
 
-  transaction.cb(err, message.r)
+  // TODO: would be nice to verify that node's reported id matches the id we have stored
+  // for them
+  transaction.cb(err, message.r, message.id)
 }
 
 /**
@@ -751,8 +798,9 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
 
-  function done (err, res) {
+  function done (err, res, nodeId) {
     if (err) return cb(err)
+    res.nodeId = idToHexString(nodeId)
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
@@ -765,6 +813,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
         self._addPeer(_addr, infoHash, addr)
       })
     }
+    res.token = res.token.toString()
     cb(null, res)
   }
 
@@ -828,11 +877,11 @@ DHT.prototype._onGetPeers = function (addr, message) {
  * Send "announce_peer" query to given host and port.
  * @param {string} addr
  * @param {Buffer|string} infoHash
- * @param {number} myPort
+ * @param {number} port
  * @param {Buffer} token
  * @param {function} cb called with response
  */
-DHT.prototype._sendAnnouncePeer = function (addr, infoHash, myPort, token, cb) {
+DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
 
@@ -844,7 +893,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, myPort, token, cb) {
     a: {
       id: self.nodeId,
       info_hash: infoHash,
-      port: myPort,
+      port: port,
       token: token,
       implied_port: 0
     }
@@ -1042,8 +1091,7 @@ DHT.prototype.toArray = function () {
  * @param  {Array.<Object>} nodes
  * @return {Buffer}
  */
-DHT.prototype._fromArray = function (nodes) {
-  var self = this
+function fromArray (nodes) {
   nodes.forEach(function (node) {
     if (node.id) {
       node.id = idToBuffer(node.id)

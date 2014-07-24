@@ -70,15 +70,21 @@ If `opts` is specified, then the default options (shown below) will be overridde
 }
 ```
 
-#### `dht.lookup(infoHash)`
 
-Find peers for the given infoHash. `infoHash` can be a string or Buffer.
+#### `dht.lookup(infoHash, [callback])`
+
+Find peers for the given info hash.
 
 This does a recursive lookup in the DHT. Potential peers that are discovered are emitted
 as `peer` events. See the `peer` event below for more info.
 
-`dht.lookup()` should only be called after the ready event has fired, otherwise the lookup
-may fail because the DHT routing table doesn't contain enough nodes.
+`infoHash` can be a string or Buffer. `callback` is called when the recursive lookup has
+terminated, and is called with two paramaters. The first is an `Error` or null. The second
+is an array of the K closest nodes. You usually don't need to use this info and can simply
+listen for `peer` events.
+
+Note: `dht.lookup()` should only be called after the ready event has fired, otherwise the
+lookup may fail because the DHT routing table doesn't contain enough nodes.
 
 
 #### `dht.listen([port], [onlistening])`
@@ -87,6 +93,28 @@ Make the DHT listen on the given `port`. If `port` is undefined, an available po
 automatically picked with [portfinder](https://github.com/indexzero/node-portfinder).
 
 If `onlistening` is defined, it is attached to the `listening` event.
+
+
+#### `dht.announce(infoHash, port, [callback])`
+
+Announce that the peer, controlling the querying node, is downloading a torrent on a port.
+
+If `dht.announce` is called soon (< 5 minutes) after `dht.lookup`, then the routing table
+generated during the lookup can be re-used, because the tokens sent by each node will
+still be valid.
+
+If `dht.announce` is called and there is no cached routing table, then a `dht.lookup` will
+first be performed to discover relevant nodes and get valid tokens from each of them.
+This will take longer.
+
+A "token" is an opaque value that must be presented for a node to announce that its
+controlling peer is downloading a torrent. It must present the token received from the
+same queried node in a recent query for peers. This is to prevent malicious hosts from
+signing up other hosts for torrents. **All token management is handled internally by this
+module.**
+
+`callback` will be called when the announce operation has completed, and is called with
+a single parameter that is an `Error` or null.
 
 
 #### `arr = dht.toArray()`
@@ -105,9 +133,12 @@ var dht1 = new DHT()
 var arr = dht1.toArray()
 dht1.destroy()
 
+// some time passes ...
+
 // initialize a new dht with the same routing table as the first
 var dht2 = new DHT({ bootstrap: arr })
 ```
+
 
 #### `dht.addNode(addr, [nodeId])`
 
