@@ -807,18 +807,8 @@ DHT.prototype._onFindNode = function (addr, message) {
   }
   self._debug('got find_node %s from %s', idToHexString(nodeId), addr)
 
-  // Get the target node id if it exists in the routing table. Otherwise, get the
-  // K closest nodes.
-  var contacts = self.nodes.get(nodeId)
-    || self.nodes.closest({ id: nodeId }, K)
-    || []
-
-  if (!Array.isArray(contacts)) {
-    contacts = [ contacts ]
-  }
-
   // Convert nodes to "compact node info" representation
-  var nodes = convertToNodeInfo(contacts)
+  var nodes = convertToNodeInfo(self.nodes.closest({ id: nodeId }, K))
 
   var res = {
     t: message.t,
