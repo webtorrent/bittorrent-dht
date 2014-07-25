@@ -5,6 +5,7 @@
 // - handle 'ping' event for when bucket gets full
 // - Use a fast Set to make addPeer / removePeer faster
 // - dht should support adding a node when you don't know the nodeId (for PORT message)
+// - whenever we receive a nodeId, need to validate that it's the correct length
 
 module.exports = DHT
 
@@ -588,28 +589,42 @@ DHT.prototype.lookup = function (id, opts, cb) {
 DHT.prototype._onData = function (data, rinfo) {
   var self = this
   var addr = rinfo.address + ':' + rinfo.port
+  var errMessage
 
   try {
     var message = bencode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
-    self._debug('invalid message %s from %s', err.message, addr)
+    errMessage = 'invalid message ' + data + ' from ' + addr + ' ' + err.message
+    self._debug(errMessage)
+    self.emit('warning', new Error(errMessage))
     return
   }
 
+  var type = message.y && message.y.toString()
 
-  if (message.y) {
-    var type = message.y.toString()
+  if (type !== MESSAGE_TYPE.QUERY && type !== MESSAGE_TYPE.RESPONSE &&
+      type !== MESSAGE_TYPE.ERROR) {
+    errMessage = 'unknown message type ' + type + ' from ' + addr
+    self._debug(errMessage)
+    self.emit('warning', new Error(errMessage))
+    return
   }
 
+  // Attempt to add every (valid) node that we see to the routing table.
+  // TODO: If they node is already in the table, just update the "last heard from" time
+  var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
+  if (nodeId) {
+    // TODO: verify that this a valid length for a nodeId
+    // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
+    self.addNode(addr, nodeId, addr)
+  }
+
+  self._debug('got data %s from %s', JSON.stringify(message), addr)
   if (type === MESSAGE_TYPE.QUERY) {
-    self._debug('got query %s from %s', JSON.stringify(message), addr)
     self._onQuery(addr, message)
   } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
-    self._debug('got response/error %s from %s', JSON.stringify(message), addr)
     self._onResponseOrError(addr, type, message)
-  } else {
-    self._debug('unknown message type %s', type)
   }
 }
 
@@ -661,7 +676,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     if (err) {
       var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
       self._debug(errMessage)
-      self.emit('warning', new Error(err))
+      self.emit('warning', new Error(errMessage))
     } else {
       self._debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
       self._sendError(addr, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
@@ -1123,6 +1138,7 @@ DHT.prototype._addrIsSelf = function (addr) {
   return self.port &&
     LOCAL_HOSTS.some(function (host) { return host + ':' + self.port === addr })
 }
+
 DHT.prototype._debug = function () {
   var self = this
   var args = [].slice.call(arguments)
