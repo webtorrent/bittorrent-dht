@@ -536,28 +536,30 @@ DHT.prototype.lookup = function (id, opts, cb) {
   function onResponse (addr, err, res) {
     if (self._destroyed) return cb(new Error('dht is destroyed'))
 
-    // ignore errors - they are just timeouts
-    if (err) self._debug('got lookup error: %s', err.message || err)
-
     pending -= 1
-
     var nodeId = res && res.id
     var nodeIdHex = idToHexString(nodeId)
-    self._debug('got lookup response %s from %s', JSON.stringify(err || res), nodeIdHex)
 
-    // add node that sent this response
-    var contact = table.get(nodeId)
-    if (!contact) {
-      contact = { id: nodeId, addr: addr }
-      add(contact)
-    }
-    contact.token = res.token
+    // ignore errors - they are just timeouts
+    if (err) {
+      self._debug('got lookup error %s', err.message)
+    } else {
+      self._debug('got lookup response %s from %s', JSON.stringify(res), nodeIdHex)
 
-    // add nodes to this routing table for this lookup
-    if (res && res.nodes) {
-      res.nodes.forEach(function (contact) {
+      // add node that sent this response
+      var contact = table.get(nodeId)
+      if (!contact) {
+        contact = { id: nodeId, addr: addr }
         add(contact)
-      })
+      }
+      contact.token = res.token
+
+      // add nodes to this routing table for this lookup
+      if (res && res.nodes) {
+        res.nodes.forEach(function (contact) {
+          add(contact)
+        })
+      }
     }
 
     // find closest unqueried nodes
