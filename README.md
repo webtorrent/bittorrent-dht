@@ -159,24 +159,24 @@ Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
 #### `self.on('ready', function () { ... })`
 
-Emitted when the DHT is ready to handle lookups (i.e. the routing table contains at least K nodes, discovered via the bootstrap nodes).
+Emitted when the DHT is ready to handle lookups (i.e. the routing table contains at least
+K nodes, discovered via the bootstrap nodes).
+
+Note: If you initialize the DHT with the `{ bootstrap: false }` option, then the 'ready'
+event will fire on the next tick even if there are not K nodes in the routing table.
+It is assumed that you will manually populate the routing table with `dht.addNode`.
 
 
-#### `self.on('peer', function (addr, infoHash) { ... })`
+#### `self.on('listening', function (port) { ... })`
+
+Emitted when the DHT is listening.
+
+
+#### `self.on('peer', function (addr, infoHash, from) { ... })`
 
 Emitted when a potential peer is found. `addr` is of the form `IP_ADDRESS:PORT`.
 `infoHash` is the torrent info hash of the swarm that the peer belongs to. Emitted
 in response to a `lookup(infoHash)` call.
-
-
-#### `self.on('node', function (addr) { ... })`
-
-Emitted when the DHT finds a new node.
-
-
-#### `self.on('listening', function () { ... })`
-
-Emitted when the DHT is listening.
 
 
 #### `self.on('warning', function (err) { ... })`
@@ -188,6 +188,18 @@ informational.
 #### `self.on('error', function (err) { ... })`
 
 Emitted when the DHT has a fatal error.
+
+
+##### internal events
+
+#### `self.on('node', function (addr, nodeId, from) { ... })`
+
+Emitted when the DHT finds a new node.
+
+
+#### `self.on('announce', function (addr, infoHash) { ... })`
+
+Emitted when a peer announces itself in order to be stored in the DHT.
 
 
 ### further reading
