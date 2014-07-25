@@ -170,6 +170,7 @@ DHT.prototype._onListening = function () {
   self._binding = false
   self.listening = true
   self.port = self.socket.address().port
+
   self._debug('emitted listening %s', self.port)
   self.emit('listening', self.port)
 }
@@ -277,12 +278,11 @@ DHT.prototype.removeNode = function (nodeId) {
 }
 
 /**
- * Store a peer in the DHT.
+ * Store a peer in the DHT. Called when a peer sends a `announce_peer` message.
  * @param {string} addr
  * @param {Buffer|string} infoHash
- * @param {string} from addr
  */
-DHT.prototype._addPeer = function (addr, infoHash, from) {
+DHT.prototype._addPeer = function (addr, infoHash) {
   var self = this
   if (self._destroyed) return
 
@@ -302,8 +302,8 @@ DHT.prototype._addPeer = function (addr, infoHash, from) {
 
   if (!exists) {
     peers.push(compactPeerInfo)
-    self._debug('addPeer %s %s from %s', addr, infoHash, from)
-    self.emit('peer', addr, infoHash, from)
+    self._debug('addPeer %s %s', addr, infoHash)
+    self.emit('announce', addr, infoHash)
   }
 }
 
@@ -405,7 +405,7 @@ DHT.prototype._bootstrap = function (nodes) {
     lookup()
 
     self._bootstrapTimeout = setTimeout(function () {
-      // If no nodes are in the table after a timeout, retry with bootstrap nodes
+      // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
         self._debug('No DHT bootstrap nodes replied, retry')
         lookup()
@@ -818,8 +818,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     }
     if (res.values) {
       res.values = parsePeerInfo(res.values)
-      res.values.forEach(function (_addr) {
-        self._addPeer(_addr, infoHash, addr)
+      res.values.forEach(function (peerAddr) {
+        self.emit('peer', peerAddr, infoHash, addr)
       })
     }
     cb(null, res)
@@ -888,11 +888,12 @@ DHT.prototype._onGetPeers = function (addr, message) {
  * @param {Buffer|string} infoHash
  * @param {number} port
  * @param {Buffer} token
- * @param {function} cb called with response
+ * @param {function=} cb called with response
  */
 DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
+  if (!cb) cb = function () {}
 
   var transactionId = self._getTransactionId(addr, cb)
   var message = {
@@ -907,7 +908,8 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
       implied_port: 0
     }
   }
-  self._debug('sent announce_peer %s %s to %s with token %s', infoHash, port, addr, token)
+  self._debug('sent announce_peer %s %s to %s with token %s', idToHexString(infoHash),
+              port, addr, idToHexString(token))
   self._send(addr, message)
 }
 
@@ -940,7 +942,10 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
     ? addrData[1] // use port of udp packet
     : message.a.port // use port in `announce_peer` message
 
-  self._debug('got announce_peer %s %s from %s with token %s', infoHash, port, addr, token)
+  self._debug('got announce_peer %s %s from %s with token %s', idToHexString(infoHash),
+              port, addr, idToHexString(token))
+
+  self._addPeer(addr, infoHash)
 
   // send acknowledgement
   var res = {
