@@ -66,6 +66,8 @@ function DHT (opts) {
 
   self.nodeId = idToBuffer(opts.nodeId)
 
+  self._debug('new DHT')
+
   self.ready = false
   self.listening = false
   self._binding = false
@@ -91,12 +93,6 @@ function DHT (opts) {
   self.tables = {}
 
   /**
-   * Lookup cache to prevent excessive GC.
-   * @type {Object} addr:string -> [host:string, port:number]
-   */
-  self._addrData = {}
-
-  /**
    * Pending transactions (unresolved requests to peers)
    * @type {Object} addr:string -> array of pending transactions
    */
@@ -107,6 +103,12 @@ function DHT (opts) {
    * @type {Object} infoHash:string -> array of peers
    */
   self.peers = {}
+
+  /**
+   * Lookup cache to prevent excessive GC.
+   * @type {Object} addr:string -> [host:string, port:number]
+   */
+  self._addrData = {}
 
   // Create socket and attach listeners
   self.socket = dgram.createSocket('udp4')
@@ -133,6 +135,9 @@ function DHT (opts) {
     // opts.bootstrap is undefined or true
     self._bootstrap(BOOTSTRAP_NODES)
   }
+  self.on('ready', function () {
+    self._debug('emitted ready')
+  })
 }
 
 /**
@@ -179,6 +184,7 @@ DHT.prototype._onListening = function () {
  */
 DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
+  self._debug('announce start %s %s', infoHash, port)
   var infoHashHex = idToHexString(infoHash)
 
   // TODO: it would be nice to not use a table when a lookup is in progress
@@ -194,6 +200,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     closest.forEach(function (contact) {
       self._sendAnnouncePeer(contact.addr, infoHash, port, contact.token)
     })
+    self._debug('announce end %s %s', infoHash, port)
     cb(null)
   }
 }
@@ -207,12 +214,15 @@ DHT.prototype.destroy = function (cb) {
   var self = this
   if (self._destroyed) return
   if (!cb) cb = function () {}
+  self._debug('destroy')
 
   self._destroyed = true
   self.port = null
 
   // garbage collect large data structures
   self.nodes = null
+  self.tables = null
+  self.transactions = null
   self.peers = null
   self._addrData = null
 
@@ -246,7 +256,7 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
   self.nodes.add(contact)
   // TODO: only emit this event for new nodes
   self.emit('node', addr, nodeId, from)
-  debug('adding node ' + addr + ' ' + idToHexString(nodeId) + (from ? ' discovered from ' + from : ''))
+  self._debug('addNode %s %s discovered from %s', addr, idToHexString(nodeId), from)
 }
 
 /**
@@ -258,8 +268,8 @@ DHT.prototype.removeNode = function (nodeId) {
   if (self._destroyed) return
   var contact = self.nodes.get(idToBuffer(nodeId))
   if (contact) {
+    self._debug('removeNode %s %s', contact.nodeId, contact.addr)
     self.nodes.remove(contact)
-    debug('removing node ' + contact.addr + ' ' + contact.nodeId)
   }
 }
 
@@ -289,8 +299,8 @@ DHT.prototype._addPeer = function (addr, infoHash, from) {
 
   if (!exists) {
     peers.push(compactPeerInfo)
+    self._debug('addPeer %s %s from %s', addr, infoHash, from)
     self.emit('peer', addr, infoHash, from)
-    debug('adding peer ' + addr + ' ' + infoHash + ' discovered from ' + from)
   }
 }
 
@@ -313,7 +323,7 @@ DHT.prototype.removePeer = function (addr, infoHash) {
     peers.some(function (peer, index) {
       if (bufferEqual(peer, compactPeerInfo)) {
         peers.splice(removeIndex, 1)
-        debug('removing peer ' + addr)
+        self._debug('removePeer %s %s', addr, infoHash)
         return true // abort early
       }
     })
@@ -328,7 +338,7 @@ DHT.prototype.removePeer = function (addr, infoHash) {
 DHT.prototype._bootstrap = function (nodes) {
   var self = this
 
-  debug('boostrapping with ' + JSON.stringify(nodes))
+  self._debug('boostrap with %s', JSON.stringify(nodes))
 
   var contacts = nodes.map(function (obj) {
     if (typeof obj === 'string') {
@@ -340,7 +350,6 @@ DHT.prototype._bootstrap = function (nodes) {
 
   self._resolveContacts(contacts, function (err, contacts) {
     if (err) return self.emit('error', err)
-    debug('resolved contacts ' + JSON.stringify(contacts))
     // emit `ready` once K nodes are in the routing table so that lookups will have a
     // good chance of succeeding
     var numNodes = 0
@@ -395,7 +404,7 @@ DHT.prototype._bootstrap = function (nodes) {
     self._bootstrapTimeout = setTimeout(function () {
       // If no nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
-        debug('no DHT bootstrap nodes replied, let\'s retry')
+        self._debug('No DHT bootstrap nodes replied, retry')
         lookup()
       }
     }, BOOTSTRAP_TIMEOUT)
@@ -424,7 +433,8 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   parallel(tasks, function (err, contacts) {
     if (err) return done(err)
     // filter out hosts that don't resolve
-    done(null, contacts.filter(function (addr) { return !!addr }))
+    contacts = contacts.filter(function (addr) { return !!addr })
+    done(null, contacts)
   })
 }
 
@@ -451,6 +461,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
   if (!opts) opts = {}
   if (!cb) cb = function () {}
+  var idHex = idToHexString(id)
+  self._debug('lookup %s', idHex)
+
+  id = idToBuffer(id)
 
   var table = self.tables[idHex] = new KBucket({
     localNodeId: id,
@@ -503,11 +517,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     if (self._destroyed) return
 
-    // if (err) {
-    //   debug('got err response ' + JSON.stringify(err.message || err))
-    // } else {
-    //   debug('got response ' + JSON.stringify(res))
-    // }
+    if (err) self._debug('got lookup error: %s', err.message || err)
 
     pending -= 1
 
@@ -540,11 +550,11 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
-      debug('terminating recursive lookup for ' + idToHexString(id))
+      self._debug('terminating lookup for ' + idToHexString(id))
       var closest = table.closest({ id: id }, K)
-      debug('K closest nodes are:')
+      self._debug('K closest nodes are:')
       closest.forEach(function (contact) {
-        debug(contact.addr + ' ' + idToHexString(contact.id))
+        self._debug('  ' + contact.addr + ' ' + idToHexString(contact.id))
       })
       cb(null, closest)
     }
@@ -564,22 +574,23 @@ DHT.prototype._onData = function (data, rinfo) {
     var message = bencode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
-    debug('bad message from ' + addr + ' ' + err.message)
+    self._debug('invalid message %s from %s', err.message, addr)
     return
   }
 
-  // debug('got message from ' + addr + ' ' + JSON.stringify(message))
 
   if (message.y) {
     var type = message.y.toString()
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
+    self._debug('got query %s from %s', JSON.stringify(message), addr)
     self._onQuery(addr, message)
   } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
+    self._debug('got response/error %s from %s', JSON.stringify(message), addr)
     self._onResponseOrError(addr, type, message)
   } else {
-    debug('unknown message type ' + type)
+    self._debug('unknown message type %s', type)
   }
 }
 
@@ -602,7 +613,7 @@ DHT.prototype._onQuery = function (addr, message) {
     self._onAnnouncePeer(addr, message)
   } else {
     var errMessage = 'unexpected query type ' + query
-    debug(errMessage)
+    self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
   }
 }
@@ -630,10 +641,10 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     // unexpected message!
     if (err) {
       var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
-      debug(errMessage)
+      self._debug(errMessage)
       self.emit('warning', new Error(err))
     } else {
-      debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
+      self._debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
       self._sendError(addr, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
     }
     return
@@ -661,6 +672,7 @@ DHT.prototype._send = function (addr, message, cb) {
     return
   }
 
+  self._debug('send %s to %s', JSON.stringify(message), addr)
   message = bencode.encode(message)
   self.socket.send(message, 0, message.length, port, host, cb)
 }
@@ -682,8 +694,8 @@ DHT.prototype._sendPing = function (addr, cb) {
       id: self.nodeId
     }
   }
+  self._debug('sent ping to ' + addr)
   self._send(addr, message)
-  debug('sent ping to ' + addr)
 }
 
 /**
@@ -701,8 +713,8 @@ DHT.prototype._onPing = function (addr, message) {
     }
   }
 
+  self._debug('got ping from %s', addr)
   self._send(addr, res)
-  debug('got ping from ' + addr)
 }
 
 /**
@@ -735,8 +747,8 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
       target: nodeId
     }
   }
+  self._debug('sent find_node %s to %s', idToHexString(nodeId), addr)
   self._send(addr, message)
-  debug('sent find_node ' + idToHexString(nodeId) + ' to ' + addr)
 }
 
 /**
@@ -751,10 +763,11 @@ DHT.prototype._onFindNode = function (addr, message) {
 
   if (!nodeId) {
     var errMessage = '`find_node` missing required `a.target` field'
-    debug(errMessage)
+    self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
+  self._debug('got find_node %s from %s', idToHexString(nodeId), addr)
 
   // Get the target node id if it exists in the routing table. Otherwise, get the
   // K closest nodes.
@@ -779,7 +792,6 @@ DHT.prototype._onFindNode = function (addr, message) {
   }
 
   self._send(addr, res)
-  debug('got find_node ' + idToHexString(nodeId) + ' from ' + addr)
 }
 
 /**
@@ -821,8 +833,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
       info_hash: infoHash
     }
   }
+  self._debug('sent get_peers %s to %s', idToHexString(infoHash), addr)
   self._send(addr, message)
-  debug('sent get_peers ' + idToHexString(infoHash) + ' from ' + addr)
 }
 
 /**
@@ -837,7 +849,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
   var infoHash = idToHexString(message.a && message.a.info_hash)
   if (!infoHash) {
     var errMessage = '`get_peers` missing required `a.info_hash` field'
-    debug(errMessage)
+    self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
@@ -864,7 +876,6 @@ DHT.prototype._onGetPeers = function (addr, message) {
   }
 
   self._send(addr, res)
-  debug('got get_peers ' + infoHash + ' from ' + addr)
 }
 
 /**
@@ -892,6 +903,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
       implied_port: 0
     }
   }
+  self._debug('sent announce_peer %s %s to %s with token %s', infoHash, port, addr, token)
   self._send(addr, message)
 }
 
@@ -908,7 +920,7 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
   var infoHash = idToHexString(message.a && message.a.info_hash)
   if (!infoHash) {
     errMessage = '`announce_peer` missing required `a.info_hash` field'
-    debug(errMessage)
+    self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
@@ -923,6 +935,8 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
   var port = message.a.implied_port !== 0
     ? addrData[1] // use port of udp packet
     : message.a.port // use port in `announce_peer` message
+
+  self._debug('got announce_peer %s %s from %s with token %s', infoHash, port, addr, token)
 
   // send acknowledgement
   var res = {
@@ -958,6 +972,7 @@ DHT.prototype._sendError = function (addr, transactionId, code, message) {
     message.t = transactionId
   }
 
+  self._debug('sent error %s to %s', JSON.stringify(message), addr)
   self._send(addr, message)
 }
 
@@ -1080,6 +1095,13 @@ DHT.prototype.toArray = function () {
   return nodes
 }
 
+DHT.prototype._debug = function () {
+  var self = this
+  var args = [].slice.call(arguments)
+  args[0] = '[' + idToHexString(self.nodeId).substring(0, 7) + '] ' + args[0]
+  debug.apply(null, args)
+}
+
 /**
  * Parse saved string
  * @param  {Array.<Object>} nodes
@@ -1121,7 +1143,7 @@ function parseNodeInfo (nodeInfo) {
       })
     }
   } catch (err) {
-    debug('error parsing node info ' + nodeInfo)
+    self._debug('error parsing node info ' + nodeInfo)
   }
   return contacts
 }
@@ -1135,7 +1157,7 @@ function parsePeerInfo (list) {
   try {
     return list.map(compact2string)
   } catch (err) {
-    debug('error parsing peer info ' + list)
+    self._debug('error parsing peer info ' + list)
     return []
   }
 }
