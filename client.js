@@ -1,12 +1,3 @@
-// TODO:
-// - republish at regular intervals
-// - When receiving any message, attempt to add the node to the table
-// - Accept responses even after timeout. no point to throwing them away
-// - handle 'ping' event for when bucket gets full
-// - Use a fast Set to make addPeer / removePeer faster
-// - dht should support adding a node when you don't know the nodeId (for PORT message)
-// - whenever we receive a nodeId, need to validate that it's the correct length
-
 module.exports = DHT
 
 var bencode = require('bencode')
