@@ -453,22 +453,18 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
-
-  var idHex = idToHexString(id)
-  debug('start recursive lookup for ' + idHex)
-
-  id = idToBuffer(id)
   if (typeof opts === 'function') {
     cb = opts
     opts = {}
   }
+  id = idToBuffer(id)
   if (!opts) opts = {}
   if (!cb) cb = function () {}
+  cb = once(cb)
+
   if (self._destroyed) return cb(new Error('dht is destroyed'))
   var idHex = idToHexString(id)
   self._debug('lookup %s', idHex)
-
-  id = idToBuffer(id)
 
   var table = self.tables[idHex] = new KBucket({
     localNodeId: id,
@@ -497,9 +493,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
     queried[addr] = true
 
     if (opts.findNode) {
-      self._sendFindNode(addr, id, onResponse)
+      self._sendFindNode(addr, id, onResponse.bind(null, addr))
     } else {
-      self._sendGetPeers(addr, id, onResponse)
+      self._sendGetPeers(addr, id, onResponse.bind(null, addr))
     }
   }
 
@@ -509,25 +505,32 @@ DHT.prototype.lookup = function (id, opts, cb) {
     })
   }
 
-  function onResponse (err, res) {
+  function onResponse (addr, err, res) {
+    if (self._destroyed) return cb(new Error('dht is destroyed'))
+
     // ignore errors - they're just timeouts. ignore responses - they're handled by
     // `_sendFindNode` or `_sendGetPeers` which handle inserting new nodes into
     // the routing table. recursive lookup will terminate when there are no more closer
     // nodes to find.
-
-    if (self._destroyed) return
-
     if (err) self._debug('got lookup error: %s', err.message || err)
 
     pending -= 1
 
+    var nodeId = res && res.id
+    var nodeIdHex = idToHexString(nodeId)
+    self._debug('got lookup response %s from %s', JSON.stringify(err || res), nodeIdHex)
+
     // add token to the node that sent this response
-    var node = table.get(res.nodeId)
-    if (node) {
-      node.token = res.token
-    } else {
-      console.error('should not happen! got response with nodeId not in lookup table')
+    var contact = table.get(nodeId)
+    if (!contact) {
+      console.log('contact was not in table, adding now...', nodeId, addr)
+      var contact = { id: nodeId, addr: addr }
+      table.add(contact)
     }
+    contact.token = res.token
+
+    console.log(res.token)
+    console.log(table.toArray())
 
     // add nodes to this routing table for this lookup
     if (res && res.nodes) {
@@ -649,10 +652,9 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     }
     return
   }
-
   // TODO: would be nice to verify that node's reported id matches the id we have stored
   // for them
-  transaction.cb(err, message.r, message.id)
+  transaction.cb(err, message.r)
 }
 
 /**
@@ -804,9 +806,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
 
-  function done (err, res, nodeId) {
+  function done (err, res) {
     if (err) return cb(err)
-    res.nodeId = idToHexString(nodeId)
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
@@ -819,7 +820,6 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
         self._addPeer(_addr, infoHash, addr)
       })
     }
-    res.token = res.token.toString()
     cb(null, res)
   }
 
@@ -846,13 +846,15 @@ DHT.prototype._onGetPeers = function (addr, message) {
   var self = this
   var addrData = self._getAddrData(addr)
 
-  var infoHash = idToHexString(message.a && message.a.info_hash)
+  var infoHash = message.a && message.a.info_hash
   if (!infoHash) {
     var errMessage = '`get_peers` missing required `a.info_hash` field'
     self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
+  var infoHashHex = idToHexString(infoHash)
+  self._debug('got get_peers %s from %s', infoHashHex, addr)
 
   var res = {
     t: message.t,
@@ -863,7 +865,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
     }
   }
 
-  var peers = self.peers[infoHash]
+  var peers = self.peers[infoHashHex]
   if (peers) {
     // We know of peers for the target info hash. Peers are stored as an array of
     // compact peer info, so return it as-is.
