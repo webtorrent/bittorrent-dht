@@ -21,10 +21,7 @@ var inherits = require('inherits')
 var KBucket = require('k-bucket')
 var once = require('once')
 var parallel = require('run-parallel')
-var portfinder = require('portfinder')
 var string2compact = require('string2compact')
-
-portfinder.basePort = Math.floor(Math.random() * 60000) + 1025 // ports above 1024
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -71,6 +68,7 @@ function DHT (opts) {
 
   self.ready = false
   self.listening = false
+  self._binding = false
   self._destroyed = false
   self.port = null
 
@@ -149,22 +147,27 @@ DHT.prototype.listen = function (port, onlistening) {
     port = undefined
   }
 
-  if (self._destroyed || self.listening) return
-
   if (onlistening)
     self.once('listening', onlistening)
 
-  function onPort (err, port) {
-    if (err) return self.emit('error', err)
-    self.port = port
-    self.socket.bind(self.port)
-  }
+  if (self._destroyed || self._binding || self.listening) return
+  self._debug('listen %s', port)
 
-  if (port) {
-    onPort(null, port)
-  } else {
-    portfinder.getPort(onPort)
-  }
+  self._binding = true
+
+  self.socket.bind(port)
+}
+
+/**
+ * Called when DHT is listening for UDP messages.
+ */
+DHT.prototype._onListening = function () {
+  var self = this
+  self._binding = false
+  self.listening = true
+  self.port = self.socket.address().port
+  self._debug('emitted listening %s', self.port)
+  self.emit('listening', self.port)
 }
 
 /**
@@ -195,15 +198,6 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   }
 }
 
-/**
- * Called when DHT is listening for UDP messages.
- * @return {[type]} [description]
- */
-DHT.prototype._onListening = function () {
-  var self = this
-  self.listening = true
-  self.emit('listening', self.port)
-}
 
 /**
  * Destroy and cleanup the DHT.

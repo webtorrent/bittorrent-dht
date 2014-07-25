@@ -1,6 +1,5 @@
 var common = require('./common')
 var DHT = require('../')
-var portfinder = require('portfinder')
 var test = require('tape')
 
 test('persist dht', function (t) {
@@ -8,6 +7,10 @@ test('persist dht', function (t) {
 
   var dht1 = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht1)
+
+  for (var i = 0; i < DHT.K; i++) {
+    dht1.addNode(common.randomAddr(), common.randomId())
+  }
 
   dht1.on('ready', function () {
     var bootstrap = dht1.toArray()
@@ -20,7 +23,4 @@ test('persist dht', function (t) {
     })
   })
 
-  for (var i = 0; i < DHT.K; i++) {
-    dht1.addNode(common.randomAddr(), common.randomId())
-  }
 })

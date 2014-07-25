@@ -90,7 +90,7 @@ lookup may fail because the DHT routing table doesn't contain enough nodes.
 #### `dht.listen([port], [onlistening])`
 
 Make the DHT listen on the given `port`. If `port` is undefined, an available port is
-automatically picked with [portfinder](https://github.com/indexzero/node-portfinder).
+automatically picked.
 
 If `onlistening` is defined, it is attached to the `listening` event.
 

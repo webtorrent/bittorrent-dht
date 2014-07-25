@@ -1,6 +1,5 @@
 var common = require('./common')
 var DHT = require('../')
-var portfinder = require('portfinder')
 var test = require('tape')
 
 test('`node` event fires for each added node (100x)', function (t) {
@@ -68,20 +67,17 @@ test('`peer` event fires for each added peer (10000x)', function (t) {
 })
 
 test('`listening` event fires', function (t) {
-  t.plan(3)
+  t.plan(2)
   var dht = new DHT({ bootstrap: false })
 
   common.failOnWarningOrError(t, dht)
 
-  portfinder.getPort(function (err, port) {
-    t.error(err)
-    dht.listen(port, function () {
-      t.pass('listen() onlistening shorthand gets called')
-    })
-    dht.on('listening', function () {
-      t.pass('`listening` event fires')
-      dht.destroy()
-    })
+  dht.listen(function (port) {
+    t.pass('listen() onlistening shorthand gets called')
+  })
+  dht.on('listening', function () {
+    t.pass('`listening` event fires')
+    dht.destroy()
   })
 })
 
@@ -98,7 +94,7 @@ test('`ready` event fires when bootstrap === false', function (t) {
 })
 
 test('`ready` event fires when there are K nodes', function (t) {
-  t.plan(4)
+  t.plan(3)
 
   // dht1 will simulate an existing node (with a populated routing table)
   var dht1 = new DHT({ bootstrap: false })
@@ -111,22 +107,18 @@ test('`ready` event fires when there are K nodes', function (t) {
   // add K nodes to dht1
   common.addRandomNodes(dht1, DHT.K)
 
-  portfinder.getPort(function (err, port) {
-    t.error(err)
-    dht1.listen(port, function () {
-      t.pass('dht listening on port ' + port)
+  dht1.listen(function (port) {
+    t.pass('dht listening on port ' + port)
 
-      // dh2 will get all K nodes from dht1 and should also emit a `ready` event
-      var dht2 = new DHT({ bootstrap: '127.0.0.1:' + port })
-      common.failOnWarningOrError(t, dht2)
+    // dh2 will get all K nodes from dht1 and should also emit a `ready` event
+    var dht2 = new DHT({ bootstrap: '127.0.0.1:' + port })
+    common.failOnWarningOrError(t, dht2)
 
-      dht2.on('ready', function () {
-        t.equal(dht1.nodes.count(), DHT.K, 'dht2 gets K nodes from dht1 and fires `ready`')
+    dht2.on('ready', function () {
+      t.equal(dht1.nodes.count(), DHT.K, 'dht2 gets K nodes from dht1 and fires `ready`')
 
-        dht1.destroy()
-        dht2.destroy()
-      })
-
+      dht1.destroy()
+      dht2.destroy()
     })
   })
 })

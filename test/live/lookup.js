@@ -1,5 +1,4 @@
 var DHT = require('../../')
-var portfinder = require('portfinder')
 var test = require('tape')
 
 var pride = '1E69917FBAA2C767BCA463A96B5572785C6D8A12'.toLowerCase() // Pride & Prejudice
