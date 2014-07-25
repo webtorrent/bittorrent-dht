@@ -34,15 +34,15 @@ test('`node` event fires for each added node (10000x)', function (t) {
   common.addRandomNodes(dht, 10000)
 })
 
-test('`peer` event fires for each added peer (100x)', function (t) {
+test('`announce` event fires for each added peer (100x)', function (t) {
   var dht = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht)
 
   var numPeers = 0
-  dht.on('peer', function () {
+  dht.on('announce', function () {
     numPeers += 1
     if (numPeers === 100) {
-      t.pass('100 peers added, 100 `peer` events emitted')
+      t.pass('100 peers added, 100 `announce` events emitted')
       t.end()
     }
   })
@@ -50,15 +50,15 @@ test('`peer` event fires for each added peer (100x)', function (t) {
   common.addRandomPeers(dht, 100)
 })
 
-test('`peer` event fires for each added peer (10000x)', function (t) {
+test('`announce` event fires for each added peer (10000x)', function (t) {
   var dht = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht)
 
   var numPeers = 0
-  dht.on('peer', function () {
+  dht.on('announce', function () {
     numPeers += 1
     if (numPeers === 10000) {
-      t.pass('10000 peers added, 10000 `peer` events emitted')
+      t.pass('10000 peers added, 10000 `announce` events emitted')
       t.end()
     }
   })
@@ -114,7 +114,8 @@ test('`ready` event fires when there are K nodes', function (t) {
       common.failOnWarningOrError(t, dht2)
 
       dht2.on('ready', function () {
-        t.equal(dht1.nodes.count(), DHT.K, 'dht2 gets K nodes from dht1 and fires `ready`')
+        // K+1 because dht1 also optimistically captured dht2's addr and included it
+        t.equal(dht1.nodes.count(), DHT.K + 1, 'dht2 gets K+1 nodes from dht1 and fires `ready`')
 
         dht1.destroy()
         dht2.destroy()

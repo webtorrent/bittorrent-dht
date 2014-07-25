@@ -53,7 +53,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
       t.deepEqual(res.id, dht1.nodeId)
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }),
-        [ '255.255.255.255:6969' ]
+        [ '255.255.255.255:6969', '127.0.0.1:' + dht2.port ]
       )
 
       dht1.destroy()
@@ -81,7 +81,8 @@ test('`find_node` query (with many in table)', function (t) {
       t.deepEqual(res.id, dht1.nodeId)
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }).sort(),
-        [ '1.1.1.1:6969', '10.10.10.10:6969', '255.255.255.255:6969' ]
+        [ '1.1.1.1:6969', '10.10.10.10:6969', '127.0.0.1:' + dht2.port,
+          '255.255.255.255:6969' ]
       )
 
       dht1.destroy()
@@ -109,7 +110,7 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
       t.ok(Buffer.isBuffer(res.token))
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }).sort(),
-        [ '1.1.1.1:6969', '2.2.2.2:6969' ]
+        [ '1.1.1.1:6969', '127.0.0.1:' + dht2.port, '2.2.2.2:6969' ]
       )
 
       dht1.destroy()
