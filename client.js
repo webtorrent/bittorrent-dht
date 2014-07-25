@@ -120,21 +120,22 @@ function DHT (opts) {
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
   self._rotateInterval.unref()
 
-  if (opts.bootstrap === false) {
-      // Emit `ready` right away because the user does not want to bootstrap. Presumably,
-      // the user will call addNode() to populate the routing table manually.
-      process.nextTick(function () {
+  process.nextTick(function () {
+    if (opts.bootstrap === false) {
+        // Emit `ready` right away because the user does not want to bootstrap. Presumably,
+        // the user will call addNode() to populate the routing table manually.
         self.ready = true
         self.emit('ready')
-      })
-  } else if (typeof opts.bootstrap === 'string') {
-    self._bootstrap([ opts.bootstrap ])
-  } else if (Array.isArray(opts.bootstrap)) {
-    self._bootstrap(fromArray(opts.bootstrap))
-  } else {
-    // opts.bootstrap is undefined or true
-    self._bootstrap(BOOTSTRAP_NODES)
-  }
+    } else if (typeof opts.bootstrap === 'string') {
+      self._bootstrap([ opts.bootstrap ])
+    } else if (Array.isArray(opts.bootstrap)) {
+      self._bootstrap(fromArray(opts.bootstrap))
+    } else {
+      // opts.bootstrap is undefined or true
+      self._bootstrap(BOOTSTRAP_NODES)
+    }
+  })
+
   self.on('ready', function () {
     self._debug('emitted ready')
   })
