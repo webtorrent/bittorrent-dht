@@ -66,7 +66,7 @@ function DHT (opts) {
 
   self.nodeId = idToBuffer(opts.nodeId)
 
-  self._debug('new DHT')
+  self._debug('new DHT %s', idToHexString(self.nodeId))
 
   self.ready = false
   self.listening = false
@@ -157,10 +157,9 @@ DHT.prototype.listen = function (port, onlistening) {
     self.once('listening', onlistening)
 
   if (self._destroyed || self._binding || self.listening) return
-  self._debug('listen %s', port)
-
   self._binding = true
 
+  self._debug('listen %s', port)
   self.socket.bind(port)
 }
 
@@ -181,10 +180,13 @@ DHT.prototype._onListening = function () {
  * port.
  * @param  {string|Buffer} infoHawh
  * @param  {number} port
- * @param  {function} cb
+ * @param  {function=} cb
  */
 DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
+  if (!cb) cb = function () {}
+  if (self._destroyed) return cb(new Error('dht is destroyed'))
+
   self._debug('announce start %s %s', infoHash, port)
   var infoHashHex = idToHexString(infoHash)
 
@@ -213,8 +215,9 @@ DHT.prototype.announce = function (infoHash, port, cb) {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
-  if (self._destroyed) return
   if (!cb) cb = function () {}
+  if (self._destroyed) return cb(new Error('dht is destroyed'))
+  if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
   self._debug('destroy')
 
   self._destroyed = true
@@ -339,7 +342,7 @@ DHT.prototype.removePeer = function (addr, infoHash) {
 DHT.prototype._bootstrap = function (nodes) {
   var self = this
 
-  self._debug('boostrap with %s', JSON.stringify(nodes))
+  self._debug('bootstrap with %s', JSON.stringify(nodes))
 
   var contacts = nodes.map(function (obj) {
     if (typeof obj === 'string') {
@@ -434,7 +437,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   parallel(tasks, function (err, contacts) {
     if (err) return done(err)
     // filter out hosts that don't resolve
-    contacts = contacts.filter(function (addr) { return !!addr })
+    contacts = contacts.filter(function (contact) { return !!contact })
     done(null, contacts)
   })
 }
@@ -450,7 +453,6 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
-  if (self._destroyed) return
 
   var idHex = idToHexString(id)
   debug('start recursive lookup for ' + idHex)
@@ -462,6 +464,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
   if (!opts) opts = {}
   if (!cb) cb = function () {}
+  if (self._destroyed) return cb(new Error('dht is destroyed'))
   var idHex = idToHexString(id)
   self._debug('lookup %s', idHex)
 
@@ -478,9 +481,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
   if (opts.addrs) {
     // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
-    opts.addrs.forEach(function (addr) {
-      query(addr)
-    })
+    opts.addrs.forEach(query)
   } else if (self.nodes.count() > 0) {
     // kick off lookup with nodes in the main table
     queryClosest()
@@ -488,9 +489,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
     // Wait until at least K nodes are available, so we're more confident that a
     // lookup will succeed. If there were not many nodes and most/all were bad, then
     // lookup would terminate early. We want wait until bootstrapping has found peers.
-    self.once('ready', function () {
-      queryClosest()
-    })
+    self.once('ready', queryClosest)
   }
 
   function query (addr) {
@@ -1014,10 +1013,10 @@ DHT.prototype._getTransactionId = function (addr, fn) {
     fn(new Error('query timed out'))
   }
 
-  function onResponse (err, data) {
+  function onResponse (err, res) {
     clearTimeout(reqs[transactionId].timeout)
     reqs[transactionId] = null
-    fn(err, data)
+    fn(err, res)
   }
 
   reqs[transactionId] = {
