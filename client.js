@@ -147,7 +147,7 @@ function DHT (opts) {
   })
 
   self.on('ready', function () {
-    self._debug('emitted ready')
+    self._debug('emit ready')
   })
 }
 
@@ -182,7 +182,7 @@ DHT.prototype._onListening = function () {
   self.listening = true
   self.port = self.socket.address().port
 
-  self._debug('emitted listening %s', self.port)
+  self._debug('emit listening %s', self.port)
   self.emit('listening', self.port)
 }
 
@@ -341,7 +341,7 @@ DHT.prototype.removePeer = function (addr, infoHash) {
     // TODO: make this faster using a set
     peers.some(function (peer, index) {
       if (bufferEqual(peer, compactPeerInfo)) {
-        peers.splice(removeIndex, 1)
+        peers.splice(index, 1)
         self._debug('removePeer %s %s', addr, infoHash)
         return true // abort early
       }
@@ -409,6 +409,7 @@ DHT.prototype._bootstrap = function (nodes) {
         findNode: true,
         addrs: addrs.length ? addrs : null
       }, function (err) {
+        if (err) self._debug('lookup error %s during bootstrap', err.message)
         // if the recursive lookup terminates and we still haven't found K initial nodes
         // (i.e. 'ready' hasn't been emitted) then emit it now.
         if (!self.ready) {
@@ -481,7 +482,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
 
   var idHex = idToHexString(id)
-  self._debug('lookup %s', idHex)
+  self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
 
   var table = self.tables[idHex] = new KBucket({
     localNodeId: id,
@@ -540,11 +541,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
     var nodeIdHex = idToHexString(nodeId)
     self._debug('got lookup response %s from %s', JSON.stringify(err || res), nodeIdHex)
 
-    // add token to the node that sent this response
+    // add node that sent this response
     var contact = table.get(nodeId)
     if (!contact) {
-      console.log('contact was not in table, adding now...', nodeId, addr)
-      var contact = { id: nodeId, addr: addr }
+      contact = { id: nodeId, addr: addr }
       add(contact)
     }
     contact.token = res.token
@@ -564,13 +564,13 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     while (pending < MAX_CONCURRENCY && candidates.length) {
       // query as many candidates as our concurrency limit will allow
-      var addr = candidates.pop().addr
-      query(addr)
+      query(candidates.pop().addr)
     }
 
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
-      self._debug('terminating lookup for ' + idToHexString(id))
+      self._debug('terminating lookup %s %s',
+          (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
       var closest = table.closest({ id: id }, K)
       self._debug('K closest nodes are:')
       closest.forEach(function (contact) {
@@ -589,10 +589,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
 DHT.prototype._onData = function (data, rinfo) {
   var self = this
   var addr = rinfo.address + ':' + rinfo.port
-  var errMessage
+  var message, errMessage
 
   try {
-    var message = bencode.decode(data)
+    message = bencode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
     errMessage = 'invalid message ' + data + ' from ' + addr + ' ' + err.message
@@ -611,6 +611,8 @@ DHT.prototype._onData = function (data, rinfo) {
     return
   }
 
+  self._debug('got data %s from %s', JSON.stringify(message), addr)
+
   // Attempt to add every (valid) node that we see to the routing table.
   // TODO: If they node is already in the table, just update the "last heard from" time
   var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
@@ -620,7 +622,6 @@ DHT.prototype._onData = function (data, rinfo) {
     self.addNode(addr, nodeId, addr)
   }
 
-  self._debug('got data %s from %s', JSON.stringify(message), addr)
   if (type === MESSAGE_TYPE.QUERY) {
     self._onQuery(addr, message)
   } else if (type === MESSAGE_TYPE.RESPONSE || type === MESSAGE_TYPE.ERROR) {
@@ -992,9 +993,9 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
  * @param  {string} addr
  * @param  {Buffer|number} transactionId
  * @param  {number} code
- * @param  {string} message
+ * @param  {string} errMessage
  */
-DHT.prototype._sendError = function (addr, transactionId, code, message) {
+DHT.prototype._sendError = function (addr, transactionId, code, errMessage) {
   var self = this
 
   if (transactionId && !Buffer.isBuffer(transactionId)) {
@@ -1003,7 +1004,7 @@ DHT.prototype._sendError = function (addr, transactionId, code, message) {
 
   var message = {
     y: MESSAGE_TYPE.ERROR,
-    e: [code, message]
+    e: [code, errMessage]
   }
 
   if (transactionId) {
@@ -1166,7 +1167,6 @@ function fromArray (nodes) {
  * @return {Buffer}
  */
 function convertToNodeInfo (contacts) {
-  var self = this
   return Buffer.concat(contacts.map(function (contact) {
     return Buffer.concat([ contact.id, string2compact(contact.addr) ])
   }))
@@ -1187,7 +1187,7 @@ function parseNodeInfo (nodeInfo) {
       })
     }
   } catch (err) {
-    self._debug('error parsing node info ' + nodeInfo)
+    debug('error parsing node info ' + nodeInfo)
   }
   return contacts
 }
@@ -1201,7 +1201,7 @@ function parsePeerInfo (list) {
   try {
     return list.map(compact2string)
   } catch (err) {
-    self._debug('error parsing peer info ' + list)
+    debug('error parsing peer info ' + list)
     return []
   }
 }
