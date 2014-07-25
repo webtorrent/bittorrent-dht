@@ -484,11 +484,15 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var idHex = idToHexString(id)
   self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
 
-  var table = self.tables[idHex] = new KBucket({
+  var table = new KBucket({
     localNodeId: id,
     numberOfNodesPerKBucket: K,
     numberOfNodesToPing: MAX_CONCURRENCY
   })
+
+  if (!opts.findNode) {
+    self.tables[idHex] = table
+  }
 
   function add (contact) {
     if (!self._addrIsSelf(contact.addr)) table.add(contact)
