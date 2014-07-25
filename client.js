@@ -20,6 +20,7 @@ var hat = require('hat')
 var inherits = require('inherits')
 var KBucket = require('k-bucket')
 var once = require('once')
+var os = require('os')
 var parallel = require('run-parallel')
 var string2compact = require('string2compact')
 
@@ -46,6 +47,15 @@ var ERROR_TYPE = {
   SERVER: 202,
   PROTOCOL: 203, // malformed packet, invalid arguments, or bad token
   METHOD_UNKNOWN: 204
+}
+
+var LOCAL_HOSTS = []
+var interfaces = os.networkInterfaces()
+for (var i in interfaces) {
+  for (var j = 0; j < interfaces[i].length; j++) {
+    var face = interfaces[i][j]
+    if (face.family === 'IPv4') LOCAL_HOSTS.push(face.address)
+  }
 }
 
 inherits(DHT, EventEmitter)
@@ -187,7 +197,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   if (!cb) cb = function () {}
   if (self._destroyed) return cb(new Error('dht is destroyed'))
 
-  self._debug('announce start %s %s', infoHash, port)
+  self._debug('announce %s %s', infoHash, port)
   var infoHashHex = idToHexString(infoHash)
 
   // TODO: it would be nice to not use a table when a lookup is in progress
@@ -244,7 +254,7 @@ DHT.prototype.destroy = function (cb) {
 
 /**
  * Add a DHT node to the routing table.
- * @param {string=} addr
+ * @param {string} addr
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
  */
@@ -253,6 +263,11 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
   if (self._destroyed) return
   nodeId = idToBuffer(nodeId)
 
+  if (self._addrIsSelf(addr)) {
+    // self._debug('skipping adding %s since that is us!', addr)
+    return
+  }
+
   var contact = {
     id: nodeId,
     addr: addr
@@ -260,7 +275,7 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
   self.nodes.add(contact)
   // TODO: only emit this event for new nodes
   self.emit('node', addr, nodeId, from)
-  self._debug('addNode %s %s discovered from %s', addr, idToHexString(nodeId), from)
+  self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
 }
 
 /**
@@ -473,6 +488,10 @@ DHT.prototype.lookup = function (id, opts, cb) {
     numberOfNodesToPing: MAX_CONCURRENCY
   })
 
+  function add (contact) {
+    if (!self._addrIsSelf(contact.addr)) table.add(contact)
+  }
+
   var queried = {}
   var pending = 0 // pending queries
 
@@ -525,17 +544,14 @@ DHT.prototype.lookup = function (id, opts, cb) {
     if (!contact) {
       console.log('contact was not in table, adding now...', nodeId, addr)
       var contact = { id: nodeId, addr: addr }
-      table.add(contact)
+      add(contact)
     }
     contact.token = res.token
-
-    console.log(res.token)
-    console.log(table.toArray())
 
     // add nodes to this routing table for this lookup
     if (res && res.nodes) {
       res.nodes.forEach(function (contact) {
-        table.add(contact)
+        add(contact)
       })
     }
 
@@ -674,7 +690,7 @@ DHT.prototype._send = function (addr, message, cb) {
     return
   }
 
-  self._debug('send %s to %s', JSON.stringify(message), addr)
+  // self._debug('send %s to %s', JSON.stringify(message), addr)
   message = bencode.encode(message)
   self.socket.send(message, 0, message.length, port, host, cb)
 }
@@ -739,7 +755,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, done)
+  var transactionId = self._getTransactionId(addr, onResponse)
   var message = {
     t: transactionIdToBuffer(transactionId),
     y: MESSAGE_TYPE.QUERY,
@@ -806,7 +822,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
 
-  function done (err, res) {
+  function onResponse (err, res) {
     if (err) return cb(err)
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
@@ -823,7 +839,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, done)
+  var transactionId = self._getTransactionId(addr, onResponse)
   var message = {
     t: transactionIdToBuffer(transactionId),
     y: MESSAGE_TYPE.QUERY,
@@ -1102,6 +1118,11 @@ DHT.prototype.toArray = function () {
   return nodes
 }
 
+DHT.prototype._addrIsSelf = function (addr) {
+  var self = this
+  return self.port &&
+    LOCAL_HOSTS.some(function (host) { return host + ':' + self.port === addr })
+}
 DHT.prototype._debug = function () {
   var self = this
   var args = [].slice.call(arguments)
