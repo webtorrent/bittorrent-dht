@@ -463,6 +463,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
   cb = once(cb)
 
   if (self._destroyed) return cb(new Error('dht is destroyed'))
+  if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
+
   var idHex = idToHexString(id)
   self._debug('lookup %s', idHex)
 
@@ -665,6 +667,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
  */
 DHT.prototype._send = function (addr, message, cb) {
   var self = this
+  if (!self.listening) return self.listen(self._send.bind(self, addr, message, cb))
   if (!cb) cb = function () {}
   var addrData = self._getAddrData(addr)
   var host = addrData[0]
