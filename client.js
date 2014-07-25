@@ -506,13 +506,12 @@ DHT.prototype.lookup = function (id, opts, cb) {
     })
   }
 
+  // Note: `_sendFindNode` and `_sendGetPeers` will insert newly discovered nodes into
+  // the routing table, so that's not done here.
   function onResponse (addr, err, res) {
     if (self._destroyed) return cb(new Error('dht is destroyed'))
 
-    // ignore errors - they're just timeouts. ignore responses - they're handled by
-    // `_sendFindNode` or `_sendGetPeers` which handle inserting new nodes into
-    // the routing table. recursive lookup will terminate when there are no more closer
-    // nodes to find.
+    // ignore errors - they are just timeouts
     if (err) self._debug('got lookup error: %s', err.message || err)
 
     pending -= 1
@@ -653,8 +652,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     }
     return
   }
-  // TODO: would be nice to verify that node's reported id matches the id we have stored
-  // for them
+
   transaction.cb(err, message.r)
 }
 
@@ -730,7 +728,7 @@ DHT.prototype._onPing = function (addr, message) {
 DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
   var self = this
 
-  function done (err, res) {
+  function onResponse (err, res) {
     if (err) return cb(err)
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
