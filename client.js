@@ -843,6 +843,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (peerAddr) {
+        self._debug('emit peer %s %s from %s', idToHexString(infoHash), peerAddr, addr)
         self.emit('peer', peerAddr, infoHash, addr)
       })
     }
@@ -897,10 +898,9 @@ DHT.prototype._onGetPeers = function (addr, message) {
     // compact peer info, so return it as-is.
     res.r.values = peers
   } else {
-    // No peers, so return the K closest nodes instead.
-    var contacts = self.nodes.closest({ id: infoHash }, K)
-    // Convert nodes to "compact node info" representation
-    res.r.nodes = convertToNodeInfo(contacts)
+    // No peers, so return the K closest nodes instead. Convert nodes to "compact node
+    // info" representation
+    res.r.nodes = convertToNodeInfo(self.nodes.closest({ id: infoHash }, K))
   }
 
   self._send(addr, res)
@@ -969,7 +969,7 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
   self._debug('got announce_peer %s %s from %s with token %s', idToHexString(infoHash),
               port, addr, idToHexString(token))
 
-  self._addPeer(addr, infoHash)
+  self._addPeer(addrData[0] + ':' + port, infoHash)
 
   // send acknowledgement
   var res = {
