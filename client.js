@@ -29,7 +29,7 @@ var BOOTSTRAP_NODES = [
   'dht.transmissionbt.com:6881'
 ]
 
-var BOOTSTRAP_TIMEOUT = 5000
+var BOOTSTRAP_TIMEOUT = 10000
 var K = module.exports.K = 20 // number of nodes per bucket
 var MAX_CONCURRENCY = 3 // α from Kademlia paper
 var MAX_REQUESTS = 3 // TODO?
