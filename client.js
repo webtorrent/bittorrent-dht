@@ -662,7 +662,8 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
     && message.t.readUInt16BE(0)
 
-  var transaction = self.transactions[addr] && self.transactions[addr][transactionId]
+  var transaction = self.transactions && self.transactions[addr]
+  transaction = transaction && transaction[transactionId]
 
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
