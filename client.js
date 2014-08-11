@@ -41,12 +41,13 @@ var ERROR_TYPE = {
   METHOD_UNKNOWN: 204
 }
 
-var LOCAL_HOSTS = []
+var LOCAL_HOSTS = {4: [], 6: []}
 var interfaces = os.networkInterfaces()
 for (var i in interfaces) {
   for (var j = 0; j < interfaces[i].length; j++) {
     var face = interfaces[i][j]
-    if (face.family === 'IPv4') LOCAL_HOSTS.push(face.address)
+    if (face.family === 'IPv4') LOCAL_HOSTS[4].push(face.address)
+    if (face.family === 'IPv6') LOCAL_HOSTS[6].push(face.address)
   }
 }
 
@@ -64,6 +65,7 @@ function DHT (opts) {
 
   if (!opts) opts = {}
   if (!opts.nodeId) opts.nodeId = hat(160)
+  if (!opts.ipv) opts.ipv = process.env.IPV || 4;
 
   self.nodeId = idToBuffer(opts.nodeId)
 
@@ -74,6 +76,7 @@ function DHT (opts) {
   self._binding = false
   self._destroyed = false
   self.port = null
+  self.opts = opts;
 
   /**
    * Routing table
@@ -112,7 +115,7 @@ function DHT (opts) {
   self._addrData = {}
 
   // Create socket and attach listeners
-  self.socket = dgram.createSocket('udp4')
+  self.socket = dgram.createSocket('udp' + opts.ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
@@ -434,7 +437,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = self._getAddrData(contact.addr)
-      dns.lookup(addrData[0], 4, function (err, host) {
+      dns.lookup(addrData[0], self.opts.ipv, function (err, host) {
         if (err) return cb(null, null)
         contact.addr = host + ':' + addrData[1]
         cb(null, contact)
@@ -1125,7 +1128,7 @@ DHT.prototype.toArray = function () {
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
   return self.port &&
-    LOCAL_HOSTS.some(function (host) { return host + ':' + self.port === addr })
+    LOCAL_HOSTS[self.opts.ipv].some(function (host) { return host + ':' + self.port === addr })
 }
 
 DHT.prototype._debug = function () {
