@@ -29,12 +29,12 @@ var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
 
-var MESSAGE_TYPE = {
+var MESSAGE_TYPE = DHT.prototype.MESSAGE_TYPE = {
   QUERY: 'q',
   RESPONSE: 'r',
   ERROR: 'e'
 }
-var ERROR_TYPE = {
+var ERROR_TYPE = DHT.prototype.ERROR_TYPE = {
   GENERIC: 201,
   SERVER: 202,
   PROTOCOL: 203, // malformed packet, invalid arguments, or bad token
