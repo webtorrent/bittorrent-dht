@@ -79,6 +79,18 @@ function DHT (opts) {
   self.opts = opts;
 
   /**
+   * Query Handlers table
+   * @type {String:Function}
+   */
+
+  self.queryHandler = {
+    ping:  self._onPing.bind(self),
+    find_node: self._onFindNode.bind(self),
+    get_peers: self._onGetPeers.bind(self),
+    announce_peer: self._onAnnouncePeer.bind(self)
+  }
+
+  /**
    * Routing table
    * @type {KBucket}
    */
@@ -638,17 +650,12 @@ DHT.prototype._onQuery = function (addr, message) {
   var self = this
   var query = message.q.toString()
 
-  if (query === 'ping') {
-    self._onPing(addr, message)
-  } else if (query === 'find_node') {
-    self._onFindNode(addr, message)
-  } else if (query === 'get_peers') {
-    self._onGetPeers(addr, message)
-  } else if (query === 'announce_peer') {
-    self._onAnnouncePeer(addr, message)
-  } else {
+  try {
+    self.queryHandler[query](addr, message);
+  } catch (e) {
     var errMessage = 'unexpected query type ' + query
     self._debug(errMessage)
+
     self._sendError(addr, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
   }
 }
