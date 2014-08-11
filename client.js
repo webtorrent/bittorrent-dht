@@ -719,25 +719,31 @@ DHT.prototype._send = function (addr, message, cb) {
   self.socket.send(message, 0, message.length, port, host, cb)
 }
 
+DHT.prototype.query = function (data, addr, cb) {
+  var self = this
+
+  if (! data.a) data.a = {}
+  if (! data.a.nodeId) data.a.id = self.nodeId
+
+  var transactionId = self._getTransactionId(addr, cb)
+  var message = {
+    t: transactionIdToBuffer(transactionId),
+    y: MESSAGE_TYPE.QUERY,
+    q: data.q,
+    a: data.a
+  }
+
+  self._debug('sent' + data.q + ' %s to %s', idToHexString(self.nodeId), addr)
+  self._send(addr, message)
+}
+
 /**
  * Send "ping" query to given addr.
  * @param {string} addr
  * @param {function} cb called with response
  */
 DHT.prototype._sendPing = function (addr, cb) {
-  var self = this
-
-  var transactionId = self._getTransactionId(addr, cb)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
-    q: 'ping',
-    a: {
-      id: self.nodeId
-    }
-  }
-  self._debug('sent ping to ' + addr)
-  self._send(addr, message)
+  this.query ({q: 'ping'}, addr, cb);
 }
 
 /**
@@ -779,18 +785,15 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, onResponse)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'find_node',
     a: {
       id: self.nodeId,
       target: nodeId
     }
   }
-  self._debug('sent find_node %s to %s', idToHexString(nodeId), addr)
-  self._send(addr, message)
+
+  self.query (data, addr, onResponse);
 }
 
 /**
@@ -854,18 +857,15 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, onResponse)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'get_peers',
     a: {
       id: self.nodeId,
       info_hash: infoHash
     }
   }
-  self._debug('sent get_peers %s to %s', idToHexString(infoHash), addr)
-  self._send(addr, message)
+
+  self.query (data, addr, onResponse)
 }
 
 /**
@@ -923,10 +923,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
   infoHash = idToBuffer(infoHash)
   if (!cb) cb = function () {}
 
-  var transactionId = self._getTransactionId(addr, cb)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'announce_peer',
     a: {
       id: self.nodeId,
@@ -936,9 +933,10 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
       implied_port: 0
     }
   }
+
+  self.query (data, addr, cb);
   self._debug('sent announce_peer %s %s to %s with token %s', idToHexString(infoHash),
               port, addr, idToHexString(token))
-  self._send(addr, message)
 }
 
 /**
