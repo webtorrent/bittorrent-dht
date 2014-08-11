@@ -29,24 +29,25 @@ var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
 
-var MESSAGE_TYPE = {
+var MESSAGE_TYPE = DHT.prototype.MESSAGE_TYPE = {
   QUERY: 'q',
   RESPONSE: 'r',
   ERROR: 'e'
 }
-var ERROR_TYPE = {
+var ERROR_TYPE = DHT.prototype.ERROR_TYPE = {
   GENERIC: 201,
   SERVER: 202,
   PROTOCOL: 203, // malformed packet, invalid arguments, or bad token
   METHOD_UNKNOWN: 204
 }
 
-var LOCAL_HOSTS = []
+var LOCAL_HOSTS = {4: [], 6: []}
 var interfaces = os.networkInterfaces()
 for (var i in interfaces) {
   for (var j = 0; j < interfaces[i].length; j++) {
     var face = interfaces[i][j]
-    if (face.family === 'IPv4') LOCAL_HOSTS.push(face.address)
+    if (face.family === 'IPv4') LOCAL_HOSTS[4].push(face.address)
+    if (face.family === 'IPv6') LOCAL_HOSTS[6].push(face.address)
   }
 }
 
@@ -64,6 +65,7 @@ function DHT (opts) {
 
   if (!opts) opts = {}
   if (!opts.nodeId) opts.nodeId = hat(160)
+  if (!opts.ipv) opts.ipv = process.env.IPV || 4;
 
   self.nodeId = idToBuffer(opts.nodeId)
 
@@ -74,6 +76,19 @@ function DHT (opts) {
   self._binding = false
   self._destroyed = false
   self.port = null
+  self.opts = opts;
+
+  /**
+   * Query Handlers table
+   * @type {String:Function}
+   */
+
+  self.queryHandler = {
+    ping:  self._onPing.bind(self),
+    find_node: self._onFindNode.bind(self),
+    get_peers: self._onGetPeers.bind(self),
+    announce_peer: self._onAnnouncePeer.bind(self)
+  }
 
   /**
    * Routing table
@@ -112,7 +127,7 @@ function DHT (opts) {
   self._addrData = {}
 
   // Create socket and attach listeners
-  self.socket = dgram.createSocket('udp4')
+  self.socket = dgram.createSocket('udp' + opts.ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
@@ -434,7 +449,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = self._getAddrData(contact.addr)
-      dns.lookup(addrData[0], 4, function (err, host) {
+      dns.lookup(addrData[0], self.opts.ipv, function (err, host) {
         if (err) return cb(null, null)
         contact.addr = host + ':' + addrData[1]
         cb(null, contact)
@@ -635,17 +650,12 @@ DHT.prototype._onQuery = function (addr, message) {
   var self = this
   var query = message.q.toString()
 
-  if (query === 'ping') {
-    self._onPing(addr, message)
-  } else if (query === 'find_node') {
-    self._onFindNode(addr, message)
-  } else if (query === 'get_peers') {
-    self._onGetPeers(addr, message)
-  } else if (query === 'announce_peer') {
-    self._onAnnouncePeer(addr, message)
-  } else {
+  try {
+    self.queryHandler[query](addr, message);
+  } catch (e) {
     var errMessage = 'unexpected query type ' + query
     self._debug(errMessage)
+
     self._sendError(addr, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
   }
 }
@@ -662,7 +672,8 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
     && message.t.readUInt16BE(0)
 
-  var transaction = self.transactions[addr] && self.transactions[addr][transactionId]
+  var transaction = self.transactions && self.transactions[addr]
+  transaction = transaction && transaction[transactionId]
 
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
@@ -708,25 +719,31 @@ DHT.prototype._send = function (addr, message, cb) {
   self.socket.send(message, 0, message.length, port, host, cb)
 }
 
+DHT.prototype.query = function (data, addr, cb) {
+  var self = this
+
+  if (! data.a) data.a = {}
+  if (! data.a.nodeId) data.a.id = self.nodeId
+
+  var transactionId = self._getTransactionId(addr, cb)
+  var message = {
+    t: transactionIdToBuffer(transactionId),
+    y: MESSAGE_TYPE.QUERY,
+    q: data.q,
+    a: data.a
+  }
+
+  self._debug('sent' + data.q + ' %s to %s', idToHexString(self.nodeId), addr)
+  self._send(addr, message)
+}
+
 /**
  * Send "ping" query to given addr.
  * @param {string} addr
  * @param {function} cb called with response
  */
 DHT.prototype._sendPing = function (addr, cb) {
-  var self = this
-
-  var transactionId = self._getTransactionId(addr, cb)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
-    q: 'ping',
-    a: {
-      id: self.nodeId
-    }
-  }
-  self._debug('sent ping to ' + addr)
-  self._send(addr, message)
+  this.query ({q: 'ping'}, addr, cb);
 }
 
 /**
@@ -768,18 +785,15 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, onResponse)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'find_node',
     a: {
       id: self.nodeId,
       target: nodeId
     }
   }
-  self._debug('sent find_node %s to %s', idToHexString(nodeId), addr)
-  self._send(addr, message)
+
+  self.query (data, addr, onResponse);
 }
 
 /**
@@ -843,18 +857,15 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     cb(null, res)
   }
 
-  var transactionId = self._getTransactionId(addr, onResponse)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'get_peers',
     a: {
       id: self.nodeId,
       info_hash: infoHash
     }
   }
-  self._debug('sent get_peers %s to %s', idToHexString(infoHash), addr)
-  self._send(addr, message)
+
+  self.query (data, addr, onResponse)
 }
 
 /**
@@ -912,10 +923,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
   infoHash = idToBuffer(infoHash)
   if (!cb) cb = function () {}
 
-  var transactionId = self._getTransactionId(addr, cb)
-  var message = {
-    t: transactionIdToBuffer(transactionId),
-    y: MESSAGE_TYPE.QUERY,
+  var data = {
     q: 'announce_peer',
     a: {
       id: self.nodeId,
@@ -925,9 +933,10 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
       implied_port: 0
     }
   }
+
+  self.query (data, addr, cb);
   self._debug('sent announce_peer %s %s to %s with token %s', idToHexString(infoHash),
               port, addr, idToHexString(token))
-  self._send(addr, message)
 }
 
 /**
@@ -1124,7 +1133,7 @@ DHT.prototype.toArray = function () {
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
   return self.port &&
-    LOCAL_HOSTS.some(function (host) { return host + ':' + self.port === addr })
+    LOCAL_HOSTS[self.opts.ipv].some(function (host) { return host + ':' + self.port === addr })
 }
 
 DHT.prototype._debug = function () {
