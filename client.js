@@ -29,19 +29,19 @@ var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
 
-var MESSAGE_TYPE = DHT.prototype.MESSAGE_TYPE = {
+var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
   QUERY: 'q',
   RESPONSE: 'r',
   ERROR: 'e'
 }
-var ERROR_TYPE = DHT.prototype.ERROR_TYPE = {
+var ERROR_TYPE = module.exports.ERROR_TYPE = {
   GENERIC: 201,
   SERVER: 202,
   PROTOCOL: 203, // malformed packet, invalid arguments, or bad token
   METHOD_UNKNOWN: 204
 }
 
-var LOCAL_HOSTS = {4: [], 6: []}
+var LOCAL_HOSTS = { 4: [], 6: [] }
 var interfaces = os.networkInterfaces()
 for (var i in interfaces) {
   for (var j = 0; j < interfaces[i].length; j++) {
@@ -64,10 +64,9 @@ function DHT (opts) {
   EventEmitter.call(self)
 
   if (!opts) opts = {}
-  if (!opts.nodeId) opts.nodeId = hat(160)
-  if (!opts.ipv) opts.ipv = process.env.IPV || 4;
 
-  self.nodeId = idToBuffer(opts.nodeId)
+  self.nodeId = idToBuffer(opts.nodeId || hat(160))
+  self.ipv = opts.ipv || 4
 
   self._debug('new DHT %s', idToHexString(self.nodeId))
 
@@ -76,18 +75,17 @@ function DHT (opts) {
   self._binding = false
   self._destroyed = false
   self.port = null
-  self.opts = opts;
 
   /**
    * Query Handlers table
-   * @type {String:Function}
+   * @type {Object} string -> function
    */
 
   self.queryHandler = {
-    ping:  self._onPing.bind(self),
-    find_node: self._onFindNode.bind(self),
-    get_peers: self._onGetPeers.bind(self),
-    announce_peer: self._onAnnouncePeer.bind(self)
+    ping: self._onPing,
+    find_node: self._onFindNode,
+    get_peers: self._onGetPeers,
+    announce_peer: self._onAnnouncePeer
   }
 
   /**
@@ -127,7 +125,7 @@ function DHT (opts) {
   self._addrData = {}
 
   // Create socket and attach listeners
-  self.socket = dgram.createSocket('udp' + opts.ipv)
+  self.socket = dgram.createSocket('udp' + self.ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
@@ -449,7 +447,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = self._getAddrData(contact.addr)
-      dns.lookup(addrData[0], self.opts.ipv, function (err, host) {
+      dns.lookup(addrData[0], self.ipv, function (err, host) {
         if (err) return cb(null, null)
         contact.addr = host + ':' + addrData[1]
         cb(null, contact)
@@ -650,12 +648,11 @@ DHT.prototype._onQuery = function (addr, message) {
   var self = this
   var query = message.q.toString()
 
-  try {
-    self.queryHandler[query](addr, message);
-  } catch (e) {
-    var errMessage = 'unexpected query type ' + query
+  if (typeof self.queryHandler[query] === 'function') {
+    self.queryHandler[query].call(self, addr, message)
+  } else {
+    var errMessage = 'unexpected query type'
     self._debug(errMessage)
-
     self._sendError(addr, message.t, ERROR_TYPE.METHOD_UNKNOWN, errMessage)
   }
 }
@@ -673,7 +670,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
     && message.t.readUInt16BE(0)
 
   var transaction = self.transactions && self.transactions[addr]
-  transaction = transaction && transaction[transactionId]
+    && self.transactions[addr][transactionId]
 
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
@@ -722,8 +719,8 @@ DHT.prototype._send = function (addr, message, cb) {
 DHT.prototype.query = function (data, addr, cb) {
   var self = this
 
-  if (! data.a) data.a = {}
-  if (! data.a.nodeId) data.a.id = self.nodeId
+  if (!data.a) data.a = {}
+  if (!data.a.id) data.a.id = self.nodeId
 
   var transactionId = self._getTransactionId(addr, cb)
   var message = {
@@ -733,7 +730,7 @@ DHT.prototype.query = function (data, addr, cb) {
     a: data.a
   }
 
-  self._debug('sent' + data.q + ' %s to %s', idToHexString(self.nodeId), addr)
+  self._debug('sent %s %s to %s', data.q, JSON.stringify(data.a), addr)
   self._send(addr, message)
 }
 
@@ -743,7 +740,8 @@ DHT.prototype.query = function (data, addr, cb) {
  * @param {function} cb called with response
  */
 DHT.prototype._sendPing = function (addr, cb) {
-  this.query ({q: 'ping'}, addr, cb);
+  var self = this
+  self.query({ q: 'ping' }, addr, cb)
 }
 
 /**
@@ -793,7 +791,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     }
   }
 
-  self.query (data, addr, onResponse);
+  self.query(data, addr, onResponse)
 }
 
 /**
@@ -865,7 +863,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     }
   }
 
-  self.query (data, addr, onResponse)
+  self.query(data, addr, onResponse)
 }
 
 /**
@@ -934,9 +932,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
     }
   }
 
-  self.query (data, addr, cb);
-  self._debug('sent announce_peer %s %s to %s with token %s', idToHexString(infoHash),
-              port, addr, idToHexString(token))
+  self.query(data, addr, cb)
 }
 
 /**
@@ -1133,7 +1129,7 @@ DHT.prototype.toArray = function () {
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
   return self.port &&
-    LOCAL_HOSTS[self.opts.ipv].some(function (host) { return host + ':' + self.port === addr })
+    LOCAL_HOSTS[self.ipv].some(function (host) { return host + ':' + self.port === addr })
 }
 
 DHT.prototype._debug = function () {
