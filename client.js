@@ -193,7 +193,7 @@ DHT.prototype._onListening = function () {
 /**
  * Announce that the peer, controlling the querying node, is downloading a torrent on a
  * port.
- * @param  {string|Buffer} infoHawh
+ * @param  {string|Buffer} infoHash
  * @param  {number} port
  * @param  {function=} cb
  */
