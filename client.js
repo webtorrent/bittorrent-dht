@@ -231,11 +231,13 @@ DHT.prototype.announce = function (infoHash, port, cb) {
 DHT.prototype.destroy = function (cb) {
   var self = this
   if (!cb) cb = function () {}
+  cb = once(cb)
   if (self._destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
   self._debug('destroy')
 
   self._destroyed = true
+  self.listening = false
   self.port = null
 
   // garbage collect large data structures
@@ -248,13 +250,14 @@ DHT.prototype.destroy = function (cb) {
   clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
 
-  self.listening = false
+  self.socket.on('close', cb)
+
   try {
     self.socket.close()
   } catch (err) {
     // ignore error, socket was either already closed / not yet bound
+    cb(null)
   }
-  cb(null)
 }
 
 /**
