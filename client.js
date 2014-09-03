@@ -830,7 +830,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (peerAddr) {
         self._debug('emit peer %s %s from %s', idToHexString(infoHash), peerAddr, addr)
-        self.emit('peer', peerAddr, infoHash, addr)
+        self.emit('peer', peerAddr, idToHexString(infoHash), addr)
       })
     }
     cb(null, res)
