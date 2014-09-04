@@ -20,11 +20,19 @@
     "k-bucket": "^0.4.2",
     "once": "^1.3.0",
     "run-parallel": "^1.0.0",
+    "chrome-net": "^2.x.x",
+    "chrome-dgram": "^2.x.x",
+    "timers-ref": "^0.x.x",
     "string2compact": "^1.1.1"
   },
   "devDependencies": {
     "ip": "^0.3.0",
     "tape": "^2.12.3"
+  },
+  "browser": {
+    "net": "./node_modules/chrome-net/index.js",
+    "dgram": "./node_modules/chrome-dgram/index.js",
+    "timers": "./node_modules/timers-ref/index.js"
   },
   "homepage": "http://webtorrent.io",
   "keywords": [
