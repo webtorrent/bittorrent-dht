@@ -14,6 +14,7 @@ var KBucket = require('k-bucket')
 var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
+var timers = require('timers')
 var string2compact = require('string2compact')
 
 var BOOTSTRAP_NODES = [
@@ -130,7 +131,7 @@ function DHT (opts) {
   self.socket.on('error', function () {}) // throw away errors
 
   self._rotateSecrets()
-  self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
+  self._rotateInterval = timers.setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
   self._rotateInterval.unref()
 
   process.nextTick(function () {
@@ -246,8 +247,8 @@ DHT.prototype.destroy = function (cb) {
   self.peers = null
   self._addrData = null
 
-  clearTimeout(self._bootstrapTimeout)
-  clearInterval(self._rotateInterval)
+  timers.clearTimeout(self._bootstrapTimeout)
+  timers.clearInterval(self._rotateInterval)
 
   self.socket.on('close', cb)
 
@@ -411,7 +412,7 @@ DHT.prototype._bootstrap = function (nodes) {
     lookup()
 
     // TODO: keep retrying after one failure
-    self._bootstrapTimeout = setTimeout(function () {
+    self._bootstrapTimeout = timers.setTimeout(function () {
       // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
         self._debug('No DHT bootstrap nodes replied, retry')
@@ -1027,14 +1028,14 @@ DHT.prototype._getTransactionId = function (addr, fn) {
   }
 
   function onResponse (err, res) {
-    clearTimeout(reqs[transactionId].timeout)
+    timers.clearTimeout(reqs[transactionId].timeout)
     reqs[transactionId] = null
     fn(err, res)
   }
 
   reqs[transactionId] = {
     cb: onResponse,
-    timeout: setTimeout(onTimeout, SEND_TIMEOUT)
+    timeout: timers.setTimeout(onTimeout, SEND_TIMEOUT)
   }
 
   return transactionId
