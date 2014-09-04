@@ -15,6 +15,7 @@ var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
 var timers = require('timers')
+var net = require('net')
 var string2compact = require('string2compact')
 
 var BOOTSTRAP_NODES = [
@@ -434,11 +435,13 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = self._getAddrData(contact.addr)
-      dns.lookup(addrData[0], self.ipv, function (err, host) {
-        if (err) return cb(null, null)
-        contact.addr = host + ':' + addrData[1]
-        cb(null, contact)
-      })
+      if (net.isIP(addrData[0])) cb(null, contact)
+      else
+        dns.lookup(addrData[0], self.ipv, function (err, host) {
+          if (err) return cb(null, null)
+          contact.addr = host + ':' + addrData[1]
+          cb(null, contact)
+        })
     }
   })
   parallel(tasks, function (err, contacts) {
