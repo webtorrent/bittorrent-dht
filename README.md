@@ -159,12 +159,13 @@ Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
 #### `dht.on('ready', function () { ... })`
 
-Emitted when the DHT is ready to handle lookups (i.e. the routing table contains at least
-K nodes, discovered via the bootstrap nodes).
+Emitted when the DHT is ready to handle lookups (i.e. the routing table is sufficiently
+populated via the bootstrap nodes).
 
 Note: If you initialize the DHT with the `{ bootstrap: false }` option, then the 'ready'
-event will fire on the next tick even if there are not K nodes in the routing table.
-It is assumed that you will manually populate the routing table with `dht.addNode`.
+event will fire on the next tick even if there are not any nodes in the routing table.
+It is assumed that you will manually populate the routing table with `dht.addNode` if you
+pass this option.
 
 
 #### `dht.on('listening', function (port) { ... })`

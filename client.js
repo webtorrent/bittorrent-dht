@@ -80,7 +80,6 @@ function DHT (opts) {
    * Query Handlers table
    * @type {Object} string -> function
    */
-
   self.queryHandler = {
     ping: self._onPing,
     find_node: self._onFindNode,
@@ -376,22 +375,6 @@ DHT.prototype._bootstrap = function (nodes) {
 
   self._resolveContacts(contacts, function (err, contacts) {
     if (err) return self.emit('error', err)
-    // emit `ready` once K nodes are in the routing table so that lookups will have a
-    // good chance of succeeding
-    var numNodes = 0
-    function onNode () {
-      numNodes += 1
-      if (numNodes >= K) {
-        self.removeListener('node', onNode)
-        process.nextTick(function () {
-          if (!self.ready) {
-            self.ready = true
-            self.emit('ready')
-          }
-        })
-      }
-    }
-    self.on('node', onNode)
 
     // add all non-bootstrap nodes to routing table
     contacts
@@ -417,17 +400,17 @@ DHT.prototype._bootstrap = function (nodes) {
         addrs: addrs.length ? addrs : null
       }, function (err) {
         if (err) self._debug('lookup error %s during bootstrap', err.message)
-        // if the recursive lookup terminates and we still haven't found K initial nodes
-        // (i.e. 'ready' hasn't been emitted) then emit it now.
-        if (!self.ready) {
-          self.removeListener('node', onNode)
-          self.ready = true
-          self.emit('ready')
-        }
+
+        // emit `ready` once the recursive lookup for our own node ID is finished
+        // (successful or not), so that later get_peer lookups will have a good shot at
+        // succeeding.
+        self.ready = true
+        self.emit('ready')
       })
     }
     lookup()
 
+    // TODO: keep retrying after one failure
     self._bootstrapTimeout = setTimeout(function () {
       // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
@@ -511,14 +494,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
   if (opts.addrs) {
     // kick off lookup with explicitly passed nodes (usually, bootstrap servers)
     opts.addrs.forEach(query)
-  } else if (self.nodes.count() > 0) {
+  } else {
     // kick off lookup with nodes in the main table
     queryClosest()
-  } else {
-    // Wait until at least K nodes are available, so we're more confident that a
-    // lookup will succeed. If there were not many nodes and most/all were bad, then
-    // lookup would terminate early. We want wait until bootstrapping has found peers.
-    self.once('ready', queryClosest)
   }
 
   function query (addr) {
@@ -549,9 +527,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
     // ignore errors - they are just timeouts
     if (err) {
-      self._debug('got lookup error %s', err.message)
+      self._debug('got lookup error: %s', err.message)
     } else {
-      self._debug('got lookup response %s from %s', JSON.stringify(res), nodeIdHex)
+      self._debug('got lookup response: %s from %s', JSON.stringify(res), nodeIdHex)
 
       // add node that sent this response
       var contact = table.get(nodeId)
@@ -608,7 +586,7 @@ DHT.prototype._onData = function (data, rinfo) {
     message = bencode.decode(data)
     if (!message) throw new Error('message is empty')
   } catch (err) {
-    errMessage = 'invalid message ' + data + ' from ' + addr + ' ' + err.message
+    errMessage = err.message + ' from ' + addr + ' (' + data + ')'
     self._debug(errMessage)
     self.emit('warning', new Error(errMessage))
     return
@@ -1149,9 +1127,7 @@ DHT.prototype._debug = function () {
  */
 function fromArray (nodes) {
   nodes.forEach(function (node) {
-    if (node.id) {
-      node.id = idToBuffer(node.id)
-    }
+    if (node.id) node.id = idToBuffer(node.id)
   })
   return nodes
 }

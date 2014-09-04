@@ -103,19 +103,19 @@ test('`ready` event fires when there are K nodes', function (t) {
   dht1.on('ready', function () {
     t.pass('dht1 `ready` event fires because { bootstrap: false }')
 
-    common.addRandomNodes(dht1, DHT.K)
-    t.equal(dht1.nodes.count(), DHT.K, 'dht1 has K nodes')
+    common.addRandomNodes(dht1, 3)
+    t.equal(dht1.nodes.count(), 3, 'dht1 has 3 nodes')
 
     dht1.listen(function (port) {
       t.pass('dht1 listening on port ' + port)
 
-      // dht2 will get all K nodes from dht1 and should also emit a `ready` event
+      // dht2 will get all 3 nodes from dht1 and should also emit a `ready` event
       var dht2 = new DHT({ bootstrap: '127.0.0.1:' + port })
       common.failOnWarningOrError(t, dht2)
 
       dht2.on('ready', function () {
-        // K+1 because dht1 also optimistically captured dht2's addr and included it
-        t.equal(dht1.nodes.count(), DHT.K + 1, 'dht2 gets K+1 nodes from dht1 and fires `ready`')
+        // 5 nodes because dht1 also optimistically captured dht2's addr and included it
+        t.equal(dht1.nodes.count(), 4, 'dht2 gets 5 nodes from dht1 and fires `ready`')
 
         dht1.destroy()
         dht2.destroy()
