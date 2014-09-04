@@ -817,6 +817,7 @@ DHT.prototype._onFindNode = function (addr, message) {
 DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
   infoHash = idToBuffer(infoHash)
+  var infoHashHex = idToHexString(infoHash)
 
   function onResponse (err, res) {
     if (err) return cb(err)
@@ -829,8 +830,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (peerAddr) {
-        self._debug('emit peer %s %s from %s', idToHexString(infoHash), peerAddr, addr)
-        self.emit('peer', peerAddr, idToHexString(infoHash), addr)
+        self._debug('emit peer %s %s from %s', infoHashHex, peerAddr, addr)
+        self.emit('peer', peerAddr, infoHashHex, addr)
       })
     }
     cb(null, res)
