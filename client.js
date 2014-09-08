@@ -1,5 +1,3 @@
-module.exports = DHT
-
 var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
@@ -74,7 +72,7 @@ function DHT (opts) {
   self.listening = false
   self._binding = false
   self._destroyed = false
-  self.port = null
+  self.port = opts['port'];
 
   /**
    * Query Handlers table
@@ -161,9 +159,10 @@ function DHT (opts) {
  */
 DHT.prototype.listen = function (port, onlistening) {
   var self = this
+  var listenPort = port;
   if (typeof port === 'function') {
-    onlistening = port
-    port = undefined
+    onlistening = port;
+    listenPort = self.port;
   }
 
   if (onlistening)
@@ -172,8 +171,8 @@ DHT.prototype.listen = function (port, onlistening) {
   if (self._destroyed || self._binding || self.listening) return
   self._binding = true
 
-  self._debug('listen %s', port)
-  self.socket.bind(port)
+  self._debug('listen %s', listenPort)
+  self.socket.bind(listenPort)
 }
 
 /**
@@ -1224,3 +1223,5 @@ function idToHexString (id) {
 function sha1 (buf) {
   return crypto.createHash('sha1').update(buf).digest()
 }
+
+module.exports = DHT
