@@ -11,6 +11,7 @@
     "url": "https://github.com/feross/bittorrent-dht/issues"
   },
   "dependencies": {
+    "addr-to-ip-port": "^1.0.0",
     "bencode": "^0.6.0",
     "buffer-equal": "^0.0.1",
     "compact2string": "^1.2.0",

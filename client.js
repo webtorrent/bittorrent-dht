@@ -1,5 +1,6 @@
 module.exports = DHT
 
+var addrToIPPort = require('addr-to-ip-port')
 var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
@@ -116,12 +117,6 @@ function DHT (opts) {
    * @type {Object} infoHash:string -> array of peers
    */
   self.peers = {}
-
-  /**
-   * Lookup cache to prevent excessive GC.
-   * @type {Object} addr:string -> [host:string, port:number]
-   */
-  self._addrData = {}
 
   // Create socket and attach listeners
   self.socket = dgram.createSocket('udp' + self.ipv)
@@ -244,7 +239,6 @@ DHT.prototype.destroy = function (cb) {
   self.tables = null
   self.transactions = null
   self.peers = null
-  self._addrData = null
 
   clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
@@ -432,7 +426,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var self = this
   var tasks = contacts.map(function (contact) {
     return function (cb) {
-      var addrData = self._getAddrData(contact.addr)
+      var addrData = addrToIPPort(contact.addr)
       dns.lookup(addrData[0], self.ipv, function (err, host) {
         if (err) return cb(null, null)
         contact.addr = host + ':' + addrData[1]
@@ -684,7 +678,7 @@ DHT.prototype._send = function (addr, message, cb) {
   var self = this
   if (!self.listening) return self.listen(self._send.bind(self, addr, message, cb))
   if (!cb) cb = function () {}
-  var addrData = self._getAddrData(addr)
+  var addrData = addrToIPPort(addr)
   var host = addrData[0]
   var port = addrData[1]
 
@@ -855,7 +849,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
  */
 DHT.prototype._onGetPeers = function (addr, message) {
   var self = this
-  var addrData = self._getAddrData(addr)
+  var addrData = addrToIPPort(addr)
 
   var infoHash = message.a && message.a.info_hash
   if (!infoHash) {
@@ -925,7 +919,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
 DHT.prototype._onAnnouncePeer = function (addr, message) {
   var self = this
   var errMessage
-  var addrData = self._getAddrData(addr)
+  var addrData = addrToIPPort(addr)
 
   var infoHash = idToHexString(message.a && message.a.info_hash)
   if (!infoHash) {
@@ -987,22 +981,6 @@ DHT.prototype._sendError = function (addr, transactionId, code, errMessage) {
 
   self._debug('sent error %s to %s', JSON.stringify(message), addr)
   self._send(addr, message)
-}
-
-/**
- * Given an "address:port" string, return an array [address:string, port:number].
- * Uses a cache to prevent excessive array allocations.
- * @param  {string} addr
- * @return {Array.<*>}
- */
-DHT.prototype._getAddrData = function (addr) {
-  var self = this
-  if (!self._addrData[addr]) {
-    var array = addr.split(':')
-    array[1] = Number(array[1])
-    self._addrData[addr] = array
-  }
-  return self._addrData[addr]
 }
 
 /**
