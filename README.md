@@ -87,10 +87,12 @@ Note: `dht.lookup()` should only be called after the ready event has fired, othe
 lookup may fail because the DHT routing table doesn't contain enough nodes.
 
 
-#### `dht.listen([port], [onlistening])`
+#### `dht.listen([port], [address], [onlistening])`
 
 Make the DHT listen on the given `port`. If `port` is undefined, an available port is
 automatically picked.
+
+If `address` is undefined, the DHT will try to listen on all addresses.
 
 If `onlistening` is defined, it is attached to the `listening` event.
 

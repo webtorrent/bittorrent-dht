@@ -152,13 +152,24 @@ function DHT (opts) {
 /**
  * Start listening for UDP messages on given port.
  * @param  {number} port
+ * @param  {string} address
  * @param  {function=} onlistening added as handler for listening event
  */
-DHT.prototype.listen = function (port, onlistening) {
+DHT.prototype.listen = function (port, address, onlistening) {
   var self = this
+  if (typeof port === 'string') {
+    onlistening = address
+    address = port
+    port = undefined
+  }
   if (typeof port === 'function') {
     onlistening = port
     port = undefined
+    address = undefined
+  }
+  if (typeof address === 'function') {
+    onlistening = address
+    address = undefined
   }
 
   if (onlistening)
@@ -168,7 +179,7 @@ DHT.prototype.listen = function (port, onlistening) {
   self._binding = true
 
   self._debug('listen %s', port)
-  self.socket.bind(port)
+  self.socket.bind(port, address)
 }
 
 /**
