@@ -409,8 +409,10 @@ DHT.prototype._bootstrap = function (nodes) {
         // emit `ready` once the recursive lookup for our own node ID is finished
         // (successful or not), so that later get_peer lookups will have a good shot at
         // succeeding.
-        self.ready = true
-        self.emit('ready')
+        if (!self.ready) {
+          self.ready = true
+          self.emit('ready')
+        }
       })
     }
     lookup()
