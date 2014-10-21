@@ -6,11 +6,11 @@ var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
 var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
-var dgram = require('dgram')
 var dns = require('dns')
 var EventEmitter = require('events').EventEmitter
 var hat = require('hat')
 var inherits = require('inherits')
+var isIP = require('is-ip')
 var KBucket = require('k-bucket')
 var once = require('once')
 var os = require('os')
@@ -119,14 +119,14 @@ function DHT (opts) {
   self.peers = {}
 
   // Create socket and attach listeners
-  self.socket = dgram.createSocket('udp' + self.ipv)
+  self.socket = (opts.dgram || require('dgram')).createSocket('udp' + self.ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
 
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
-  self._rotateInterval.unref()
+  self._rotateInterval.unref && self._rotateInterval.unref()
 
   process.nextTick(function () {
     if (opts.bootstrap === false) {
@@ -425,7 +425,7 @@ DHT.prototype._bootstrap = function (nodes) {
         lookup()
       }
     }, BOOTSTRAP_TIMEOUT)
-    self._bootstrapTimeout.unref()
+    self._bootstrapTimeout.unref && self._bootstrapTimeout.unref()
   })
 }
 
@@ -440,7 +440,9 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = addrToIPPort(contact.addr)
-      dns.lookup(addrData[0], self.ipv, function (err, host) {
+      if (isIP(addrData[0]))
+        cb(null, contact)
+      else dns.lookup(addrData[0], self.ipv, function (err, host) {
         if (err) return cb(null, null)
         contact.addr = host + ':' + addrData[1]
         cb(null, contact)
