@@ -1,4 +1,5 @@
 module.exports = DHT
+module.exports.dgram = require('dgram') // allow override for chrome apps (chrome-dgram)
 
 var addrToIPPort = require('addr-to-ip-port')
 var bencode = require('bencode')
@@ -119,7 +120,7 @@ function DHT (opts) {
   self.peers = {}
 
   // Create socket and attach listeners
-  self.socket = (opts.dgram || require('dgram')).createSocket('udp' + self.ipv)
+  self.socket = module.exports.dgram.createSocket('udp' + self.ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
