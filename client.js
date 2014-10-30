@@ -318,21 +318,23 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 
   var peers = self.peers[infoHash]
   if (!peers) {
-    peers = self.peers[infoHash] = []
+    peers = self.peers[infoHash] = {
+      index: {},
+      compactList: [],
+      list: []
+    }
   }
+  if (peers.index[addr]) return
+
+  peers.index[addr] = true
+  peers.list.push(addr)
 
   var compactPeerInfo = string2compact(addr)
+  peers.compactList.push(compactPeerInfo)
 
-  // TODO: make this faster using a set
-  var exists = peers.some(function (peer) {
-    return bufferEqual(peer, compactPeerInfo)
-  })
+  self._debug('addPeer %s %s', addr, infoHash)
+  self.emit('announce', addr, infoHash)
 
-  if (!exists) {
-    peers.push(compactPeerInfo)
-    self._debug('addPeer %s %s', addr, infoHash)
-    self.emit('announce', addr, infoHash)
-  }
 }
 
 /**
@@ -347,18 +349,13 @@ DHT.prototype.removePeer = function (addr, infoHash) {
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
-  if (peers) {
-    var compactPeerInfo = string2compact(addr)
+  if (!peers || !peers.index[addr]) return
 
-    // TODO: make this faster using a set
-    peers.some(function (peer, index) {
-      if (bufferEqual(peer, compactPeerInfo)) {
-        peers.splice(index, 1)
-        self._debug('removePeer %s %s', addr, infoHash)
-        return true // abort early
-      }
-    })
-  }
+  peers.index[addr] = null
+  var pos = peers.list.indexOf(addr)
+  peers.list.splice(pos, 1)
+  peers.compactList.splice(pos, 1)
+  self._debug('removePeer %s %s', addr, infoHash)
 }
 
 /**
@@ -887,7 +884,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
     }
   }
 
-  var peers = self.peers[infoHashHex]
+  var peers = self.peers[infoHashHex] && self.peers[infoHashHex].compactList
   if (peers) {
     // We know of peers for the target info hash. Peers are stored as an array of
     // compact peer info, so return it as-is.
