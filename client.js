@@ -64,6 +64,7 @@ function DHT (opts) {
   var self = this
   if (!(self instanceof DHT)) return new DHT(opts)
   EventEmitter.call(self)
+  if (!debug.enabled) self.setMaxListeners(0)
 
   if (!opts) opts = {}
 
