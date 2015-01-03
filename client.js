@@ -340,7 +340,7 @@ DHT.prototype.getPeers = function (infoHash) {
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
-  return peers;
+  return peers.list;
 }
 
 /**
