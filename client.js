@@ -332,6 +332,18 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 }
 
 /**
+ * Retrieve peers in the DHT store for the corresponding torrent.
+ */
+DHT.prototype.getPeers = function (infoHash) {
+  var self = this
+
+  infoHash = idToHexString(infoHash)
+
+  var peers = self.peers[infoHash]
+  return peers.list;
+}
+
+/**
  * Remove a peer from the DHT.
  * @param  {string} addr
  * @param  {Buffer|string} infoHash
