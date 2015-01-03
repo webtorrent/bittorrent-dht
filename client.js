@@ -340,7 +340,6 @@ DHT.prototype.getPeers = function (infoHash) {
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
-  console.log("fuck")
   return peers;
 }
 
