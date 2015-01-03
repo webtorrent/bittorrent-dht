@@ -334,12 +334,13 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 /**
  * Retrieve peers in the DHT store for the corresponding torrent.
  */
-DHT.prototype._getPeers = function (infoHash) {
+DHT.prototype.getPeers = function (infoHash) {
   var self = this
 
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
+  console.log("fuck")
   return peers;
 }
 
