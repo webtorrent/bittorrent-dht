@@ -102,11 +102,11 @@ If `onlistening` is defined, it is attached to the `listening` event.
 Announce that the peer, controlling the querying node, is downloading a torrent on a port.
 
 If `dht.announce` is called soon (< 5 minutes) after `dht.lookup`, then the routing table
-generated during the lookup can be re-used, because the tokens sent by each node will
+generated during the lookup can be re-used, because the "tokens" sent by each node will
 still be valid.
 
 If `dht.announce` is called and there is no cached routing table, then a `dht.lookup` will
-first be performed to discover relevant nodes and get valid tokens from each of them.
+first be performed to discover relevant nodes and get valid "tokens" from each of them.
 This will take longer.
 
 A "token" is an opaque value that must be presented for a node to announce that its
@@ -182,18 +182,12 @@ Emitted when a potential peer is found. `addr` is of the form `IP_ADDRESS:PORT`.
 in response to a `lookup(infoHash)` call.
 
 
-#### `dht.on('warning', function (err) { ... })`
-
-Emitted when the DHT gets an unexpected message from another DHT node. This is purely
-informational.
-
-
 #### `dht.on('error', function (err) { ... })`
 
 Emitted when the DHT has a fatal error.
 
 
-##### internal events
+#### internal events
 
 #### `dht.on('node', function (addr, nodeId, from) { ... })`
 
@@ -203,6 +197,12 @@ Emitted when the DHT finds a new node.
 #### `dht.on('announce', function (addr, infoHash) { ... })`
 
 Emitted when a peer announces itself in order to be stored in the DHT.
+
+
+#### `dht.on('warning', function (err) { ... })`
+
+Emitted when the DHT gets an unexpected message from another DHT node. This is purely
+informational.
 
 
 ### further reading
