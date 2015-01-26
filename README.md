@@ -21,6 +21,8 @@ This module is used by [WebTorrent](http://webtorrent.io).
 - efficient recursive lookup algorithm minimizes UDP traffic
 - supports multiple, concurrent lookups using the same routing table
 
+Also see [bittorrent-tracker](https://github.com/feross/bittorrent-tracker).
+
 ### install
 
 ```
