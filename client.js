@@ -486,7 +486,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
     numberOfNodesToPing: MAX_CONCURRENCY
   })
 
-  // NOT the same table as the one used for the lookup, as this table may have nodes without tokens
+  // NOT the same table as the one used for the lookup, as that table may have nodes without tokens
   if (!self.tables[idHex]) self.tables[idHex] = new KBucket({
     localNodeId: id,
     numberOfNodesPerKBucket: K,
