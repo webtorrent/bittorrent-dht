@@ -40,12 +40,12 @@ test('announce+lookup with 3-10 DHTs', function (t) {
  *  Times out after a while
  */
 function findPeers(numInstances, t, cb) {
+  var dhts = [];
   var timeoutId = setTimeout(function() {
-    cb(new Error('Timed out for ' + numInstances + ' instances'))
+    cb(new Error('Timed out for ' + numInstances + ' instances'), dhts)
   }, 20000);
 
   var infoHash = common.randomId().toString('hex')
-  var dhts = [];
 
   for (var i = 0; i < numInstances; i++) {
     var iStr = '' + i
