@@ -491,7 +491,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
 
   function add (contact) {
-    if (!self._addrIsSelf(contact.addr)) table.add(contact)
+    if (contact.token && !self._addrIsSelf(contact.addr)) table.add(contact)
   }
 
   var queried = {}
@@ -537,19 +537,18 @@ DHT.prototype.lookup = function (id, opts, cb) {
     } else {
       self._debug('got lookup response: %s from %s', JSON.stringify(res), nodeIdHex)
 
-      // add node that sent this response
-      var contact = table.get(nodeId)
-      if (!contact) {
-        contact = { id: nodeId, addr: addr }
+      if (res && !opts.findNode) { 
+        // add node that sent this response
+        var contact = table.get(nodeId) || { id: nodeId, addr: addr }
+        contact.token = res.token
         add(contact)
-      }
-      contact.token = res.token
 
-      // add nodes to this routing table for this lookup
-      if (res && res.nodes) {
-        res.nodes.forEach(function (contact) {
-          add(contact)
-        })
+        // add nodes to this routing table for this lookup
+        if (res.nodes) {
+          res.nodes.forEach(function (contact) {
+            add(contact)
+          })
+        }
       }
     }
 
