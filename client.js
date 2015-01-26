@@ -486,12 +486,19 @@ DHT.prototype.lookup = function (id, opts, cb) {
     numberOfNodesToPing: MAX_CONCURRENCY
   })
 
-  if (!opts.findNode) {
-    self.tables[idHex] = table
-  }
+  // NOT the same table as the one used for the lookup, as that table may have nodes without tokens
+  if (!self.tables[idHex]) self.tables[idHex] = new KBucket({
+    localNodeId: id,
+    numberOfNodesPerKBucket: K,
+    numberOfNodesToPing: MAX_CONCURRENCY
+  })
+
+  var tokenful = self.tables[idHex]
 
   function add (contact) {
-    if (!self._addrIsSelf(contact.addr)) table.add(contact)
+    if (self._addrIsSelf(contact.addr)) return
+    if (contact.token) tokenful.add(contact)
+    if (contact.token || opts.findNode) table.add(contact)
   }
 
   var queried = {}
@@ -538,12 +545,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
       self._debug('got lookup response: %s from %s', JSON.stringify(res), nodeIdHex)
 
       // add node that sent this response
-      var contact = table.get(nodeId)
-      if (!contact) {
-        contact = { id: nodeId, addr: addr }
-        add(contact)
-      }
-      contact.token = res.token
+      var contact = table.get(nodeId) || { id: nodeId, addr: addr }
+      contact.token = res && res.token
+      add(contact)
 
       // add nodes to this routing table for this lookup
       if (res && res.nodes) {
