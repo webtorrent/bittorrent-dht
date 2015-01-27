@@ -123,4 +123,3 @@ test('`ready` event fires when there are K nodes', function (t) {
     })
   })
 })
-

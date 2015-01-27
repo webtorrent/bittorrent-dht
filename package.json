@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "ip": "^0.3.0",
+    "standard": "^1.0.0",
     "tape": "^2.12.3"
   },
   "homepage": "http://webtorrent.io",
@@ -46,7 +47,7 @@
     "url": "git://github.com/feross/bittorrent-dht.git"
   },
   "scripts": {
-    "test": "tape test/*.js",
+    "test": "standard && tape test/*.js",
     "test-live": "tape test/live/*.js"
   }
 }

@@ -134,8 +134,8 @@ function DHT (opts) {
     if (opts.bootstrap === false) {
         // Emit `ready` right away because the user does not want to bootstrap. Presumably,
         // the user will call addNode() to populate the routing table manually.
-        self.ready = true
-        self.emit('ready')
+      self.ready = true
+      self.emit('ready')
     } else if (typeof opts.bootstrap === 'string') {
       self._bootstrap([ opts.bootstrap ])
     } else if (Array.isArray(opts.bootstrap)) {
@@ -229,7 +229,6 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     cb(null)
   }
 }
-
 
 /**
  * Destroy and cleanup the DHT.
