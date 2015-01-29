@@ -182,7 +182,6 @@ test('`announce_peer` query gets ack response', function (t) {
   common.failOnWarningOrError(t, dht2)
 
   var infoHash = common.randomId()
-  var host =
 
   dht1.listen(function (port) {
     dht2._sendGetPeers('127.0.0.1:' + port, infoHash, function (err, res1) {
