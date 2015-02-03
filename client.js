@@ -17,6 +17,8 @@ var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
 var string2compact = require('string2compact')
+var ip = require('ip')
+var crc32c = require('fast-crc32c')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -30,6 +32,12 @@ var MAX_CONCURRENCY = 3 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
+
+var VERIFY_NODE_ID = false
+
+// IP masks for node ID generation
+var DHT_SEC_IPV4_MASK = new Buffer('030f3fff', 'hex')
+var DHT_SEC_IPV6_MASK = new Buffer('0103070f1f3f7fff', 'hex')
 
 var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
   QUERY: 'q',
@@ -67,11 +75,7 @@ function DHT (opts) {
   if (!debug.enabled) self.setMaxListeners(0)
 
   if (!opts) opts = {}
-
-  self.nodeId = idToBuffer(opts.nodeId || hat(160))
   self.ipv = opts.ipv || 4
-
-  self._debug('new DHT %s', idToHexString(self.nodeId))
 
   self.ready = false
   self.listening = false
@@ -89,16 +93,6 @@ function DHT (opts) {
     get_peers: self._onGetPeers,
     announce_peer: self._onAnnouncePeer
   }
-
-  /**
-   * Routing table
-   * @type {KBucket}
-   */
-  self.nodes = new KBucket({
-    localNodeId: self.nodeId,
-    numberOfNodesPerKBucket: K,
-    numberOfNodesToPing: MAX_CONCURRENCY
-  })
 
   /**
    * Cache of routing tables used during a lookup. Saved in this object so we can access
@@ -125,6 +119,22 @@ function DHT (opts) {
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
+
+  // TODO make this work
+  // self.nodeId = generateNodeId(self.socket.address().address)
+  self.nodeId = idToBuffer(opts.nodeId || hat(160))
+
+  self._debug('new DHT %s', idToHexString(self.nodeId))
+
+  /**
+   * Routing table
+   * @type {KBucket}
+   */
+  self.nodes = new KBucket({
+    localNodeId: self.nodeId,
+    numberOfNodesPerKBucket: K,
+    numberOfNodesToPing: MAX_CONCURRENCY
+  })
 
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
@@ -266,7 +276,8 @@ DHT.prototype.destroy = function (cb) {
 }
 
 /**
- * Add a DHT node to the routing table.
+ * Add a DHT node to the routing table unless the nodeID doesn't match
+ * their address and we're enforcing nodeID security.
  * @param {string} addr
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
@@ -274,6 +285,8 @@ DHT.prototype.destroy = function (cb) {
 DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
   if (self._destroyed) return
+  if (VERIFY_NODE_ID && !isValidNodeId(addr, nodeId)) return
+
   nodeId = idToBuffer(nodeId)
 
   if (self._addrIsSelf(addr)) {
@@ -701,6 +714,9 @@ DHT.prototype._send = function (addr, message, cb) {
     return
   }
 
+  // TODO convert to binary? it's bencoded anyway
+  message.ip = addr
+
   // self._debug('send %s to %s', JSON.stringify(message), addr)
   message = bencode.encode(message)
   self.socket.send(message, 0, message.length, port, host, cb)
@@ -1114,6 +1130,14 @@ DHT.prototype._debug = function () {
   debug.apply(null, args)
 }
 
+DHT.idPrefixMatches = idPrefixMatches
+
+DHT.isValidNodeId = isValidNodeId
+
+DHT.generateNodeId = generateNodeId
+
+DHT.calculateIdPrefix = calculateIdPrefix
+
 /**
  * Parse saved string
  * @param  {Array.<Object>} nodes
@@ -1216,4 +1240,72 @@ function idToHexString (id) {
 // Return sha1 hash **as a buffer**
 function sha1 (buf) {
   return crypto.createHash('sha1').update(buf).digest()
+}
+
+// Return true iff first 21 bits of two buffers match
+function idPrefixMatches (a, b) {
+  a = idToBuffer(a)
+  b = idToBuffer(b)
+  return a[0] === b[0]
+      && a[1] === b[1]
+      && (a[2] & 0xf8) === (b[2] & 0xf8)
+}
+
+// Validate nodeId given ip address
+function isValidNodeId (addr, nodeId) {
+  // TODO should handle more types of inputs
+  addr = addr.split(':')[0]
+  var id = idToBuffer(nodeId)
+  var r = id[id.length - 1] & 0x7
+  var prefix = calculateIdPrefix(addr, r)
+
+  return idPrefixMatches(prefix, id)
+}
+
+// Generate node id from an IP address
+function generateNodeId (addr) {
+  addr = addr.split(':')[0]
+  var randByte = crypto.randomBytes(1)[0]
+  var r = randByte & 0x7
+  var prefix = calculateIdPrefix(addr, r)
+
+  var id = new Buffer(20)
+
+  // set prefix bits 0-21
+  for (var i = 0; i < 3; i++) {
+    id[i] = prefix[i]
+  }
+
+  // set random bytes 3-20
+  var middle = crypto.randomBytes(17)
+
+  id[2] |= middle[0] & 0x7
+
+  for (i = 1; i < 17; i++) {
+    id[i + 2] = middle[i]
+  }
+
+  id[19] = randByte
+  return id
+}
+
+// Calculate 21-bit node ID prefix as a 3-byte buffer.
+// See http://www.bittorrent.org/beps/bep_0042.html
+function calculateIdPrefix (addr, r) {
+  var buf = ip.toBuffer(addr)
+  var mask = buf.length === 4 ? DHT_SEC_IPV4_MASK : DHT_SEC_IPV6_MASK
+  var n = Math.min(buf.length, mask.length)
+  var arg = new Buffer(n)
+
+  for (var i = 0; i < n; i++) {
+    arg[i] = buf[i] & mask[i]
+  }
+
+  arg[0] |= r << 5
+
+  var crc = crc32c.calculate(arg)
+  var ret = new Buffer(4)
+  ret.writeUInt32BE(crc, 0)
+  ret[2] = ret[2] & 0xf8
+  return ret.slice(0, 3)
 }
