@@ -665,6 +665,8 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
     err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
+  } else if (transaction && transaction.err) {
+    err = transaction.err
   }
 
   if (!transaction || !transaction.cb) {
@@ -1015,8 +1017,9 @@ DHT.prototype._getTransactionId = function (addr, fn) {
   reqs.nextTransactionId += 1
 
   function onTimeout () {
-    reqs[transactionId] = null
-    fn(new Error('query timed out'))
+    var err = new Error('query timed out')
+    reqs[transactionId] = { err: err }
+    fn(err)
   }
 
   function onResponse (err, res) {
