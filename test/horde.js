@@ -60,9 +60,9 @@ function findPeers (numInstances, t, cb) {
     }
   }), function () {
     // add each other to routing tables
-    makeFriends(dhts)
+    friendNext(dhts)
     dhts[0].announce(infoHash, 9998, function () {
-      dhts[1].lookup(infoHash)
+      dhts[1].lookup(infoHash) // doesn't know about dhts[0] via makeOneFriend
     })
   })
 
@@ -75,15 +75,13 @@ function findPeers (numInstances, t, cb) {
 }
 
 /**
- *  Adds every dht in `dhts` to every other dht's routing table
+ *  Everyone friends the guy in front of them
+ *  This should guarantee that anyone can find anyone else (with enough queries)
  */
-function makeFriends (dhts) {
-  for (var i = 0; i < dhts.length; i++) {
-    for (var j = i + 1; j < dhts.length; j++) {
-      var d1 = dhts[i]
-      var d2 = dhts[j]
-      d1.addNode('127.0.0.1:' + d2.port, d2.nodeId)
-      d2.addNode('127.0.0.1:' + d1.port, d1.nodeId)
-    }
+function friendNext (dhts) {
+  var l = dhts.length
+  for (var i = 0; i < l; i++) {
+    var next = dhts[(i + 1) % l]
+    dhts[i].addNode('127.0.0.1:' + next.port, next.nodeId)
   }
 }

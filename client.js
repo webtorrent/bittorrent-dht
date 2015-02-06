@@ -497,7 +497,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
   function add (contact) {
     if (self._addrIsSelf(contact.addr)) return
     if (contact.token) tokenful.add(contact)
-    if (contact.token || opts.findNode) table.add(contact)
+
+    table.add(contact)
   }
 
   var queried = {}
@@ -571,6 +572,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
       // recursive lookup should terminate because there are no closer nodes to find
       self._debug('terminating lookup %s %s',
           (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
+
+      table = opts.findNode ? table : tokenful
       var closest = table.closest({ id: id }, K)
       self._debug('K closest nodes are:')
       closest.forEach(function (contact) {
@@ -665,6 +668,8 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
     err = new Error(Array.isArray(message.e) ? message.e.join(' ') : undefined)
+  } else if (transaction && transaction.err) {
+    err = transaction.err
   }
 
   if (!transaction || !transaction.cb) {
@@ -1015,8 +1020,9 @@ DHT.prototype._getTransactionId = function (addr, fn) {
   reqs.nextTransactionId += 1
 
   function onTimeout () {
-    reqs[transactionId] = null
-    fn(new Error('query timed out'))
+    var err = new Error('query timed out')
+    reqs[transactionId] = { err: err }
+    fn(err)
   }
 
   function onResponse (err, res) {
