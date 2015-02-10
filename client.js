@@ -31,7 +31,7 @@ var MAX_CONCURRENCY = 3 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
-var HOMEDIR = (process.platform === 'win32') ? process.env.HOMEPATH : process.env.HOME;
+var HOMEDIR = (process.platform === 'win32') ? process.env.HOMEPATH : process.env.HOME
 var PERSIST_DHT_FILE = HOMEDIR + '/.bitorrent-dht.persist.json'
 var PERSIST_DHT_TIMEOUT = 2000 // wait 2s after we see a node to persist the DHT
 
@@ -164,7 +164,7 @@ function DHT (opts) {
       return self.emit('ready')
     }
 
-    var initialNodes = persistedNodes;
+    var initialNodes = persistedNodes
     if (typeof opts.bootstrap === 'string') {
       initialNodes.push(opts.bootstrap)
     } else if (Array.isArray(opts.bootstrap)) {
