@@ -1115,18 +1115,6 @@ DHT.prototype._debug = function () {
 }
 
 /**
- * Parse saved string
- * @param  {Array.<Object>} nodes
- * @return {Buffer}
- */
-function fromArray (nodes) {
-  nodes.forEach(function (node) {
-    if (node.id) node.id = idToBuffer(node.id)
-  })
-  return nodes
-}
-
-/**
  * Convert "contacts" from the routing table into "compact node info" representation.
  * @param  {Array.<Object>} contacts
  * @return {Buffer}
