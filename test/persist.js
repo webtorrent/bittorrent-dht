@@ -7,13 +7,13 @@ var os = require('os')
 test('persist dht to Array', function (t) {
   t.plan(1)
 
-  var dht1 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, persist: false })
   common.failOnWarningOrError(t, dht1)
 
   common.addRandomNodes(dht1, DHT.K)
 
   dht1.on('ready', function () {
-    var dht2 = new DHT({ bootstrap: dht1.toArray() })
+    var dht2 = new DHT({ bootstrap: dht1.toArray(), persist: false })
 
     dht2.on('ready', function () {
       t.deepEqual(dht2.toArray(), dht1.toArray())
