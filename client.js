@@ -18,6 +18,7 @@ var os = require('os')
 var parallel = require('run-parallel')
 var string2compact = require('string2compact')
 var fs = require('fs')
+var path = require('path')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -32,7 +33,7 @@ var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
 var HOMEDIR = (process.platform === 'win32') ? process.env.HOMEPATH : process.env.HOME
-var PERSIST_DHT_FILE = HOMEDIR + '/.bitorrent-dht.persist.json'
+var PERSIST_DHT_FILE = path.join(HOMEDIR, '.bitorrent-dht.persist.json')
 var PERSIST_DHT_TIMEOUT = 2000 // wait 2s after we see a node to persist the DHT
 
 var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
