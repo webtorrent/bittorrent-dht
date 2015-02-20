@@ -142,12 +142,12 @@ function DHT (opts) {
     if (opts.persist !== false) {
       try {
         persistedNodes = require(self.persistFile)
-        if (!Array.isArray(persistedNodes)) {
-          persistedNodes = []
-          debug('error reading ' + self.persistFile + ': returned object is not an array')
-        }
       } catch (err) {
         debug('error reading ' + self.persistFile + ': ' + err.message)
+      }
+      if (!Array.isArray(persistedNodes)) {
+        persistedNodes = []
+        debug('error reading ' + self.persistFile + ': returned object is not an array')
       }
     }
 
