@@ -174,8 +174,7 @@ DHT.prototype.listen = function (port, address, onlistening) {
     address = undefined
   }
 
-  if (onlistening)
-    self.once('listening', onlistening)
+  if (onlistening) self.once('listening', onlistening)
 
   if (self._destroyed || self._binding || self.listening) return
   self._binding = true
@@ -317,9 +316,11 @@ DHT.prototype._addPeer = function (addr, infoHash) {
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
-  if (!peers) peers = self.peers[infoHash] = {
-    index: {}, // addr -> true
-    list: [] // compactAddr
+  if (!peers) {
+    peers = self.peers[infoHash] = {
+      index: {}, // addr -> true
+      list: [] // compactAddr
+    }
   }
 
   if (!peers.index[addr]) {
@@ -436,13 +437,15 @@ DHT.prototype._resolveContacts = function (contacts, done) {
   var tasks = contacts.map(function (contact) {
     return function (cb) {
       var addrData = addrToIPPort(contact.addr)
-      if (isIP(addrData[0]))
+      if (isIP(addrData[0])) {
         cb(null, contact)
-      else dns.lookup(addrData[0], self.ipv, function (err, host) {
-        if (err) return cb(null, null)
-        contact.addr = host + ':' + addrData[1]
-        cb(null, contact)
-      })
+      } else {
+        dns.lookup(addrData[0], self.ipv, function (err, host) {
+          if (err) return cb(null, null)
+          contact.addr = host + ':' + addrData[1]
+          cb(null, contact)
+        })
+      }
     }
   })
   parallel(tasks, function (err, contacts) {
@@ -486,11 +489,13 @@ DHT.prototype.lookup = function (id, opts, cb) {
   })
 
   // NOT the same table as the one used for the lookup, as that table may have nodes without tokens
-  if (!self.tables[idHex]) self.tables[idHex] = new KBucket({
-    localNodeId: id,
-    numberOfNodesPerKBucket: K,
-    numberOfNodesToPing: MAX_CONCURRENCY
-  })
+  if (!self.tables[idHex]) {
+    self.tables[idHex] = new KBucket({
+      localNodeId: id,
+      numberOfNodesPerKBucket: K,
+      numberOfNodesToPing: MAX_CONCURRENCY
+    })
+  }
 
   var tokenful = self.tables[idHex]
 
