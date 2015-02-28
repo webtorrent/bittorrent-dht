@@ -27,7 +27,7 @@
   "devDependencies": {
     "ip": "^0.3.0",
     "standard": "^2.0.0",
-    "tape": "^2.12.3"
+    "tape": "^3.5.0"
   },
   "homepage": "http://webtorrent.io",
   "keywords": [
