@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "addr-to-ip-port": "^1.0.0",
-    "bencode": "^0.6.0",
+    "bencode": "^0.7.0",
     "buffer-equal": "^0.0.1",
     "compact2string": "^1.2.0",
     "debug": "^2.1.0",
