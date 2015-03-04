@@ -556,7 +556,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
     if (err) {
       self._debug('got lookup error: %s', err.message)
     } else {
-      self._debug('got lookup response: %s from %s', JSON.stringify(res), nodeIdHex)
+      self._debug('got lookup response from %s', nodeIdHex)
 
       // add node that sent this response
       var contact = table.get(nodeId) || { id: nodeId, addr: addr }
@@ -626,7 +626,7 @@ DHT.prototype._onData = function (data, rinfo) {
     return
   }
 
-  self._debug('got data %s from %s', JSON.stringify(message), addr)
+  // self._debug('got data %s from %s', JSON.stringify(message), addr)
 
   // Attempt to add every (valid) node that we see to the routing table.
   // TODO: If they node is already in the table, just update the "last heard from" time
@@ -735,7 +735,12 @@ DHT.prototype.query = function (data, addr, cb) {
     a: data.a
   }
 
-  self._debug('sent %s %s to %s', data.q, JSON.stringify(data.a), addr)
+  if (data.q === 'find_node') {
+    self._debug('sent find_node %s to %s', data.a.target.toString('hex'), addr)
+  } else if (data.q === 'get_peers') {
+    self._debug('sent get_peers %s to %s', data.a.info_hash.toString('hex'), addr)
+  }
+
   self._send(addr, message)
 }
 
