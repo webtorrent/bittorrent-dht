@@ -512,7 +512,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
   function add (contact) {
     if (self._addrIsSelf(contact.addr)) return
     if (contact.token) tokenful.add(contact)
-    if (contact.token || opts.findNode) table.add(contact)
+
+    table.add(contact)
   }
 
   var queried = {}
@@ -586,7 +587,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
       // recursive lookup should terminate because there are no closer nodes to find
       self._debug('terminating lookup %s %s',
           (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
-      var closest = table.closest({ id: id }, K)
+
+      var closest = (opts.findNode ? table : tokenful).closest({ id: id }, K)
       self._debug('K closest nodes are:')
       closest.forEach(function (contact) {
         self._debug('  ' + contact.addr + ' ' + idToHexString(contact.id))
