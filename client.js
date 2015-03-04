@@ -467,11 +467,11 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
+  id = idToBuffer(id)
   if (typeof opts === 'function') {
     cb = opts
     opts = {}
   }
-  id = idToBuffer(id)
   if (!opts) opts = {}
   if (!cb) cb = function () {}
   cb = once(cb)
@@ -481,6 +481,16 @@ DHT.prototype.lookup = function (id, opts, cb) {
 
   var idHex = idToHexString(id)
   self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
+
+  // Return local peers, if we have any in our table
+  var peers = self.peers[idHex] && self.peers[idHex]
+  if (peers) {
+    peers = parsePeerInfo(peers.list)
+    peers.forEach(function (peerAddr) {
+      self._debug('emit peer %s %s from %s', peerAddr, idHex, 'local')
+      self.emit('peer', peerAddr, idHex, 'local')
+    })
+  }
 
   var table = new KBucket({
     localNodeId: id,
@@ -844,7 +854,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (peerAddr) {
-        self._debug('emit peer %s %s from %s', infoHashHex, peerAddr, addr)
+        self._debug('emit peer %s %s from %s', peerAddr, infoHashHex, addr)
         self.emit('peer', peerAddr, infoHashHex, addr)
       })
     }

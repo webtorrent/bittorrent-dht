@@ -3,8 +3,8 @@ var parallel = require('run-parallel')
 var common = require('./common')
 var DHT = require('../')
 
-test('announce+lookup with 3-10 DHTs', function (t) {
-  var from = 3
+test('announce+lookup with 2-10 DHTs', function (t) {
+  var from = 2
   var to = 10
 
   var numRunning = to - from + 1
@@ -24,8 +24,10 @@ test('announce+lookup with 3-10 DHTs', function (t) {
           })
         }
 
-        dht.destroy(function () {
-          if (--numRunning === 0) t.end()
+        process.nextTick(function () {
+          dht.destroy(function () {
+            if (--numRunning === 0) t.end()
+          })
         })
       })
     })
@@ -61,9 +63,21 @@ function findPeers (numInstances, t, cb) {
   }), function () {
     // add each other to routing tables
     makeFriends(dhts)
-    dhts[0].announce(infoHash, 9998, function () {
-      dhts[1].lookup(infoHash)
-    })
+    if (numInstances === 2) {
+      // dhts[1] is the only one with the data, lookup() should find it in it's internal
+      // table
+      dhts[0].announce(infoHash, 9998)
+
+      // wait until dhts[1] gets the announce from dhts[1]
+      dhts[1].on('announce', function () {
+        dhts[1].lookup(infoHash)
+      })
+    } else {
+      // lookup from other DHTs
+      dhts[0].announce(infoHash, 9998, function () {
+        dhts[1].lookup(infoHash)
+      })
+    }
   })
 
   dhts[1].on('peer', function (addr, hash) {
