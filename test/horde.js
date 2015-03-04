@@ -35,8 +35,8 @@ test('announce+lookup with 2-10 DHTs', function (t) {
 })
 
 /**
- *  Initialize [numInstances] dhts, have one announce an infoHash and another perform a lookup
- *  Times out after a while
+ *  Initialize [numInstances] dhts, have one announce an infoHash, and another perform a
+ *  lookup. Times out after a while.
  */
 function findPeers (numInstances, t, cb) {
   var dhts = []
@@ -89,15 +89,13 @@ function findPeers (numInstances, t, cb) {
 }
 
 /**
- *  Adds every dht in `dhts` to every other dht's routing table
+ * Add every dht address to the dht "before" it.
+ * This should guarantee that any dht can be located (with enough queries).
  */
 function makeFriends (dhts) {
-  for (var i = 0; i < dhts.length; i++) {
-    for (var j = i + 1; j < dhts.length; j++) {
-      var d1 = dhts[i]
-      var d2 = dhts[j]
-      d1.addNode('127.0.0.1:' + d2.port, d2.nodeId)
-      d2.addNode('127.0.0.1:' + d1.port, d1.nodeId)
-    }
+  var len = dhts.length
+  for (var i = 0; i < len; i++) {
+    var next = dhts[(i + 1) % len]
+    dhts[i].addNode('127.0.0.1:' + next.port, next.nodeId)
   }
 }
