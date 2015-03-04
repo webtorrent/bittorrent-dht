@@ -17,6 +17,8 @@ var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
 var string2compact = require('string2compact')
+var fs = require('fs')
+var path = require('path')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -30,6 +32,9 @@ var MAX_CONCURRENCY = 6 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
+var HOMEDIR = (process.platform === 'win32') ? process.env.HOMEPATH : process.env.HOME
+var PERSIST_DHT_FILE = path.join(HOMEDIR, '.bitorrent-dht.persist.json')
+var PERSIST_DHT_TIMEOUT = 2000 // wait 2s after we see a node to persist the DHT
 
 var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
   QUERY: 'q',
@@ -78,6 +83,8 @@ function DHT (opts) {
   self._binding = false
   self._destroyed = false
   self.port = null
+  self.persistFile = (opts.persist === false) ? null
+    : (typeof opts.persist === 'string') ? opts.persist : PERSIST_DHT_FILE
 
   /**
    * Query Handlers table
@@ -131,19 +138,45 @@ function DHT (opts) {
   self._rotateInterval.unref && self._rotateInterval.unref()
 
   process.nextTick(function () {
-    if (opts.bootstrap === false) {
-        // Emit `ready` right away because the user does not want to bootstrap. Presumably,
-        // the user will call addNode() to populate the routing table manually.
-      self.ready = true
-      self.emit('ready')
-    } else if (typeof opts.bootstrap === 'string') {
-      self._bootstrap([ opts.bootstrap ])
-    } else if (Array.isArray(opts.bootstrap)) {
-      self._bootstrap(fromArray(opts.bootstrap))
-    } else {
-      // opts.bootstrap is undefined or true
-      self._bootstrap(BOOTSTRAP_NODES)
+    var persistedNodes = []
+    if (opts.persist !== false) {
+      try {
+        persistedNodes = require(self.persistFile)
+      } catch (err) {
+        debug('error reading ' + self.persistFile + ': ' + err.message)
+      }
+      if (!Array.isArray(persistedNodes)) {
+        persistedNodes = []
+        debug('error reading ' + self.persistFile + ': returned object is not an array')
+      }
     }
+
+    if (opts.bootstrap === false) {
+      // Emit `ready` right away because the user does not want to bootstrap. Presumably,
+      // the user will call addNode() to populate the routing table manually.
+      // if we have a persist file, we do it for the user.
+
+      persistedNodes
+        .forEach(function (node) {
+          self.addNode(node.addr, node.id, 'persist')
+        })
+
+      self.ready = true
+      return self.emit('ready')
+    }
+
+    var initialNodes = persistedNodes
+    if (typeof opts.bootstrap === 'string') {
+      initialNodes.push(opts.bootstrap)
+    } else if (Array.isArray(opts.bootstrap)) {
+      initialNodes = initialNodes.concat(opts.bootstrap)
+    }
+
+    if (initialNodes.length === 0) {
+      initialNodes = BOOTSTRAP_NODES
+    }
+
+    self._bootstrap(initialNodes)
   })
 
   self.on('ready', function () {
@@ -235,6 +268,13 @@ DHT.prototype.announce = function (infoHash, port, cb) {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
+
+  // persist while we still have everything in place, but destroy timeout
+  // early so that it doesn't run.
+  clearTimeout(self._persistTimeout)
+  if (self.persistFile)
+    self._persist()
+
   if (!cb) cb = function () {}
   cb = once(cb)
   if (self._destroyed) return cb(new Error('dht is destroyed'))
@@ -285,6 +325,8 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
     addr: addr
   }
   self.nodes.add(contact)
+  self.persist()
+
   // TODO: only emit this event for new nodes
   self.emit('node', addr, nodeId, from)
   self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
@@ -1123,6 +1165,37 @@ DHT.prototype.toArray = function () {
   return nodes
 }
 
+/**
+ * Persist the DHT to PERSIST_DHT_FILE or opts.presist if it was passed.
+ * This function throttles the real self._persist call by
+ * PERSIST_DHT_TIMEOUT.
+ * @return {Boolean}
+ */
+DHT.prototype.persist = function () {
+  var self = this
+
+  // don't persist before being ready so we don't overwrite the persist file
+  // before having a chance to read it
+  if (!self.ready || !self.persistFile)
+    return false
+
+  clearTimeout(self._persistTimeout)
+  self._persistTimeout = setTimeout(self._persist.bind(self), PERSIST_DHT_TIMEOUT)
+}
+
+/**
+ * Persist the DHT to PERSIST_DHT_FILE or opts.presist if it was passed.
+ * This function is throttled every PERSIST_DHT_TIMEOUT.
+ * @return {Boolean}
+ */
+DHT.prototype._persist = function () {
+  var self = this
+  var data = JSON.stringify(self.toArray())
+
+  debug('persisting DHT to ' + self.persistFile)
+  fs.writeFileSync(self.persistFile, data)
+}
+
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
   return self.port &&
@@ -1134,18 +1207,6 @@ DHT.prototype._debug = function () {
   var args = [].slice.call(arguments)
   args[0] = '[' + idToHexString(self.nodeId).substring(0, 7) + '] ' + args[0]
   debug.apply(null, args)
-}
-
-/**
- * Parse saved string
- * @param  {Array.<Object>} nodes
- * @return {Buffer}
- */
-function fromArray (nodes) {
-  nodes.forEach(function (node) {
-    if (node.id) node.id = idToBuffer(node.id)
-  })
-  return nodes
 }
 
 /**

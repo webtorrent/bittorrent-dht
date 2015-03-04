@@ -39,8 +39,8 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   t.plan(3)
   var targetNodeId = common.randomId()
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, persist: false })
+  var dht2 = new DHT({ bootstrap: false, persist: false })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
@@ -64,8 +64,8 @@ test('`find_node` query for exact match (with one in table)', function (t) {
 
 test('`find_node` query (with many in table)', function (t) {
   t.plan(3)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, persist: false })
+  var dht2 = new DHT({ bootstrap: false, persist: false })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
@@ -93,8 +93,8 @@ test('`find_node` query (with many in table)', function (t) {
 
 test('`get_peers` query to node with *no* peers in table', function (t) {
   t.plan(4)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, persist: false })
+  var dht2 = new DHT({ bootstrap: false, persist: false })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)

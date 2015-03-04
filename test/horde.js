@@ -47,7 +47,7 @@ function findPeers (numInstances, t, cb) {
   var infoHash = common.randomId().toString('hex')
 
   for (var i = 0; i < numInstances; i++) {
-    var dht = new DHT({ bootstrap: false })
+    var dht = new DHT({ bootstrap: false, persist: false })
 
     dhts.push(dht)
     common.failOnWarningOrError(t, dht)
