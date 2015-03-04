@@ -721,7 +721,7 @@ DHT.prototype._send = function (addr, message, cb) {
   self.socket.send(message, 0, message.length, port, host, cb)
 }
 
-DHT.prototype.query = function (data, addr, cb) {
+DHT.prototype._query = function (data, addr, cb) {
   var self = this
 
   if (!data.a) data.a = {}
@@ -751,7 +751,7 @@ DHT.prototype.query = function (data, addr, cb) {
  */
 DHT.prototype._sendPing = function (addr, cb) {
   var self = this
-  self.query({ q: 'ping' }, addr, cb)
+  self._query({ q: 'ping' }, addr, cb)
 }
 
 /**
@@ -801,7 +801,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     }
   }
 
-  self.query(data, addr, onResponse)
+  self._query(data, addr, onResponse)
 }
 
 /**
@@ -874,7 +874,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     }
   }
 
-  self.query(data, addr, onResponse)
+  self._query(data, addr, onResponse)
 }
 
 /**
@@ -943,7 +943,7 @@ DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
     }
   }
 
-  self.query(data, addr, cb)
+  self._query(data, addr, cb)
 }
 
 /**
