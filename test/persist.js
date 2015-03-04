@@ -36,7 +36,7 @@ test('bootstrap and listen to custom port', function (t) {
   // listen to a custom port
   dht.on('listening', function () {
     t.ok(dht.listening)
-    t.equal(dht.port, 12345)
+    t.equal(dht.address().port, 12345)
   })
 
   dht.on('ready', function () {

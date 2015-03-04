@@ -77,7 +77,7 @@ function DHT (opts) {
   self.listening = false
   self._binding = false
   self._destroyed = false
-  self.port = null
+  self._port = null
 
   /**
    * Query Handlers table
@@ -190,10 +190,15 @@ DHT.prototype._onListening = function () {
   var self = this
   self._binding = false
   self.listening = true
-  self.port = self.socket.address().port
+  self._port = self.socket.address().port
 
-  self._debug('emit listening %s', self.port)
-  self.emit('listening', self.port)
+  self._debug('emit listening %s', self._port)
+  self.emit('listening')
+}
+
+DHT.prototype.address = function () {
+  var self = this
+  return self.socket.address()
 }
 
 /**
@@ -243,7 +248,6 @@ DHT.prototype.destroy = function (cb) {
 
   self._destroyed = true
   self.listening = false
-  self.port = null
 
   // garbage collect large data structures
   self.nodes = null
@@ -1125,8 +1129,8 @@ DHT.prototype.toArray = function () {
 
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
-  return self.port &&
-    LOCAL_HOSTS[self.ipv].some(function (host) { return host + ':' + self.port === addr })
+  return self._port &&
+    LOCAL_HOSTS[self.ipv].some(function (host) { return host + ':' + self._port === addr })
 }
 
 DHT.prototype._debug = function () {

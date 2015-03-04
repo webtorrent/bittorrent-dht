@@ -72,7 +72,7 @@ test('`listening` event fires', function (t) {
 
   common.failOnWarningOrError(t, dht)
 
-  dht.listen(function (port) {
+  dht.listen(function () {
     t.pass('listen() onlistening shorthand gets called')
   })
   dht.on('listening', function () {
@@ -106,7 +106,8 @@ test('`ready` event fires when there are K nodes', function (t) {
     common.addRandomNodes(dht1, 3)
     t.equal(dht1.nodes.count(), 3, 'dht1 has 3 nodes')
 
-    dht1.listen(function (port) {
+    dht1.listen(function () {
+      var port = dht1.address().port
       t.pass('dht1 listening on port ' + port)
 
       // dht2 will get all 3 nodes from dht1 and should also emit a `ready` event

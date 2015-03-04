@@ -24,8 +24,8 @@ test('`ping` query send and response', function (t) {
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.listen(function (port) {
-    dht2._sendPing('127.0.0.1:' + port, function (err, res) {
+  dht1.listen(function () {
+    dht2._sendPing('127.0.0.1:' + dht1.address().port, function (err, res) {
       t.error(err)
       t.deepEqual(res.id, dht1.nodeId)
 
@@ -47,13 +47,13 @@ test('`find_node` query for exact match (with one in table)', function (t) {
 
   dht1.addNode('255.255.255.255:6969', targetNodeId)
 
-  dht1.listen(function (port) {
-    dht2._sendFindNode('127.0.0.1:' + port, targetNodeId, function (err, res) {
+  dht1.listen(function () {
+    dht2._sendFindNode('127.0.0.1:' + dht1.address().port, targetNodeId, function (err, res) {
       t.error(err)
       t.deepEqual(res.id, dht1.nodeId)
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }),
-        [ '255.255.255.255:6969', '127.0.0.1:' + dht2.port ]
+        [ '255.255.255.255:6969', '127.0.0.1:' + dht2.address().port ]
       )
 
       dht1.destroy()
@@ -74,14 +74,14 @@ test('`find_node` query (with many in table)', function (t) {
   dht1.addNode('10.10.10.10:6969', common.randomId())
   dht1.addNode('255.255.255.255:6969', common.randomId())
 
-  dht1.listen(function (port) {
+  dht1.listen(function () {
     var targetNodeId = common.randomId()
-    dht2._sendFindNode('127.0.0.1:' + port, targetNodeId, function (err, res) {
+    dht2._sendFindNode('127.0.0.1:' + dht1.address().port, targetNodeId, function (err, res) {
       t.error(err)
       t.deepEqual(res.id, dht1.nodeId)
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }).sort(),
-        [ '1.1.1.1:6969', '10.10.10.10:6969', '127.0.0.1:' + dht2.port,
+        [ '1.1.1.1:6969', '10.10.10.10:6969', '127.0.0.1:' + dht2.address().port,
           '255.255.255.255:6969' ]
       )
 
@@ -102,15 +102,15 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   dht1.addNode('1.1.1.1:6969', common.randomId())
   dht1.addNode('2.2.2.2:6969', common.randomId())
 
-  dht1.listen(function (port) {
+  dht1.listen(function () {
     var targetInfoHash = common.randomId()
-    dht2._sendGetPeers('127.0.0.1:' + port, targetInfoHash, function (err, res) {
+    dht2._sendGetPeers('127.0.0.1:' + dht1.address().port, targetInfoHash, function (err, res) {
       t.error(err)
       t.deepEqual(res.id, dht1.nodeId)
       t.ok(Buffer.isBuffer(res.token))
       t.deepEqual(
         res.nodes.map(function (node) { return node.addr }).sort(),
-        [ '1.1.1.1:6969', '127.0.0.1:' + dht2.port, '2.2.2.2:6969' ]
+        [ '1.1.1.1:6969', '127.0.0.1:' + dht2.address().port, '2.2.2.2:6969' ]
       )
 
       dht1.destroy()
@@ -134,8 +134,8 @@ test('`get_peers` query to node with peers in table', function (t) {
   dht1._addPeer('10.10.10.10:6969', targetInfoHash)
   dht1._addPeer('255.255.255.255:6969', targetInfoHash)
 
-  dht1.listen(function (port) {
-    dht2._sendGetPeers('127.0.0.1:' + port, targetInfoHash, function (err, res) {
+  dht1.listen(function () {
+    dht2._sendGetPeers('127.0.0.1:' + dht1.address().port, targetInfoHash, function (err, res) {
       t.error(err)
       t.deepEqual(res.id, dht1.nodeId)
       t.ok(Buffer.isBuffer(res.token))
@@ -160,9 +160,9 @@ test('`announce_peer` query with bad token', function (t) {
 
   var infoHash = common.randomId()
 
-  dht1.listen(function (port) {
+  dht1.listen(function () {
     var token = new Buffer('bad token')
-    dht2._sendAnnouncePeer('127.0.0.1:' + port, infoHash, 9999, token, function (err, res) {
+    dht2._sendAnnouncePeer('127.0.0.1:' + dht1.address().port, infoHash, 9999, token, function (err, res) {
       t.ok(err, 'got error')
       t.ok(err.message.indexOf('bad token') !== -1)
 
@@ -183,7 +183,8 @@ test('`announce_peer` query gets ack response', function (t) {
 
   var infoHash = common.randomId()
 
-  dht1.listen(function (port) {
+  dht1.listen(function () {
+    var port = dht1.address().port
     dht2._sendGetPeers('127.0.0.1:' + port, infoHash, function (err, res1) {
       t.error(err)
       t.deepEqual(res1.id, dht1.nodeId)

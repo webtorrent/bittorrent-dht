@@ -106,6 +106,12 @@ If `address` is undefined, the DHT will try to listen on all addresses.
 If `onlistening` is defined, it is attached to the `listening` event.
 
 
+#### `dht.address()`
+
+Returns an object containing the address information for the listening socket of the DHT.
+This object contains `address`, `family` and `port` properties.
+
+
 #### `dht.announce(infoHash, port, [callback])`
 
 Announce that the peer, controlling the querying node, is downloading a torrent on a port.
@@ -179,7 +185,7 @@ It is assumed that you will manually populate the routing table with `dht.addNod
 pass this option.
 
 
-#### `dht.on('listening', function (port) { ... })`
+#### `dht.on('listening', function () { ... })`
 
 Emitted when the DHT is listening.
 
