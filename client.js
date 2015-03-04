@@ -26,7 +26,7 @@ var BOOTSTRAP_NODES = [
 
 var BOOTSTRAP_TIMEOUT = 10000
 var K = module.exports.K = 20 // number of nodes per bucket
-var MAX_CONCURRENCY = 3 // α from Kademlia paper
+var MAX_CONCURRENCY = 6 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
