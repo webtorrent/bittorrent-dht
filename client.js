@@ -690,7 +690,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
       self.emit('warning', new Error(errMessage))
     } else {
       self._debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
-      self._sendError(addr, message.t, ERROR_TYPE.GENERIC, 'unexpected message')
+      self.emit('warning', new Error(errMessage))
     }
     return
   }
