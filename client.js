@@ -487,7 +487,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
 
   // Return local peers, if we have any in our table
-  var peers = self.peers[idHex] && self.peers[idHex]
+  var peers = self.peers[idHex]
   if (peers) {
     peers = parsePeerInfo(peers.list)
     peers.forEach(function (peerAddr) {
