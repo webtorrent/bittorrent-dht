@@ -301,6 +301,8 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
 
   if (self._addrIsSelf(addr)) {
     // self._debug('skipping adding %s since that is us!', addr)
+  if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
+    self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
     return
   }
 
@@ -534,7 +536,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var tokenful = self.tables[idHex]
 
   function add (contact) {
-    if (self._addrIsSelf(contact.addr)) return
+    if (self._addrIsSelf(contact.addr) || bufferEqual(contact.id, self.nodeId)) return
     if (contact.token) tokenful.add(contact)
 
     table.add(contact)
