@@ -71,10 +71,11 @@ function DHT (opts) {
   if (!opts) opts = {}
 
   self.nodeId = idToBuffer(opts.nodeId || hat(160))
+  self.nodeIdHex = idToHexString(self.nodeId)
+
+  self._debug('new DHT %s', self.nodeIdHex)
+
   self.ipv = opts.ipv || 4
-
-  self._debug('new DHT %s', idToHexString(self.nodeId))
-
   self.ready = false
   self.listening = false
   self._binding = false
@@ -296,11 +297,28 @@ DHT.prototype.destroy = function (cb) {
  */
 DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
+  if (self._destroyed) throw new Error('dht is destroyed')
+  if (nodeId.length !== 20) throw new Error('invalid node id length')
+  self._addNode(addr, nodeId, from)
+}
+
+/**
+ * Internal version of `addNode` that doesn't throw errors on invalid arguments, but
+ * silently fails instead. Useful for dealing with potentially bad data from the network.
+ * @param {string} addr
+ * @param {string|Buffer} nodeId
+ * @param {string=} from addr
+ */
+DHT.prototype._addNode = function (addr, nodeId, from) {
+  var self = this
   if (self._destroyed) return
   nodeId = idToBuffer(nodeId)
 
-  if (self._addrIsSelf(addr)) {
-    // self._debug('skipping adding %s since that is us!', addr)
+  if (nodeId.length !== 20) {
+    self._debug('skipping addNode %s %s; invalid id length', addr, idToHexString(nodeId))
+    return
+  }
+
   if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
     self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
     return
@@ -409,7 +427,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        self.addNode(contact.addr, contact.id, contact.from)
+        self._addNode(contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -493,7 +511,6 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
-  id = idToBuffer(id)
   if (typeof opts === 'function') {
     cb = opts
     opts = {}
@@ -502,10 +519,13 @@ DHT.prototype.lookup = function (id, opts, cb) {
   if (!cb) cb = function () {}
   cb = once(cb)
 
+  id = idToBuffer(id)
+  var idHex = idToHexString(id)
+
   if (self._destroyed) return cb(new Error('dht is destroyed'))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
+  if (id.length !== 20) throw new Error('invalid node id / info hash length')
 
-  var idHex = idToHexString(id)
   self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
 
   // Return local peers, if we have any in our table
@@ -660,9 +680,8 @@ DHT.prototype._onData = function (data, rinfo) {
   // TODO: If they node is already in the table, just update the "last heard from" time
   var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
   if (nodeId) {
-    // TODO: verify that this a valid length for a nodeId
     // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
-    self.addNode(addr, nodeId, addr)
+    self._addNode(addr, nodeId, addr)
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
@@ -815,7 +834,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -881,7 +900,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self.addNode(node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     if (res.values) {
@@ -1158,7 +1177,7 @@ DHT.prototype._addrIsSelf = function (addr) {
 DHT.prototype._debug = function () {
   var self = this
   var args = [].slice.call(arguments)
-  args[0] = '[' + idToHexString(self.nodeId).substring(0, 7) + '] ' + args[0]
+  args[0] = '[' + self.nodeIdHex.substring(0, 7) + '] ' + args[0]
   debug.apply(null, args)
 }
 
