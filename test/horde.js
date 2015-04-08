@@ -63,21 +63,11 @@ function findPeers (numInstances, t, cb) {
   }), function () {
     // add each other to routing tables
     makeFriends(dhts)
-    if (numInstances === 2) {
-      // dhts[1] is the only one with the data, lookup() should find it in it's internal
-      // table
-      dhts[0].announce(infoHash, 9998)
 
-      // wait until dhts[1] gets the announce from dhts[1]
-      dhts[1].on('announce', function () {
-        dhts[1].lookup(infoHash)
-      })
-    } else {
-      // lookup from other DHTs
-      dhts[0].announce(infoHash, 9998, function () {
-        dhts[1].lookup(infoHash)
-      })
-    }
+    // lookup from other DHTs
+    dhts[0].announce(infoHash, 9998, function () {
+      dhts[1].lookup(infoHash)
+    })
   })
 
   dhts[1].on('peer', function (addr, hash) {
