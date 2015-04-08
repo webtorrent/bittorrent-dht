@@ -131,7 +131,7 @@ function DHT (opts) {
   self.localAddresses = [ networkAddress.ipv4() ]
 
   publicAddress(function (err, ip) {
-    if (err) return debug('failed to get public ip: %s', err.message || err)
+    if (err) return self._debug('failed to get public ip: %s', err.message || err)
     self.localAddresses.push(ip)
   })
 
