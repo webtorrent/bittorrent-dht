@@ -13,9 +13,11 @@ var hat = require('hat')
 var inherits = require('inherits')
 var isIP = require('is-ip')
 var KBucket = require('k-bucket')
+var networkAddress = require('network-address')
 var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
+var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 
 var BOOTSTRAP_NODES = [
@@ -120,6 +122,18 @@ function DHT (opts) {
    */
   self.peers = {}
 
+  /**
+   * IP addresses of the local DHT node. Used to store the peer, controlling this DHT
+   * node, into the local table when `client.announce()` is called.
+   * @type {Array.<string>}
+   */
+  self.localAddresses = [ networkAddress.ipv4() ]
+
+  publicAddress(function (err, ip) {
+    if (err) return debug('failed to get public ip: %s', err.message || err)
+    self.localAddresses.push(ip)
+  })
+
   // Create socket and attach listeners
   self.socket = module.exports.dgram.createSocket('udp' + self.ipv)
   self.socket.on('message', self._onData.bind(self))
@@ -213,8 +227,14 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   if (!cb) cb = function () {}
   if (self._destroyed) return cb(new Error('dht is destroyed'))
 
-  self._debug('announce %s %s', infoHash, port)
+  infoHash = idToBuffer(infoHash)
   var infoHashHex = idToHexString(infoHash)
+
+  self._debug('announce %s %s', infoHashHex, port)
+
+  self.localAddresses.forEach(function (address) {
+    self._addPeer(address + ':' + port, infoHashHex)
+  })
 
   // TODO: it would be nice to not use a table when a lookup is in progress
   var table = self.tables[infoHashHex]
