@@ -444,7 +444,7 @@ DHT.prototype._bootstrap = function (nodes) {
         findNode: true,
         addrs: addrs.length ? addrs : null
       }, function (err) {
-        if (err) self._debug('lookup error %s during bootstrap', err.message)
+        if (err) self._debug('lookup error during bootstrap: %s', err.message)
 
         // emit `ready` once the recursive lookup for our own node ID is finished
         // (successful or not), so that later get_peer lookups will have a good shot at
@@ -466,7 +466,7 @@ DHT.prototype._bootstrap = function (nodes) {
         lookup()
       }
     }, BOOTSTRAP_TIMEOUT)
-    self._bootstrapTimeout.unref && self._bootstrapTimeout.unref()
+    if (self._bootstrapTimeout.unref) self._bootstrapTimeout.unref()
   })
 }
 
@@ -1092,9 +1092,11 @@ DHT.prototype._getTransactionId = function (addr, fn) {
     fn(err, res)
   }
 
+  var timeout = setTimeout(onTimeout, SEND_TIMEOUT)
+  if (timeout.unref) timeout.unref()
   reqs[transactionId] = {
     cb: onResponse,
-    timeout: setTimeout(onTimeout, SEND_TIMEOUT)
+    timeout: timeout
   }
 
   return transactionId
