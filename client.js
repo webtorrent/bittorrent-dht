@@ -250,7 +250,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     closest.forEach(function (contact) {
       self._sendAnnouncePeer(contact.addr, infoHash, port, contact.token)
     })
-    self._debug('announce end %s %s', infoHash, port)
+    self._debug('announce end %s %s', infoHashHex, port)
     cb(null)
   }
 }
