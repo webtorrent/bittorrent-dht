@@ -77,8 +77,9 @@ function DHT (opts) {
 
   self.ready = false
   self.listening = false
+  self.destroyed = false
+
   self._binding = false
-  self._destroyed = false
   self._port = null
   self._ipv = opts.ipv || 4
 
@@ -191,7 +192,7 @@ DHT.prototype.listen = function (port, address, onlistening) {
 
   if (onlistening) self.once('listening', onlistening)
 
-  if (self._destroyed || self._binding || self.listening) return
+  if (self.destroyed || self._binding || self.listening) return
   self._binding = true
 
   self._debug('listen %s', port)
@@ -226,7 +227,7 @@ DHT.prototype.address = function () {
 DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
   if (!cb) cb = function () {}
-  if (self._destroyed) return cb(new Error('dht is destroyed'))
+  if (self.destroyed) return cb(new Error('dht is destroyed'))
 
   infoHash = idToBuffer(infoHash)
   var infoHashHex = idToHexString(infoHash)
@@ -263,11 +264,11 @@ DHT.prototype.destroy = function (cb) {
   var self = this
   if (!cb) cb = function () {}
   cb = once(cb)
-  if (self._destroyed) return cb(new Error('dht is destroyed'))
+  if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
   self._debug('destroy')
 
-  self._destroyed = true
+  self.destroyed = true
   self.listening = false
 
   // garbage collect large data structures
@@ -297,7 +298,7 @@ DHT.prototype.destroy = function (cb) {
  */
 DHT.prototype.addNode = function (addr, nodeId) {
   var self = this
-  if (self._destroyed) throw new Error('dht is destroyed')
+  if (self.destroyed) throw new Error('dht is destroyed')
 
   // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
   // If the peer does not respond, the will not be added to the routing table.
@@ -332,7 +333,7 @@ DHT.prototype.addNode = function (addr, nodeId) {
  */
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
-  if (self._destroyed) return false
+  if (self.destroyed) return false
   nodeId = idToBuffer(nodeId)
 
   if (nodeId.length !== 20) {
@@ -361,7 +362,7 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
  */
 DHT.prototype.removeNode = function (nodeId) {
   var self = this
-  if (self._destroyed) return
+  if (self.destroyed) return
   var contact = self.nodes.get(idToBuffer(nodeId))
   if (contact) {
     self._debug('removeNode %s %s', contact.nodeId, contact.addr)
@@ -376,7 +377,7 @@ DHT.prototype.removeNode = function (nodeId) {
  */
 DHT.prototype._addPeer = function (addr, infoHash) {
   var self = this
-  if (self._destroyed) return
+  if (self.destroyed) return
 
   infoHash = idToHexString(infoHash)
 
@@ -403,7 +404,7 @@ DHT.prototype._addPeer = function (addr, infoHash) {
  */
 DHT.prototype.removePeer = function (addr, infoHash) {
   var self = this
-  if (self._destroyed) return
+  if (self.destroyed) return
 
   infoHash = idToHexString(infoHash)
 
@@ -481,7 +482,7 @@ DHT.prototype._bootstrap = function (nodes) {
 
     // TODO: keep retrying after one failure
     self._bootstrapTimeout = setTimeout(function () {
-      if (self._destroyed) return
+      if (self.destroyed) return
       // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
       if (self.nodes.count() === 0) {
         self._debug('No DHT bootstrap nodes replied, retry')
@@ -544,7 +545,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   id = idToBuffer(id)
   var idHex = idToHexString(id)
 
-  if (self._destroyed) return cb(new Error('dht is destroyed'))
+  if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
   if (id.length !== 20) throw new Error('invalid node id / info hash length')
 
@@ -615,7 +616,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   // Note: `_sendFindNode` and `_sendGetPeers` will insert newly discovered nodes into
   // the routing table, so that's not done here.
   function onResponse (addr, err, res) {
-    if (self._destroyed) return cb(new Error('dht is destroyed'))
+    if (self.destroyed) return cb(new Error('dht is destroyed'))
 
     pending -= 1
     var nodeId = res && res.id
@@ -741,7 +742,7 @@ DHT.prototype._onQuery = function (addr, message) {
  */
 DHT.prototype._onResponseOrError = function (addr, type, message) {
   var self = this
-  if (self._destroyed) return
+  if (self.destroyed) return
 
   var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
     && message.t.readUInt16BE(0)
