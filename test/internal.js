@@ -2,20 +2,6 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('explicitly set nodeId', function (t) {
-  var nodeId = common.randomId()
-
-  var dht = new DHT({
-    nodeId: nodeId,
-    bootstrap: false
-  })
-
-  common.failOnWarningOrError(t, dht)
-
-  t.equal(dht.nodeId, nodeId)
-  t.end()
-})
-
 test('`ping` query send and response', function (t) {
   t.plan(2)
   var dht1 = new DHT({ bootstrap: false })
