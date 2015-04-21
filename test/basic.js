@@ -32,7 +32,6 @@ test('call `addNode` with nodeId argument', function (t) {
   })
 
   dht.addNode('127.0.0.1:9999', nodeId)
-
 })
 
 test('call `addNode` without nodeId argument', function (t) {
