@@ -734,12 +734,14 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
 
   if (!transaction || !transaction.cb) {
     // unexpected message!
+    var errMessage
     if (err) {
-      var errMessage = 'got unexpected error from ' + addr + ' ' + err.message
+      errMessage = 'got unexpected error from ' + addr + ' ' + err.message
       self._debug(errMessage)
       self.emit('warning', new Error(errMessage))
     } else {
-      self._debug('got unexpected message from ' + addr + ' ' + JSON.stringify(message))
+      errMessage = 'got unexpected message from ' + addr + ' ' + JSON.stringify(message)
+      self._debug(errMessage)
       self.emit('warning', new Error(errMessage))
     }
     return
