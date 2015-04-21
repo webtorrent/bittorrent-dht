@@ -175,6 +175,9 @@ function DHT (opts) {
  */
 DHT.prototype.listen = function (port, address, onlistening) {
   var self = this
+  if (self.destroyed) throw new Error('dht is destroyed')
+  if (self._binding || self.listening) throw new Error('dht is already listening')
+
   if (typeof port === 'string') {
     onlistening = address
     address = port
@@ -192,7 +195,6 @@ DHT.prototype.listen = function (port, address, onlistening) {
 
   if (onlistening) self.once('listening', onlistening)
 
-  if (self.destroyed || self._binding || self.listening) return
   self._binding = true
 
   self._debug('listen %s', port)
@@ -362,7 +364,7 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
  */
 DHT.prototype.removeNode = function (nodeId) {
   var self = this
-  if (self.destroyed) return
+  if (self.destroyed) throw new Error('dht is destroyed')
   var contact = self.nodes.get(idToBuffer(nodeId))
   if (contact) {
     self._debug('removeNode %s %s', contact.nodeId, contact.addr)
