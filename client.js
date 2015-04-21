@@ -720,6 +720,7 @@ DHT.prototype._onQuery = function (addr, message) {
  */
 DHT.prototype._onResponseOrError = function (addr, type, message) {
   var self = this
+  if (self._destroyed) return
 
   var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
     && message.t.readUInt16BE(0)
