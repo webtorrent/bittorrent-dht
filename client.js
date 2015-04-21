@@ -298,7 +298,10 @@ DHT.prototype.destroy = function (cb) {
 DHT.prototype.addNode = function (addr, nodeId, from) {
   var self = this
   if (self._destroyed) throw new Error('dht is destroyed')
+
+  nodeId = idToBuffer(nodeId)
   if (nodeId.length !== 20) throw new Error('invalid node id length')
+
   self._addNode(addr, nodeId, from)
 }
 
