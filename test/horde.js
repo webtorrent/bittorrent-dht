@@ -3,9 +3,9 @@ var parallel = require('run-parallel')
 var common = require('./common')
 var DHT = require('../')
 
-test('announce+lookup with 2-10 DHTs', function (t) {
+test('announce+lookup with 2-20 DHTs', function (t) {
   var from = 2
-  var to = 10
+  var to = 20
 
   var numRunning = to - from + 1
   for (var i = from; i <= to; i++) {
