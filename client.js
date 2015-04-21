@@ -75,12 +75,12 @@ function DHT (opts) {
 
   self._debug('new DHT %s', self.nodeIdHex)
 
-  self.ipv = opts.ipv || 4
   self.ready = false
   self.listening = false
   self._binding = false
   self._destroyed = false
   self._port = null
+  self._ipv = opts.ipv || 4
 
   /**
    * Query Handlers table
@@ -136,7 +136,7 @@ function DHT (opts) {
   })
 
   // Create socket and attach listeners
-  self.socket = module.exports.dgram.createSocket('udp' + self.ipv)
+  self.socket = module.exports.dgram.createSocket('udp' + self._ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
   self.socket.on('error', function () {}) // throw away errors
@@ -506,7 +506,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
       if (isIP(addrData[0])) {
         cb(null, contact)
       } else {
-        dns.lookup(addrData[0], self.ipv, function (err, host) {
+        dns.lookup(addrData[0], self._ipv, function (err, host) {
           if (err) return cb(null, null)
           contact.addr = host + ':' + addrData[1]
           cb(null, contact)
@@ -1204,7 +1204,7 @@ DHT.prototype.toArray = function () {
 DHT.prototype._addrIsSelf = function (addr) {
   var self = this
   return self._port &&
-    LOCAL_HOSTS[self.ipv].some(function (host) { return host + ':' + self._port === addr })
+    LOCAL_HOSTS[self._ipv].some(function (host) { return host + ':' + self._port === addr })
 }
 
 DHT.prototype._debug = function () {
