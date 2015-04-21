@@ -295,14 +295,31 @@ DHT.prototype.destroy = function (cb) {
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
  */
-DHT.prototype.addNode = function (addr, nodeId, from) {
+DHT.prototype.addNode = function (addr, nodeId) {
   var self = this
   if (self._destroyed) throw new Error('dht is destroyed')
+
+  // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
+  // If the peer does not respond, the will not be added to the routing table.
+  if (nodeId == null) {
+    self._sendPing(addr, function (err, res) {
+      if (err) {
+        self._debug('skipping addNode %s; peer did not respond: %s', addr, err.message)
+      }
+      // No need to call `self._addNode()` explicitly here. `_onData` automatically
+      // attempts to add every node the client gets a message from to the routing table.
+    })
+    return
+  }
 
   nodeId = idToBuffer(nodeId)
   if (nodeId.length !== 20) throw new Error('invalid node id length')
 
-  self._addNode(addr, nodeId, from)
+  self._addNode(addr, nodeId)
+  process.nextTick(function () {
+    // TODO: only emit this event for new nodes
+    self.emit('node', addr, nodeId, addr)
+  })
 }
 
 /**
@@ -311,20 +328,21 @@ DHT.prototype.addNode = function (addr, nodeId, from) {
  * @param {string} addr
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
+ * @return {boolean} was the node valid and added to the table
  */
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
-  if (self._destroyed) return
+  if (self._destroyed) return false
   nodeId = idToBuffer(nodeId)
 
   if (nodeId.length !== 20) {
     self._debug('skipping addNode %s %s; invalid id length', addr, idToHexString(nodeId))
-    return
+    return false
   }
 
   if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
     self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
-    return
+    return false
   }
 
   var contact = {
@@ -332,9 +350,9 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
     addr: addr
   }
   self.nodes.add(contact)
-  // TODO: only emit this event for new nodes
-  self.emit('node', addr, nodeId, from)
+
   self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
+  return true
 }
 
 /**
@@ -430,7 +448,8 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        self._addNode(contact.addr, contact.id, contact.from)
+        var valid = self._addNode(contact.addr, contact.id, contact.from)
+        if (valid) self.emit('node', contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -680,11 +699,13 @@ DHT.prototype._onData = function (data, rinfo) {
   // self._debug('got data %s from %s', JSON.stringify(message), addr)
 
   // Attempt to add every (valid) node that we see to the routing table.
-  // TODO: If they node is already in the table, just update the "last heard from" time
+  // TODO: If the node is already in the table, just update the "last heard from" time
   var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
   if (nodeId) {
     // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
-    self._addNode(addr, nodeId, addr)
+    var valid = self._addNode(addr, nodeId, addr)
+    // TODO: only emit this event for new nodes
+    if (valid) self.emit('node', addr, nodeId, addr)
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
@@ -840,7 +861,9 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self._addNode(node.addr, node.id, addr)
+        var valid = self._addNode(node.addr, node.id, addr)
+        // TODO: only emit this event for new nodes
+        if (valid) self.emit('node', node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -906,7 +929,9 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        self._addNode(node.addr, node.id, addr)
+        var valid = self._addNode(node.addr, node.id, addr)
+        // TODO: only emit this event for new nodes
+        if (valid) self.emit('node', node.addr, node.id, addr)
       })
     }
     if (res.values) {

@@ -13,6 +13,7 @@ test('explicitly set nodeId', function (t) {
   common.failOnWarningOrError(t, dht)
 
   t.equal(dht.nodeId, nodeId)
+  dht.destroy()
   t.end()
 })
 
@@ -23,12 +24,15 @@ test('call `addNode` with nodeId argument', function (t) {
   common.failOnWarningOrError(t, dht)
 
   var nodeId = common.randomId()
-  dht.addNode('127.0.0.1:9999', nodeId)
 
   dht.on('node', function (addr, _nodeId) {
     t.equal(addr, '127.0.0.1:9999')
     t.deepEqual(_nodeId, nodeId)
+    dht.destroy()
   })
+
+  dht.addNode('127.0.0.1:9999', nodeId)
+
 })
 
 test('call `addNode` without nodeId argument', function (t) {
@@ -47,8 +51,10 @@ test('call `addNode` without nodeId argument', function (t) {
     dht2.addNode('127.0.0.1:' + port)
 
     dht2.on('node', function (addr, _nodeId) {
-      t.equal(addr, '127.0.0.1:9999')
+      t.equal(addr, '127.0.0.1:' + port)
       t.deepEqual(_nodeId, dht1.nodeId)
+      dht1.destroy()
+      dht2.destroy()
     })
   })
 })
@@ -69,6 +75,7 @@ test('call `addNode` without nodeId argument, and invalid addr', function (t) {
   })
 
   setTimeout(function () {
-    t.pass('no "node" event emitted for 1s - passing')
-  }, 1000)
+    t.pass('no "node" event emitted for 2 seconds')
+    dht.destroy()
+  }, 2000)
 })
