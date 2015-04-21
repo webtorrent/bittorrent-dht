@@ -402,7 +402,7 @@ DHT.prototype._addPeer = function (addr, infoHash) {
  * @param  {string} addr
  * @param  {Buffer|string} infoHash
  */
-DHT.prototype.removePeer = function (addr, infoHash) {
+DHT.prototype._removePeer = function (addr, infoHash) {
   var self = this
   if (self.destroyed) return
 
