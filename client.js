@@ -324,32 +324,32 @@ DHT.prototype._put = function (opts, cb) {
   ;(opts.addrs || self.nodes.toArray()).forEach(put)
   return hash
 
-  function put (addr) {
+  function put (node) {
     pending += 2
     var data = {
       a: {
         id: opts.id || self.nodeId,
         v: opts.value
       },
-      t: self._getTransactionId(addr, next),
+      t: self._getTransactionId(node.addr, next),
       y: 'q',
       q: 'put'
     }
     if (isMutable) {
-      data.a.token = opts.token || self._generateToken(addr, next(addr))
+      data.a.token = opts.token || self._generateToken(node.addr, next(node))
       data.a.seq = Math.round(opts.seq)
       data.a.sig = opts.sig
       data.a.k = opts.k
       if (opts.salt) data.a.salt = opts.salt
       if (opts.cas) data.a.cas = Math.round(opts.cas)
     }
-    self._send(addr, data, next(addr))
+    self._send(node.addr, data, next(node))
   }
 
-  function next (addr) {
+  function next (node) {
     return function (err) {
       if (err) {
-        err.address = addr
+        err.address = node.addr
         errors.push(err)
       }
       if (-- pending === 0) cb(errors, hash)
