@@ -6,12 +6,15 @@ test('immutable put', function (t) {
   t.plan(3)
 
   var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
+
   common.failOnWarningOrError(t, dht1)
   common.addRandomNodes(dht1, DHT.K)
 
-  dht1.on('ready', function () {
-    var dht2 = new DHT({ bootstrap: dht1.toArray() })
-    dht2.on('ready', function () {
+  dht1.listen(function () {
+    dht2.addNode('127.0.0.1:' + dht1.address().port)
+
+    dht2.on('node', function () {
       var value = Buffer(500).fill('abc')
       dht1.put({ value: value }, function (errors, hash) {
         errors.forEach(t.error.bind(t))
