@@ -3,7 +3,7 @@ var DHT = require('../')
 var test = require('tape')
 
 test('immutable put', function (t) {
-  t.plan(4)
+  t.plan(3)
 
   var dht1 = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht1)
@@ -13,8 +13,9 @@ test('immutable put', function (t) {
     var dht2 = new DHT({ bootstrap: dht1.toArray() })
     dht2.on('ready', function () {
       var value = Buffer(500).fill('abc')
-      dht1.put({ value: value }, function (err, hash) {
-        t.ifError(err)
+      dht1.put({ value: value }, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+
         t.equal(
           hash.toString('hex'),
           '3ab87d68b1be9dc63da13faf18a7d2376ccd938a' // sha1 of the value

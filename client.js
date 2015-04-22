@@ -270,45 +270,41 @@ DHT.prototype.announce = function (infoHash, port, cb) {
 DHT.prototype.put = function (opts, cb) {
   var self = this
   var isMutable = opts.k || opts.sig
-  if (opts.id === undefined) {
-    cb(new Error('opts.id not given'))
-    return null
-  }
   if (opts.value === undefined) {
-    cb(new Error('opts.value not given'))
+    cb([ new Error('opts.value not given') ])
     return null
   }
   if (opts.value.length >= 1000) {
-    cb(new Error('put() value must be less than 1000 bytes'))
+    cb([ new Error('put() value must be less than 1000 bytes') ])
     return null
   }
 
   if (isMutable && opts.cas && typeof opts.cas !== 'number') {
-    cb(new Error('opts.cas must be an integer if provided'))
+    cb([ new Error('opts.cas must be an integer if provided') ])
     return null
   }
   if (isMutable && !opts.k) {
-    cb(new Error('opts.k ed25519 public key required for mutable put'))
+    cb([ new Error('opts.k ed25519 public key required for mutable put') ])
     return null
   }
   if (isMutable && opts.k.length !== 32) {
-    cb(new Error('opts.k ed25519 public key must be 32 bytes'))
+    cb([ new Error('opts.k ed25519 public key must be 32 bytes') ])
     return null
   }
   if (isMutable && !opts.sig) {
-    cb(new Error('opts.sig signature required for mutable put'))
+    cb([ new Error('opts.sig signature required for mutable put') ])
     return null
   }
   if (isMutable && opts.sig.length !== 64) {
-    cb(new Error('opts.sig signature must be 64 bytes'))
+    cb([ new Error('opts.sig signature must be 64 bytes') ])
     return null
   }
   if (isMutable && !opts.seq) {
-    cb(new Error('opts.seq not provided for a mutable update'))
+    cb([ new Error('opts.seq not provided for a mutable update') ])
     return null
   }
   if (isMutable && typeof opts.seq !== 'number') {
-    cb(new Error('opts.seq not an integer'))
+    cb([ new Error('opts.seq not an integer') ])
     return null
   }
   return self._put(opts, cb)
@@ -320,10 +316,12 @@ DHT.prototype.put = function (opts, cb) {
  * @param {function=} cb
  */
 DHT.prototype._put = function (opts, cb) {
+  var self = this
   var pending = 0
   var errors = []
+  var isMutable = opts.k || opts.sig
   var hash = sha('sha1').update(opts.value).digest()
-  ;(opts.addrs || self.nodes.toArray).forEach(put)
+  ;(opts.addrs || self.nodes.toArray()).forEach(put)
   return hash
 
   function put (addr) {
