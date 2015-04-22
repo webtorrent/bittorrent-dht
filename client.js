@@ -92,7 +92,9 @@ function DHT (opts) {
     ping: self._onPing,
     find_node: self._onFindNode,
     get_peers: self._onGetPeers,
-    announce_peer: self._onAnnouncePeer
+    announce_peer: self._onAnnouncePeer,
+    put: self._onPut,
+    get: self._onGet
   }
 
   /**
@@ -336,25 +338,63 @@ DHT.prototype._put = function (opts, cb) {
       q: 'put'
     }
     if (isMutable) {
-      data.a.token = opts.token || self._generateToken(addr, next)
+      data.a.token = opts.token || self._generateToken(addr, next(addr))
       data.a.seq = Math.round(opts.seq)
       data.a.sig = opts.sig
       data.a.k = opts.k
       if (opts.salt) data.a.salt = opts.salt
       if (opts.cas) data.a.cas = Math.round(opts.cas)
     }
-    self._send(addr, data, next)
+    self._send(addr, data, next(addr))
   }
 
-  function next (err) {
-    if (err) errors.push(err)
-    if (-- pending === 0) cb(errors, hash)
+  function next (addr) {
+    return function (err) {
+      if (err) {
+        err.address = addr
+        errors.push(err)
+      }
+      if (-- pending === 0) cb(errors, hash)
+    }
   }
 }
 
 DHT.prototype.get = function (hash, cb) {
+}
+
+DHT.prototype._onPut = function (addr, message) {
+  var self = this
+  var res = {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: { id: self.nodeId }
+  }
+  var msg = message.a
+  if (!msg || !msg.v || !msg.id) {
+    return self._debug('skipping put from %s: not enough parameters', addr)
+  }
+
+  var isMutable = message.a.k || message.a.sig
+  self._debug('got put from %s', addr)
   
-};
+  var data = {
+    id: message.a.id,
+    v: message.a.v
+  }
+  if (isMutable) {
+    if (msg.cas) data.cas = msg.cas
+    data.sig = msg.sig
+    data.k = msg.k
+    data.seq = msg.seq
+    data.token = msg.token
+  }
+  self.nodes.add(data)
+  self._send(addr, res)
+}
+
+DHT.prototype._onGet = function (addr, message) {
+  // todo
+}
 
 /**
  * Destroy and cleanup the DHT.
