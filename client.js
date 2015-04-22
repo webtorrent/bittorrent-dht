@@ -319,12 +319,13 @@ DHT.prototype.put = function (opts, cb) {
  */
 DHT.prototype._put = function (opts, cb) {
   var pending = 0
+  var errors = []
   var hash = sha('sha1').update(opts.value).digest()
   ;(opts.addrs || self.nodes.toArray).forEach(put)
   return hash
 
   function put (addr) {
-    pending ++
+    pending += 2
     var data = {
       a: {
         id: opts.id || self.nodeId,
@@ -335,7 +336,7 @@ DHT.prototype._put = function (opts, cb) {
       q: 'put'
     }
     if (isMutable) {
-      data.a.token = opts.token || self._generateToken(addr)
+      data.a.token = opts.token || self._generateToken(addr, next)
       data.a.seq = Math.round(opts.seq)
       data.a.sig = opts.sig
       data.a.k = opts.k
@@ -346,10 +347,14 @@ DHT.prototype._put = function (opts, cb) {
   }
 
   function next (err) {
-    if (err) cb(err)
-    else if (-- pending === 0) cb(null, hash)
+    if (err) errors.push(err)
+    if (-- pending === 0) cb(errors, hash)
   }
 }
+
+DHT.prototype.get = function (hash, cb) {
+  
+};
 
 /**
  * Destroy and cleanup the DHT.
