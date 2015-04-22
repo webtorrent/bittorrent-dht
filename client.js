@@ -19,6 +19,7 @@ var os = require('os')
 var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
+var sha = require('sha.js')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -255,6 +256,98 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     })
     self._debug('announce end %s %s', infoHashHex, port)
     cb(null)
+  }
+}
+
+/**
+ * Write arbitrary mutable and immutable data to the DHT.
+ * Specified in BEP44: http://bittorrent.org/beps/bep_0044.html
+ * @param {Object} opts
+ * @param {function=} cb
+ */
+DHT.prototype.put = function (opts, cb) {
+  var self = this
+  var isMutable = opts.k || opts.sig
+  if (opts.id === undefined) {
+    cb(new Error('opts.id not given'))
+    return null
+  }
+  if (opts.value === undefined) {
+    cb(new Error('opts.value not given'))
+    return null
+  }
+  if (opts.value.length >= 1000) {
+    cb(new Error('put() value must be less than 1000 bytes'))
+    return null
+  }
+
+  if (isMutable && opts.cas && typeof opts.cas !== 'number') {
+    cb(new Error('opts.cas must be an integer if provided'))
+    return null
+  }
+  if (isMutable && !opts.k) {
+    cb(new Error('opts.k ed25519 public key required for mutable put'))
+    return null
+  }
+  if (isMutable && opts.k.length !== 32) {
+    cb(new Error('opts.k ed25519 public key must be 32 bytes'))
+    return null
+  }
+  if (isMutable && !opts.sig) {
+    cb(new Error('opts.sig signature required for mutable put'))
+    return null
+  }
+  if (isMutable && opts.sig.length !== 64) {
+    cb(new Error('opts.sig signature must be 64 bytes'))
+    return null
+  }
+  if (isMutable && !opts.seq) {
+    cb(new Error('opts.seq not provided for a mutable update'))
+    return null
+  }
+  if (isMutable && typeof opts.seq !== 'number') {
+    cb(new Error('opts.seq not an integer'))
+    return null
+  }
+  return self._put(opts, cb)
+}
+
+/**
+ * put() without type checks for internal use
+ * @param {Object} opts
+ * @param {function=} cb
+ */
+DHT.prototype._put = function (opts, cb) {
+  var pending = 0
+  var hash = sha('sha1').update(opts.value).digest()
+  ;(opts.addrs || self.nodes.toArray).forEach(put)
+  return hash
+
+  function put (addr) {
+    pending ++
+    var data = {
+      a: {
+        id: opts.id || self.nodeId,
+        v: opts.value
+      },
+      t: self._getTransactionId(addr, next),
+      y: 'q',
+      q: 'put'
+    }
+    if (isMutable) {
+      data.a.token = opts.token || self._generateToken(addr)
+      data.a.seq = Math.round(opts.seq)
+      data.a.sig = opts.sig
+      data.a.k = opts.k
+      if (opts.salt) data.a.salt = opts.salt
+      if (opts.cas) data.a.cas = Math.round(opts.cas)
+    }
+    self._send(addr, data, next)
+  }
+
+  function next (err) {
+    if (err) cb(err)
+    else if (-- pending === 0) cb(null, hash)
   }
 }
 
