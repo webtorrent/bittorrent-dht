@@ -919,6 +919,11 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
  */
 DHT.prototype._send = function (addr, message, cb) {
   var self = this
+  if (!self.listening && self._binding) {
+    return self.once('listening', function () {
+      self._send(addr, message, cb)
+    })
+  }
   if (!self.listening) return self.listen(self._send.bind(self, addr, message, cb))
   if (!cb) cb = function () {}
   var addrData = addrToIPPort(addr)
