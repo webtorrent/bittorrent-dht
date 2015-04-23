@@ -345,14 +345,14 @@ DHT.prototype._put = function (opts, cb) {
     addr: localAddr,
     data: localData
   })
-  if (pending === 0) process.nextTick(function () {
-    cb(errors, hash)
-  })
+  if (pending === 0) {
+    process.nextTick(function () { cb(errors, hash) })
+  }
   return hash
 
   function put (node) {
     if (node.data) return // skip data nodes
-    pending ++
+    pending += 1
     var t = self._getTransactionId(node.addr, next(node))
     var data = {
       a: {
@@ -380,7 +380,7 @@ DHT.prototype._put = function (opts, cb) {
         err.address = node.addr
         errors.push(err)
       }
-      if (-- pending === 0) cb(errors, hash)
+      if (--pending === 0) cb(errors, hash)
     }
   }
 }
@@ -411,7 +411,7 @@ DHT.prototype.get = function (hash, cb) {
         y: 'q',
         q: 'get'
       })
- 
+
       function next (err, res) {
         pending -= 1
         if (!err) {
@@ -438,7 +438,7 @@ DHT.prototype._onPut = function (addr, message) {
 
   var isMutable = message.a.k || message.a.sig
   self._debug('got put from %s', addr)
-  
+
   var data = {
     id: message.a.id,
     addr: addr,
@@ -1433,8 +1433,8 @@ DHT.prototype.toArray = function () {
     }
   })
   return nodes
- 
-  function dropData(x) { return !x.data }
+
+  function dropData (x) { return !x.data }
 }
 
 DHT.prototype._addrIsSelf = function (addr) {

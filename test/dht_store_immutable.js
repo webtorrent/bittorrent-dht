@@ -54,7 +54,7 @@ test('multi-party immutable put/get', function (t) {
   })
 
   function ready () {
-    if (-- pending !== 0) return
+    if (--pending !== 0) return
     var value = Buffer(500).fill('abc')
     dht1.put({ v: value }, function (errors, hash) {
       errors.forEach(t.error.bind(t))

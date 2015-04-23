@@ -28,7 +28,7 @@ test('local mutable put/get', function (t) {
       ])
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
- 
+
     dht.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -54,7 +54,7 @@ test('multiparty mutable put/get', function (t) {
 
   var dht1 = new DHT({ bootstrap: false })
   var dht2 = new DHT({ bootstrap: false })
- 
+
   t.once('end', function () {
     dht1.destroy()
     dht2.destroy()
@@ -67,14 +67,14 @@ test('multiparty mutable put/get', function (t) {
     dht2.addNode('127.0.0.1:' + dht1.address().port)
     dht2.once('node', ready)
   })
- 
+
   dht2.listen(function () {
     dht1.addNode('127.0.0.1:' + dht2.address().port)
     dht1.once('node', ready)
   })
 
   function ready () {
-    if (-- pending !== 0) return
+    if (--pending !== 0) return
     var value = Buffer(500).fill('abc')
     var sig = keypair.sign(value)
     var opts = {
@@ -87,7 +87,7 @@ test('multiparty mutable put/get', function (t) {
       ]))
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
- 
+
     dht1.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -113,7 +113,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
   var dht1 = new DHT({ bootstrap: false })
   var dht2 = new DHT({ bootstrap: false })
- 
+
   t.once('end', function () {
     dht1.destroy()
     dht2.destroy()
@@ -126,14 +126,14 @@ test('multiparty mutable put/get sequence', function (t) {
     dht2.addNode('127.0.0.1:' + dht1.address().port)
     dht2.once('node', ready)
   })
- 
+
   dht2.listen(function () {
     dht1.addNode('127.0.0.1:' + dht2.address().port)
     dht1.once('node', ready)
   })
 
   function ready () {
-    if (-- pending !== 0) return
+    if (--pending !== 0) return
     var value = Buffer(500).fill('abc')
     var sig = keypair.sign(value)
     var opts = {
@@ -146,7 +146,7 @@ test('multiparty mutable put/get sequence', function (t) {
       ])
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
- 
+
     dht1.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -163,7 +163,7 @@ test('multiparty mutable put/get sequence', function (t) {
         putSomethingElse()
       })
     })
- 
+
     function putSomethingElse () {
       opts.seq ++
       opts.v = Buffer(32).fill('whatever')
@@ -172,10 +172,10 @@ test('multiparty mutable put/get sequence', function (t) {
         bpad(32, Buffer(sig.r.toArray())),
         bpad(32, Buffer(sig.s.toArray()))
       ])
- 
+
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
- 
+
         t.equal(
           hash.toString('hex'),
           expectedHash.toString('hex'),
@@ -190,7 +190,7 @@ test('multiparty mutable put/get sequence', function (t) {
         })
       })
     }
- 
+
     function yetStillMore () {
       opts.seq ++
       opts.v = Buffer(999).fill('cool')
@@ -199,10 +199,10 @@ test('multiparty mutable put/get sequence', function (t) {
         bpad(32, Buffer(sig.r.toArray())),
         bpad(32, Buffer(sig.s.toArray()))
       ])
- 
+
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
- 
+
         t.equal(
           hash.toString('hex'),
           expectedHash.toString('hex'),
@@ -226,7 +226,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
   var dht1 = new DHT({ bootstrap: false })
   var dht2 = new DHT({ bootstrap: false })
- 
+
   t.once('end', function () {
     dht1.destroy()
     dht2.destroy()
@@ -239,14 +239,14 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     dht2.addNode('127.0.0.1:' + dht1.address().port)
     dht2.once('node', ready)
   })
- 
+
   dht2.listen(function () {
     dht1.addNode('127.0.0.1:' + dht2.address().port)
     dht1.once('node', ready)
   })
 
   function ready () {
-    if (-- pending !== 0) return
+    if (--pending !== 0) return
     var fvalue = Buffer(500).fill('abc')
     var fsig = keypair.sign(fvalue)
     var fopts = {
@@ -273,7 +273,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     }
     var first = sha('sha1').update('first').update(fopts.k).digest()
     var second = sha('sha1').update('second').update(sopts.k).digest()
- 
+
     dht1.put(fopts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -290,11 +290,11 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
         putSecondKey()
       })
     })
- 
+
     function putSecondKey () {
       dht1.put(sopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
- 
+
         t.equal(
           hash.toString('hex'),
           second.toString('hex'),
@@ -309,7 +309,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
         })
       })
     }
- 
+
     function yetStillMore () {
       fopts.seq ++
       fopts.v = Buffer(999).fill('cool')
@@ -318,10 +318,10 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
         bpad(32, Buffer(sig.r.toArray())),
         bpad(32, Buffer(sig.s.toArray()))
       ])
- 
+
       dht1.put(fopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
- 
+
         t.equal(
           hash.toString('hex'),
           first.toString('hex'),
