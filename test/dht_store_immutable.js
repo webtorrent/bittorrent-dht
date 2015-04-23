@@ -41,6 +41,7 @@ test('multi-party immutable put/get', function (t) {
   })
 
   common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
 
   var pending = 2
   dht1.listen(function () {
