@@ -5,7 +5,6 @@ var addrToIPPort = require('addr-to-ip-port')
 var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
-var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
 var dns = require('dns')
 var EventEmitter = require('events').EventEmitter
@@ -320,11 +319,32 @@ DHT.prototype._put = function (opts, cb) {
   var pending = 0
   var errors = []
   var isMutable = opts.k || opts.sig
-  var hash = sha('sha1').update(opts.value).digest()
+  var hash = sha1(opts.value)
   ;(opts.addrs || self.nodes.toArray()).forEach(put)
+
+  var localData = {
+    id: self.nodeId,
+    v: opts.value
+  }
+  if (isMutable) {
+    if (opts.cas) localData.cas = opts.cas
+    localData.sig = opts.sig
+    localData.k = opts.k
+    localData.seq = opts.seq
+    localData.token = opts.token
+  }
+  self.nodes.add({
+    id: hash,
+    addr: '127.0.0.1:' + self._port,
+    data: localData
+  })
+  if (pending === 0) process.nextTick(function () {
+    cb(errors, hash)
+  })
   return hash
 
   function put (node) {
+    if (node.data) return // skip data nodes
     pending ++
     var t = self._getTransactionId(node.addr, next(node))
     var data = {
@@ -353,13 +373,48 @@ DHT.prototype._put = function (opts, cb) {
         err.address = node.addr
         errors.push(err)
       }
-console.log('next', pending, err) 
       if (-- pending === 0) cb(errors, hash)
     }
   }
 }
 
 DHT.prototype.get = function (hash, cb) {
+  var self = this
+  var local = self.nodes.get(hash)
+  if (local) {
+    return process.nextTick(function () {
+      cb(null, local.data.v)
+    })
+  }
+  
+  self.lookup(hash, function (err, nodes) {
+    if (err) return cb(err)
+
+    // ask all matching nodes, whatever
+    var pending = nodes.length
+    var match = false
+    nodes.forEach(function (node) {
+      var t = self._getTransactionId(node.addr, next)
+      self._send(node.addr, {
+        a: {
+          id: self.nodeId,
+          target: hash
+        },
+        t: transactionIdToBuffer(t),
+        y: 'q',
+        q: 'get'
+      })
+ 
+      function next (err, res) {
+        pending -= 1
+        if (!err) {
+          match = true
+          cb(null, res)
+        }
+        if (!match && pending === 0) cb(new Error('hash not found'))
+      }
+    })
+  })
 }
 
 DHT.prototype._onPut = function (addr, message) {
@@ -379,8 +434,10 @@ DHT.prototype._onPut = function (addr, message) {
   
   var data = {
     id: message.a.id,
+    addr: addr,
     v: message.a.v
   }
+
   if (isMutable) {
     if (msg.cas) data.cas = msg.cas
     data.sig = msg.sig
@@ -388,12 +445,19 @@ DHT.prototype._onPut = function (addr, message) {
     data.seq = msg.seq
     data.token = msg.token
   }
-  self.nodes.add(data)
+  var hash = sha1(data.v)
+  self.nodes.add({ id: hash, addr: addr, data: data })
   self._send(addr, res)
 }
 
 DHT.prototype._onGet = function (addr, message) {
-  // todo
+  var self = this
+  var msg = message.a
+  if (!msg) return self._debug('skipping malformed get request from %s', addr)
+  if (!msg.target) return self._debug('missing a.target in get() from %s', addr)
+
+  var hash = message.a.target
+  console.log('GET', self.nodes.get(hash))
 }
 
 /**
@@ -1337,7 +1401,7 @@ DHT.prototype._rotateSecrets = function () {
  */
 DHT.prototype.toArray = function () {
   var self = this
-  var nodes = self.nodes.toArray().map(function (contact) {
+  var nodes = self.nodes.toArray().filter(dropData).map(function (contact) {
     // to remove properties added by k-bucket, like `distance`, etc.
     return {
       id: contact.id.toString('hex'),
@@ -1345,6 +1409,8 @@ DHT.prototype.toArray = function () {
     }
   })
   return nodes
+ 
+  function dropData(x) { return !x.data }
 }
 
 DHT.prototype._addrIsSelf = function (addr) {
@@ -1461,5 +1527,5 @@ function idToHexString (id) {
 
 // Return sha1 hash **as a buffer**
 function sha1 (buf) {
-  return crypto.createHash('sha1').update(buf).digest()
+  return sha('sha1').update(buf).digest()
 }
