@@ -13,7 +13,7 @@ test('local immutable put/get', function (t) {
 
   dht.on('ready', function () {
     var value = Buffer(500).fill('abc')
-    dht.put({ value: value }, function (errors, hash) {
+    dht.put({ v: value }, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
       t.equal(
@@ -56,7 +56,7 @@ test('multi-party immutable put/get', function (t) {
   function ready () {
     if (-- pending !== 0) return
     var value = Buffer(500).fill('abc')
-    dht1.put({ value: value }, function (errors, hash) {
+    dht1.put({ v: value }, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
       t.equal(

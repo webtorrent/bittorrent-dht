@@ -269,13 +269,12 @@ DHT.prototype.announce = function (infoHash, port, cb) {
 DHT.prototype.put = function (opts, cb) {
   var self = this
   var isMutable = opts.k || opts.sig
-  if (!opts.value && opts.v) opts.value = opts.v
-  if (opts.value === undefined) {
-    cb([ new Error('opts.value not given') ])
+  if (opts.v === undefined) {
+    cb([ new Error('opts.v not given') ])
     return null
   }
-  if (opts.value.length >= 1000) {
-    cb([ new Error('put() value must be less than 1000 bytes') ])
+  if (opts.v.length >= 1000) {
+    cb([ new Error('v must be less than 1000 bytes in put()') ])
     return null
   }
 
@@ -326,12 +325,12 @@ DHT.prototype._put = function (opts, cb) {
   var isMutable = opts.k || opts.sig
   var hash = isMutable
     ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
-    : sha1(opts.value)
+    : sha1(opts.v)
   ;(opts.addrs || self.nodes.toArray()).forEach(put)
 
   var localData = {
     id: self.nodeId,
-    v: opts.value
+    v: opts.v
   }
   var localAddr = '127.0.0.1:' + self._port
   if (isMutable) {
@@ -358,7 +357,7 @@ DHT.prototype._put = function (opts, cb) {
     var data = {
       a: {
         id: opts.id || self.nodeId,
-        v: opts.value
+        v: opts.v
       },
       t: transactionIdToBuffer(t),
       y: 'q',
@@ -389,12 +388,12 @@ DHT.prototype._put = function (opts, cb) {
 DHT.prototype.get = function (hash, cb) {
   var self = this
   var local = self.nodes.get(hash)
-  if (local) {
+  if (local && local.data) {
     return process.nextTick(function () {
       cb(null, local.data.v)
     })
   }
-  
+
   self.lookup(hash, function (err, nodes) {
     if (err) return cb(err)
 

@@ -21,7 +21,7 @@ test('local mutable put/get', function (t) {
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
       seq: 0,
-      value: value,
+      v: value,
       sig: Buffer.concat([
         bpad(32, Buffer(sig.r.toArray())),
         bpad(32, Buffer(sig.s.toArray()))
@@ -39,7 +39,7 @@ test('local mutable put/get', function (t) {
       )
       dht.get(hash, function (err, buf) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.value.toString('utf8'),
+        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
       })
@@ -80,7 +80,7 @@ test('multiparty mutable put/get', function (t) {
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
       seq: 0,
-      value: value,
+      v: value,
       sig: bpad(64, Buffer.concat([
         Buffer(sig.r.toArray()),
         Buffer(sig.s.toArray())
@@ -98,11 +98,124 @@ test('multiparty mutable put/get', function (t) {
       )
       dht2.get(hash, function (err, buf) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.value.toString('utf8'),
+        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
       })
     })
+  }
+})
+
+test('multiparty mutable put/get sequence', function (t) {
+  t.plan(9)
+
+  var keypair = new EC('ed25519').genKeyPair()
+
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
+ 
+  t.once('end', function () {
+    dht1.destroy()
+    dht2.destroy()
+  })
+  common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
+
+  var pending = 2
+  dht1.listen(function () {
+    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.once('node', ready)
+  })
+ 
+  dht2.listen(function () {
+    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.once('node', ready)
+  })
+
+  function ready () {
+    if (-- pending !== 0) return
+    var value = Buffer(500).fill('abc')
+    var sig = keypair.sign(value)
+    var opts = {
+      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      seq: 0,
+      v: value,
+      sig: Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+    }
+    var expectedHash = sha('sha1').update(opts.k).digest()
+ 
+    dht1.put(opts, function (errors, hash) {
+      errors.forEach(t.error.bind(t))
+
+      t.equal(
+        hash.toString('hex'),
+        expectedHash.toString('hex'),
+        'hash of the public key'
+      )
+      dht2.get(hash, function (err, buf) {
+        t.ifError(err)
+        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+          'got back what we put in'
+        )
+        putSomethingElse()
+      })
+    })
+ 
+    function putSomethingElse () {
+      opts.seq ++
+      opts.v = Buffer(32).fill('whatever')
+      var sig = keypair.sign(opts.v)
+      opts.sig = Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+ 
+      dht1.put(opts, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+ 
+        t.equal(
+          hash.toString('hex'),
+          expectedHash.toString('hex'),
+          'hash of the public key (again)'
+        )
+        dht2.get(hash, function (err, buf) {
+          t.ifError(err)
+          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+            'second update under the same key'
+          )
+          yetStillMore()
+        })
+      })
+    }
+ 
+    function yetStillMore () {
+      opts.seq ++
+      opts.v = Buffer(999).fill('cool')
+      var sig = keypair.sign(opts.v)
+      opts.sig = Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+ 
+      dht1.put(opts, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+ 
+        t.equal(
+          hash.toString('hex'),
+          expectedHash.toString('hex'),
+          'hash of the public key (yet again)'
+        )
+        dht2.get(hash, function (err, buf) {
+          t.ifError(err)
+          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+            'third update under the same key'
+          )
+        })
+      })
+    }
   }
 })
 
