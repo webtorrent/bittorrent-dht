@@ -333,16 +333,17 @@ DHT.prototype._put = function (opts, cb) {
     id: self.nodeId,
     v: opts.value
   }
+  var localAddr = '127.0.0.1:' + self._port
   if (isMutable) {
     if (opts.cas) localData.cas = opts.cas
     localData.sig = opts.sig
     localData.k = opts.k
     localData.seq = opts.seq
-    localData.token = opts.token
+    localData.token = opts.token || self._generateToken(localAddr)
   }
   self.nodes.add({
     id: hash,
-    addr: '127.0.0.1:' + self._port,
+    addr: localAddr,
     data: localData
   })
   if (pending === 0) process.nextTick(function () {
@@ -416,7 +417,7 @@ DHT.prototype.get = function (hash, cb) {
         pending -= 1
         if (!err) {
           match = true
-          cb(null, res)
+          cb(null, res.v)
         }
         if (!match && pending === 0) cb(new Error('hash not found'))
       }
@@ -464,7 +465,24 @@ DHT.prototype._onGet = function (addr, message) {
   if (!msg.target) return self._debug('missing a.target in get() from %s', addr)
 
   var hash = message.a.target
-  console.log('GET', self.nodes.get(hash))
+  var rec = self.nodes.get(hash)
+  if (!rec) console.error('todo: send an error code')
+
+  var res = {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: {
+      id: self.nodeId,
+      k: rec.data.k,
+      nodes: [], // not sure
+      nodes6: [], // not sure
+      seq: rec.data.seq,
+      sig: rec.data.sig,
+      token: rec.data.token,
+      v: rec.data.v
+    }
+  }
+  self._send(addr, res)
 }
 
 /**
