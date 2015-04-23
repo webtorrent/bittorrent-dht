@@ -219,6 +219,125 @@ test('multiparty mutable put/get sequence', function (t) {
   }
 })
 
+test('salted multikey multiparty mutable put/get sequence', function (t) {
+  t.plan(9)
+
+  var keypair = new EC('ed25519').genKeyPair()
+
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
+ 
+  t.once('end', function () {
+    dht1.destroy()
+    dht2.destroy()
+  })
+  common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
+
+  var pending = 2
+  dht1.listen(function () {
+    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.once('node', ready)
+  })
+ 
+  dht2.listen(function () {
+    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.once('node', ready)
+  })
+
+  function ready () {
+    if (-- pending !== 0) return
+    var fvalue = Buffer(500).fill('abc')
+    var fsig = keypair.sign(fvalue)
+    var fopts = {
+      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      seq: 0,
+      salt: Buffer('first'),
+      sig: Buffer.concat([
+        bpad(32, Buffer(fsig.r.toArray())),
+        bpad(32, Buffer(fsig.s.toArray()))
+      ]),
+      v: fvalue
+    }
+    var svalue = Buffer(20).fill('z')
+    var ssig = keypair.sign(svalue)
+    var sopts = {
+      k: fopts.k,
+      seq: 0,
+      salt: Buffer('second'),
+      sig: Buffer.concat([
+        bpad(32, Buffer(ssig.r.toArray())),
+        bpad(32, Buffer(ssig.s.toArray()))
+      ]),
+      v: svalue
+    }
+    var first = sha('sha1').update('first').update(fopts.k).digest()
+    var second = sha('sha1').update('second').update(sopts.k).digest()
+ 
+    dht1.put(fopts, function (errors, hash) {
+      errors.forEach(t.error.bind(t))
+
+      t.equal(
+        hash.toString('hex'),
+        first.toString('hex'),
+        'first hash'
+      )
+      dht2.get(hash, function (err, buf) {
+        t.ifError(err)
+        t.equal(buf.toString('utf8'), fopts.v.toString('utf8'),
+          'got back what we put in'
+        )
+        putSecondKey()
+      })
+    })
+ 
+    function putSecondKey () {
+      dht1.put(sopts, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+ 
+        t.equal(
+          hash.toString('hex'),
+          second.toString('hex'),
+          'second hash'
+        )
+        dht2.get(hash, function (err, buf) {
+          t.ifError(err)
+          t.equal(buf.toString('utf8'), sopts.v.toString('utf8'),
+            'second update under the same key'
+          )
+          yetStillMore()
+        })
+      })
+    }
+ 
+    function yetStillMore () {
+      fopts.seq ++
+      fopts.v = Buffer(999).fill('cool')
+      var sig = keypair.sign(fopts.v)
+      fopts.sig = Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+ 
+      dht1.put(fopts, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+ 
+        t.equal(
+          hash.toString('hex'),
+          first.toString('hex'),
+          'first salt (again)'
+        )
+        dht2.get(hash, function (err, buf) {
+          t.ifError(err)
+          t.equal(buf.toString('utf8'), fopts.v.toString('utf8'),
+            'update with a different salt'
+          )
+        })
+      })
+    }
+  }
+})
+
 function bpad (n, buf) {
   if (buf.length === n) return buf
   if (buf.length < n) {
