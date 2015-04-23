@@ -325,25 +325,26 @@ DHT.prototype._put = function (opts, cb) {
   return hash
 
   function put (node) {
-    pending += 2
+    pending ++
+    var t = self._getTransactionId(node.addr, next(node))
     var data = {
       a: {
         id: opts.id || self.nodeId,
         v: opts.value
       },
-      t: self._getTransactionId(node.addr, next),
+      t: transactionIdToBuffer(t),
       y: 'q',
       q: 'put'
     }
     if (isMutable) {
-      data.a.token = opts.token || self._generateToken(node.addr, next(node))
+      data.a.token = opts.token || self._generateToken(node.addr)
       data.a.seq = Math.round(opts.seq)
       data.a.sig = opts.sig
       data.a.k = opts.k
       if (opts.salt) data.a.salt = opts.salt
       if (opts.cas) data.a.cas = Math.round(opts.cas)
     }
-    self._send(node.addr, data, next(node))
+    self._send(node.addr, data)
   }
 
   function next (node) {
@@ -352,6 +353,7 @@ DHT.prototype._put = function (opts, cb) {
         err.address = node.addr
         errors.push(err)
       }
+console.log('next', pending, err) 
       if (-- pending === 0) cb(errors, hash)
     }
   }
