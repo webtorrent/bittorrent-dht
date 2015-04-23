@@ -269,6 +269,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
 DHT.prototype.put = function (opts, cb) {
   var self = this
   var isMutable = opts.k || opts.sig
+  if (!opts.value && opts.v) opts.value = opts.v
   if (opts.value === undefined) {
     cb([ new Error('opts.value not given') ])
     return null
@@ -298,7 +299,11 @@ DHT.prototype.put = function (opts, cb) {
     cb([ new Error('opts.sig signature must be 64 bytes') ])
     return null
   }
-  if (isMutable && !opts.seq) {
+  if (isMutable && opts.salt && opts.salt.length > 64) {
+    cb([ new Error('opts.salt is > 64 bytes long') ])
+    return null
+  }
+  if (isMutable && opts.seq === undefined) {
     cb([ new Error('opts.seq not provided for a mutable update') ])
     return null
   }
@@ -319,7 +324,9 @@ DHT.prototype._put = function (opts, cb) {
   var pending = 0
   var errors = []
   var isMutable = opts.k || opts.sig
-  var hash = sha1(opts.value)
+  var hash = isMutable
+    ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
+    : sha1(opts.value)
   ;(opts.addrs || self.nodes.toArray()).forEach(put)
 
   var localData = {
