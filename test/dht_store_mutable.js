@@ -338,6 +338,71 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
   }
 })
 
+test('transitive mutable update', function (t) {
+  t.plan(3)
+
+  var keypair = new EC('ed25519').genKeyPair()
+
+  // dht1 <-> dht2 <-> dht3
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
+  var dht3 = new DHT({ bootstrap: false })
+
+  t.once('end', function () {
+    dht1.destroy()
+    dht2.destroy()
+    dht3.destroy()
+  })
+  common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
+  common.failOnWarningOrError(t, dht3)
+
+  var pending = 2
+  dht1.listen(function () {
+    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.once('node', ready)
+  })
+
+  dht2.listen(function () {
+    dht3.addNode('127.0.0.1:' + dht2.address().port)
+    dht3.once('node', ready)
+  })
+
+  function ready () {
+    if (--pending !== 0) return
+    var value = Buffer(500).fill('abc')
+    var sig = keypair.sign(value)
+    var opts = {
+      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      seq: 0,
+      v: value,
+      sig: Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+    }
+    var expectedHash = sha('sha1').update(opts.k).digest()
+
+    dht1.put(opts, function (errors, hash) {
+      errors.forEach(t.error.bind(t))
+
+      t.equal(
+        hash.toString('hex'),
+        expectedHash.toString('hex'),
+        'hash of the public key'
+      )
+      dht3.on('put', function () {
+        dht3.get(hash, function (err, buf) {
+          t.ifError(err)
+          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+            'got node 1 update from node 3'
+          )
+        })
+      })
+    })
+  }
+})
+
 function bpad (n, buf) {
   if (buf.length === n) return buf
   if (buf.length < n) {
