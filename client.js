@@ -465,7 +465,13 @@ DHT.prototype._onGet = function (addr, message) {
 
   var hash = message.a.target
   var rec = self.nodes.get(hash)
-  if (!rec) console.error('todo: send an error code')
+  if (!rec) {
+    return self._send(addr, {
+      e: [ 404, 'hash not found' ],
+      t: message.t,
+      y: 'e'
+    })
+  }
 
   var res = {
     t: message.t,
