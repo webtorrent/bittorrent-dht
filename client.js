@@ -20,6 +20,7 @@ var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 var sha = require('sha.js')
 var verify = require('./lib/verify.js')
+var isarray = require('isarray')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -395,12 +396,15 @@ DHT.prototype.get = function (hash, cb) {
     })
   }
 
-  self.lookup(hash, function (err, nodes) {
+  self.lookup(hash, fromNodes)
+
+  function fromNodes (err, nodes) {
     if (err) return cb(err)
 
-    // ask all matching nodes, whatever
     var pending = nodes.length
     var match = false
+    var next = {}
+ 
     nodes.forEach(function (node) {
       var t = self._getTransactionId(node.addr, next)
       self._send(node.addr, {
@@ -414,16 +418,24 @@ DHT.prototype.get = function (hash, cb) {
       })
 
       function next (err, res) {
-        pending -= 1
         if (match) return
-        if (!err) {
+        if (res && res.v) {
           match = true
+          // TODO: also verify the signature or hash
           cb(null, res.v)
+        } else if (res && isarray(res.nodes)) {
+          res.nodes.forEach(function (n) {
+            next[n] = true
+          })
         }
-        if (!match && pending === 0) cb(new Error('hash not found'))
+        if (-- pending === 0) {
+          var keys = Object.keys(next)
+          if (keys.length === 0) cb(null, new Error('hash not found'))
+          else fromNodes(keys.map(function (key) { return { addr: key } }))
+        }
       }
     })
-  })
+  }
 }
 
 DHT.prototype._onPut = function (addr, message) {
