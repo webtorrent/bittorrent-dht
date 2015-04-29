@@ -415,6 +415,7 @@ DHT.prototype.get = function (hash, cb) {
 
       function next (err, res) {
         pending -= 1
+        if (match) return
         if (!err) {
           match = true
           cb(null, res.v)
