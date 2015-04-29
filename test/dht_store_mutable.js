@@ -340,9 +340,6 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 })
 
 test('transitive mutable update', function (t) {
-  console.error('DISABLED transitive mutable update test')
-  return t.end()
-  /*
   t.plan(3)
 
   var keypair = new EC('ed25519').genKeyPair()
@@ -396,15 +393,12 @@ test('transitive mutable update', function (t) {
         'hash of the public key'
       )
 
-      setTimeout(function () {
-        dht3.get(expectedHash, function (err, buf) {
-          t.ifError(err)
-          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
-            'got node 1 update from node 3'
-          )
-        })
-      }, 1000)
+      dht3.get(expectedHash, function (err, buf) {
+        t.ifError(err)
+        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+          'got node 1 update from node 3'
+        )
+      })
     })
   }
-  */
 })
