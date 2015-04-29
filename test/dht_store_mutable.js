@@ -38,9 +38,9 @@ test('local mutable put/get', function (t) {
         expectedHash.toString('hex'),
         'hash of the public key'
       )
-      dht.get(hash, function (err, buf) {
+      dht.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
       })
@@ -97,9 +97,9 @@ test('multiparty mutable put/get', function (t) {
         expectedHash.toString('hex'),
         'hash of the public key'
       )
-      dht2.get(hash, function (err, buf) {
+      dht2.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
       })
@@ -156,9 +156,9 @@ test('multiparty mutable put/get sequence', function (t) {
         expectedHash.toString('hex'),
         'hash of the public key'
       )
-      dht2.get(hash, function (err, buf) {
+      dht2.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
         putSomethingElse()
@@ -182,9 +182,9 @@ test('multiparty mutable put/get sequence', function (t) {
           expectedHash.toString('hex'),
           'hash of the public key (again)'
         )
-        dht2.get(hash, function (err, buf) {
+        dht2.get(hash, function (err, res) {
           t.ifError(err)
-          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+          t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
             'second update under the same key'
           )
           yetStillMore()
@@ -209,9 +209,9 @@ test('multiparty mutable put/get sequence', function (t) {
           expectedHash.toString('hex'),
           'hash of the public key (yet again)'
         )
-        dht2.get(hash, function (err, buf) {
+        dht2.get(hash, function (err, res) {
           t.ifError(err)
-          t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+          t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
             'third update under the same key'
           )
         })
@@ -283,9 +283,9 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
         first.toString('hex'),
         'first hash'
       )
-      dht2.get(hash, function (err, buf) {
+      dht2.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), fopts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), fopts.v.toString('utf8'),
           'got back what we put in'
         )
         putSecondKey()
@@ -301,9 +301,9 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
           second.toString('hex'),
           'second hash'
         )
-        dht2.get(hash, function (err, buf) {
+        dht2.get(hash, function (err, res) {
           t.ifError(err)
-          t.equal(buf.toString('utf8'), sopts.v.toString('utf8'),
+          t.equal(res.v.toString('utf8'), sopts.v.toString('utf8'),
             'second update under the same key'
           )
           yetStillMore()
@@ -328,9 +328,9 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
           first.toString('hex'),
           'first salt (again)'
         )
-        dht2.get(hash, function (err, buf) {
+        dht2.get(hash, function (err, res) {
           t.ifError(err)
-          t.equal(buf.toString('utf8'), fopts.v.toString('utf8'),
+          t.equal(res.v.toString('utf8'), fopts.v.toString('utf8'),
             'update with a different salt'
           )
         })
@@ -393,9 +393,9 @@ test('transitive mutable update', function (t) {
         'hash of the public key'
       )
 
-      dht3.get(expectedHash, function (err, buf) {
+      dht3.get(expectedHash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got node 1 update from node 3'
         )
       })
@@ -479,9 +479,9 @@ test('mutable update mesh', function (t) {
       errors.forEach(t.error.bind(t))
       t.equal(hash.toString('hex'), xhash.toString('hex'))
 
-      dst.get(xhash, function (err, buf) {
+      dst.get(xhash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'from ' + srci + ' to ' + dsti
         )
       })

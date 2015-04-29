@@ -410,7 +410,7 @@ DHT.prototype.get = function (hash, cb) {
   var local = self.nodes.get(hash)
   if (local && local.data) {
     return process.nextTick(function () {
-      cb(null, local.data.v)
+      cb(null, local.data)
     })
   }
 
@@ -446,7 +446,7 @@ DHT.prototype.get = function (hash, cb) {
             self._debug('invalid immutable hash from %s', node.addr)
           } else {
             match = true
-            return cb(null, res.v)
+            return cb(null, res)
           }
         }
 
@@ -457,7 +457,7 @@ DHT.prototype.get = function (hash, cb) {
         }
         if (--pending === 0) {
           var keys = Object.keys(nextNodes)
-          if (keys.length === 0) cb(null, new Error('hash not found'))
+          if (keys.length === 0) cb(new Error('hash not found'))
           else fromNodes(keys.map(function (key) { return { addr: key } }))
         }
       }

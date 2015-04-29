@@ -20,9 +20,9 @@ test('local immutable put/get', function (t) {
         hash.toString('hex'),
         '3ab87d68b1be9dc63da13faf18a7d2376ccd938a' // sha1 of the value
       )
-      dht.get(hash, function (err, buf) {
+      dht.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), value.toString('utf8'),
+        t.equal(res.v.toString('utf8'), value.toString('utf8'),
           'got back what we put in'
         )
       })
@@ -63,9 +63,9 @@ test('multi-party immutable put/get', function (t) {
         hash.toString('hex'),
         '3ab87d68b1be9dc63da13faf18a7d2376ccd938a' // sha1 of the value
       )
-      dht2.get(hash, function (err, buf) {
+      dht2.get(hash, function (err, res) {
         t.ifError(err)
-        t.equal(buf.toString('utf8'), value.toString('utf8'),
+        t.equal(res.v.toString('utf8'), value.toString('utf8'),
           'got back what we put in on another node'
         )
       })
