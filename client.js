@@ -403,8 +403,8 @@ DHT.prototype.get = function (hash, cb) {
 
     var pending = nodes.length
     var match = false
-    var next = {}
- 
+    var nextNodes = {}
+
     nodes.forEach(function (node) {
       var t = self._getTransactionId(node.addr, next)
       self._send(node.addr, {
@@ -418,6 +418,7 @@ DHT.prototype.get = function (hash, cb) {
       })
 
       function next (err, res) {
+        if (err) {} // not important
         if (match) return
         if (res && res.v) {
           match = true
@@ -425,11 +426,11 @@ DHT.prototype.get = function (hash, cb) {
           cb(null, res.v)
         } else if (res && isarray(res.nodes)) {
           res.nodes.forEach(function (n) {
-            next[n] = true
+            nextNodes[n] = true
           })
         }
-        if (-- pending === 0) {
-          var keys = Object.keys(next)
+        if (--pending === 0) {
+          var keys = Object.keys(nextNodes)
           if (keys.length === 0) cb(null, new Error('hash not found'))
           else fromNodes(keys.map(function (key) { return { addr: key } }))
         }
