@@ -6,7 +6,7 @@ var EC = require('elliptic').ec
 var sha = require('sha.js')
 
 test('local mutable put/get', function (t) {
-  t.plan(3)
+  t.plan(4)
 
   var keypair = new EC('ed25519').genKeyPair()
 
@@ -43,6 +43,7 @@ test('local mutable put/get', function (t) {
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
+        t.equal(res.seq, 0)
       })
     })
   })
