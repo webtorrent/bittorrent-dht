@@ -329,27 +329,44 @@ DHT.prototype._put = function (opts, cb) {
   var hash = isMutable
     ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
     : sha1(opts.v)
-  ;(opts.addrs || self.nodes.toArray()).forEach(put)
 
-  var localData = {
-    id: self.nodeId,
-    v: opts.v
+  if (self.nodes.toArray().length === 0) {
+    process.nextTick(function () {
+      addLocal(null, [])
+    })
+  } else {
+    self.lookup(hash, onLookup)
   }
-  var localAddr = '127.0.0.1:' + self._port
-  if (isMutable) {
-    if (opts.cas) localData.cas = opts.cas
-    localData.sig = opts.sig
-    localData.k = opts.k
-    localData.seq = opts.seq
-    localData.token = opts.token || self._generateToken(localAddr)
+
+  function onLookup (err, nodes) {
+    if (err) return cb(err)
+    nodes.forEach(function (node) {
+      put(node)
+    })
+    addLocal()
   }
-  self.nodes.add({
-    id: hash,
-    addr: localAddr,
-    data: localData
-  })
-  if (pending === 0) {
-    process.nextTick(function () { cb(errors, hash) })
+
+  function addLocal () {
+    var localData = {
+      id: self.nodeId,
+      v: opts.v
+    }
+    var localAddr = '127.0.0.1:' + self._port
+    if (isMutable) {
+      if (opts.cas) localData.cas = opts.cas
+      localData.sig = opts.sig
+      localData.k = opts.k
+      localData.seq = opts.seq
+      localData.token = opts.token || self._generateToken(localAddr)
+    }
+    self.nodes.add({
+      id: hash,
+      addr: localAddr,
+      data: localData
+    })
+    if (pending === 0) {
+      process.nextTick(function () { cb(errors, hash) })
+    }
   }
   return hash
 
@@ -476,7 +493,6 @@ DHT.prototype._onPut = function (addr, message) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
 
-    if (msg.cas) data.cas = msg.cas
     data.sig = msg.sig
     data.k = msg.k
     data.seq = msg.seq
