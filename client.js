@@ -492,6 +492,13 @@ DHT.prototype._onPut = function (addr, message) {
     if (!verify(msg.k, msg.v, msg.sig)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
+    var prev = self.nodes.get(hash)
+    if (prev && prev.seq !== undefined && msg.cas) {
+      if (msg.cas !== prev.seq) {
+        return self._sendError(addr, message.t, 301,
+          'CAS mismatch, re-read and try again')
+      }
+    }
 
     data.sig = msg.sig
     data.k = msg.k
