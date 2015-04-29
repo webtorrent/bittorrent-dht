@@ -486,7 +486,7 @@ DHT.prototype._onGet = function (addr, message) {
 
   var hash = message.a.target
   var rec = self.nodes.get(hash)
-  if (rec) {
+  if (rec && rec.data) {
     self._send(addr, {
       t: message.t,
       y: MESSAGE_TYPE.RESPONSE,
@@ -504,22 +504,23 @@ DHT.prototype._onGet = function (addr, message) {
   } else {
     self.lookup(hash, function (err, nodes) {
       if (err) return self._sendError(addr, message.t, 201, err)
-      self._send(addr, {
+      var res = {
         t: message.t,
         y: MESSAGE_TYPE.RESPONSE,
         r: {
           id: self.nodeId,
-          k: rec.data.k,
           nodes: nodes.map(function (node) {
             return node.addr
           }),
-          nodes6: [], // todo: filter the addrs
-          seq: rec.data.seq,
-          sig: rec.data.sig,
-          token: rec.data.token,
-          v: rec.data.v
+          nodes6: [] // todo: filter the addrs
         }
-      })
+      }
+      if (rec && rec.data && rec.data.k) res.k = rec.data.k
+      if (rec && rec.data && rec.data.seq) res.seq = rec.data.seq
+      if (rec && rec.data && rec.data.sig) res.sig = rec.data.sig
+      if (rec && rec.data && rec.data.token) res.token = rec.data.token
+      if (rec && rec.data && rec.data.v) res.v = rec.data.v
+      self._send(addr, res)
     })
   }
 }
