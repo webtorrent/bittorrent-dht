@@ -486,24 +486,41 @@ DHT.prototype._onGet = function (addr, message) {
 
   var hash = message.a.target
   var rec = self.nodes.get(hash)
-  if (!rec) {
-    return self._sendError(addr, message.t, 203, 'hash not found')
+  if (rec) {
+    self._send(addr, {
+      t: message.t,
+      y: MESSAGE_TYPE.RESPONSE,
+      r: {
+        id: self.nodeId,
+        k: rec.data.k,
+        nodes: [], // found, so we don't need to know the nodes
+        nodes6: [],
+        seq: rec.data.seq,
+        sig: rec.data.sig,
+        token: rec.data.token,
+        v: rec.data.v
+      }
+    })
+  } else {
+    self.lookup(hash, function (err, nodes) {
+      self._send(addr, {
+        t: message.t,
+        y: MESSAGE_TYPE.RESPONSE,
+        r: {
+          id: self.nodeId,
+          k: rec.data.k,
+          nodes: nodes.map(function (node) {
+            return node.addr
+          }),
+          nodes6: [], // todo: filter the addrs
+          seq: rec.data.seq,
+          sig: rec.data.sig,
+          token: rec.data.token,
+          v: rec.data.v
+        }
+      })
+    })
   }
-
-  self._send(addr, {
-    t: message.t,
-    y: MESSAGE_TYPE.RESPONSE,
-    r: {
-      id: self.nodeId,
-      k: rec.data.k,
-      nodes: [], // not sure
-      nodes6: [], // not sure
-      seq: rec.data.seq,
-      sig: rec.data.sig,
-      token: rec.data.token,
-      v: rec.data.v
-    }
-  })
 }
 
 /**
