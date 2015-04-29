@@ -466,8 +466,7 @@ DHT.prototype._onPut = function (addr, message) {
     hash = data.salt
       ? sha1(Buffer.concat([ data.salt, data.k ]))
       : sha1(data.k)
-  }
-  else {
+  } else {
     hash = sha1(data.v)
   }
 
