@@ -548,6 +548,7 @@ DHT.prototype._onGet = function (addr, message) {
         nodes6: [],
         seq: rec.data.seq,
         sig: rec.data.sig,
+        salt: rec.data.salt,
         token: rec.data.token,
         v: rec.data.v
       }

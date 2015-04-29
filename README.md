@@ -171,6 +171,108 @@ If `nodeId` is undefined, then the peer will be pinged to learn their node id. I
 
 Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
+#### `dht.put(opts, callback)
+
+Write an arbitrary payload to the DHT.
+([BEP 44](http://bittorrent.org/beps/bep_0044.html)).
+
+For all requests, you must specify:
+
+* `opts.v` - a buffer payload to write, no less than 1000 bytes
+
+If you only specify `opts.v`, the content is considered immutable and the hash
+will just be the hash of the content.
+
+Here is a simple example of creating some immutable content on the dht:
+
+``` js
+var DHT = require('bittorrent-dht')
+var dht = new DHT()
+var value = new Buffer(200).fill('abc')
+
+dht.on('ready', function () {
+  dht.put({ v: value }, function (errors, hash) {
+    console.error('errors=', errors)
+    console.log('hash=', hash)
+  })
+})
+```
+
+For mutable content, the hash will be the hash of the public key, `opts.k`.
+These options are available:
+
+* `opts.k` - ed25519 public key buffer (32 bytes) (REQUIRED)
+* `opts.sig` - ed25519 signature buffer (64 bytes) (REQUIRED)
+* `opts.seq` - optional sequence (integer), must monotonically increase
+* `opts.cas` - optional previous sequence for compare-and-swap
+* `opts.salt` - optional salt buffer to include (< 64 bytes) when calculating
+  the hash of the content. You can use a salt to have multiple mutable addresses
+  for the same public key `opts.k`.
+
+To make a mutable update, you will need to create an elliptic key and pack
+values precisely according to the specification, like so:
+
+``` js
+var EC = require('elliptic').ec
+var keypair = new EC('ed25519').genKeyPair()
+
+var value = new Buffer(200).fill('whatever') // the payload you want to send
+var sig = keypair.sign(value)
+var opts = {
+  k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+  seq: 0,
+  v: value,
+  sig: Buffer.concat([
+    bpad(32, Buffer(sig.r.toArray()),
+    bpad(32, Buffer(sig.s.toArray())
+  ])
+}
+
+var DHT = require('bittorrent-dht')
+var dht = new DHT
+dht.on('ready', function () {
+  dht.put(opts, function (errors, hash) {
+    console.error('errors=', errors)
+    console.log('hash=', hash)
+  })
+})
+
+function bpad (n, buf) {
+  if (buf.length === n) return buf
+  if (buf.length < n) {
+    var b = new Buffer(n)
+    buf.copy(b, n - buf.length)
+    for (var i = 0; i < n - buf.length; i++) b[i] = 0
+    return b
+  }
+}
+```
+
+In either mutable or immutable forms, `callback(errors, hash)` fires with an
+array `errors` of any errors encountered when announcing the content to peers
+and `hash`, the location where the mutable or immutable content can be retrieved
+(with `dht.get(hash)`).
+
+Note that you should call `.put()` every hour for content that you want to keep
+alive, since nodes may discard data nodes older than 2 hours.
+
+#### `dht.get(hash, callback)
+
+Read a data record (created with `.put()`) from the DHT.
+([BEP 44](http://bittorrent.org/beps/bep_0044.html))
+
+Given `hash`, a buffer, lookup data content from the DHT, sending the result in
+`callback(err, res)`.
+
+`res` objects are similar to the options objects written to the DHT with
+`.put()`:
+
+* `res.v` - the value put in
+* `res.id` - the node that returned the content
+* `res.k` - the value put in (required for mutable data)
+* `res.sig` - signature (required for mutable data)
+* `res.seq` - sequence (optional, only present for mutable data)
+* `res.salt` - sequence (optional, only present for mutable data)
 
 ### events
 
