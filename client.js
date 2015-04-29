@@ -21,6 +21,7 @@ var string2compact = require('string2compact')
 var sha = require('sha.js')
 var verify = require('./lib/verify.js')
 var isarray = require('isarray')
+var bufcmp = require('buffer-equal')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -421,10 +422,18 @@ DHT.prototype.get = function (hash, cb) {
         if (err) {} // not important
         if (match) return
         if (res && res.v) {
-          match = true
-          // TODO: also verify the signature or hash
-          cb(null, res.v)
-        } else if (res && isarray(res.nodes)) {
+          var isMutable = res.k || res.sig
+          if (isMutable && !verify(res.k, res.v, res.sig)) {
+            self._debug('invalid mutable hash from %s', node.addr)
+          } else if (!isMutable && bufcmp(sha1(res.v), hash)) {
+            self._debug('invalid immutable hash from %s', node.addr)
+          } else {
+            match = true
+            return cb(null, res.v)
+          }
+        }
+
+        if (res && isarray(res.nodes)) {
           res.nodes.forEach(function (n) {
             nextNodes[n] = true
           })
