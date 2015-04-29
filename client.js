@@ -499,6 +499,12 @@ DHT.prototype._onPut = function (addr, message) {
           'CAS mismatch, re-read and try again')
       }
     }
+    if (prev && prev.seq !== undefined) {
+      if (msg.seq === undefined || msg.seq <= prev.seq) {
+        return self._sendError(addr, message.t, 302,
+          'sequence number less than current')
+      }
+    }
 
     data.sig = msg.sig
     data.k = msg.k
