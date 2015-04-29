@@ -429,7 +429,7 @@ DHT.prototype._onPut = function (addr, message) {
   var self = this
   var msg = message.a
   if (!msg || !msg.v || !msg.id) {
-    return self._sendError(addr, message.t, 400, 'not enough parameters')
+    return self._sendError(addr, message.t, 203, 'not enough parameters')
   }
 
   var isMutable = message.a.k || message.a.sig
@@ -444,7 +444,7 @@ DHT.prototype._onPut = function (addr, message) {
     return self._sendError(addr, message.t, 205, 'data payload too large')
   }
   if (isMutable && !msg.k) {
-    return self._sendError(addr, message.t, 206, 'missing signature')
+    return self._sendError(addr, message.t, 203, 'missing public key')
   }
 
   var hash
@@ -487,7 +487,7 @@ DHT.prototype._onGet = function (addr, message) {
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (!rec) {
-    return self._sendError(addr, message.t, 404, 'hash not found')
+    return self._sendError(addr, message.t, 203, 'hash not found')
   }
 
   self._send(addr, {
