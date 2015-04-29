@@ -447,6 +447,7 @@ DHT.prototype._onPut = function (addr, message) {
     return self._sendError(addr, message.t, 206, 'missing signature')
   }
 
+  var hash
   if (isMutable) {
     if (!verify(msg.k, msg.v, msg.sig)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
@@ -457,8 +458,18 @@ DHT.prototype._onPut = function (addr, message) {
     data.k = msg.k
     data.seq = msg.seq
     data.token = msg.token
+    if (msg.salt && msg.salt.length > 64) {
+      return self._sendError(addr, message.t, 207, 'salt too big')
+    }
+    if (msg.salt) data.salt = msg.salt
+    hash = data.salt
+      ? sha1(Buffer.concat([ data.salt, data.k ]))
+      : sha1(data.k)
   }
-  var hash = sha1(data.v)
+  else {
+    hash = sha1(data.v)
+  }
+
   self.nodes.add({ id: hash, addr: addr, data: data })
   self._send(addr, {
     t: message.t,
