@@ -402,3 +402,89 @@ test('transitive mutable update', function (t) {
     })
   }
 })
+
+test('mutable update mesh', function (t) {
+  t.plan(9)
+  /*
+    0 <-> 1 <-> 2
+          ^     ^
+          |     |
+          v     v
+          3 <-> 4 <-> 5
+          ^           ^
+          |           |
+          v           v
+          6 <-> 7 <-> 8
+
+    tests: 0 to 8, 4 to 6, 1 to 5
+  */
+  var edges = [
+    [0, 1], [1, 2], [1, 3], [2, 4], [3, 4], [3, 6],
+    [4, 5], [5, 8], [6, 7], [7, 8]
+  ]
+
+  var dht = []
+  var pending = 0
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      var d = new DHT({ bootstrap: false })
+      dht.push(d)
+      common.failOnWarningOrError(t, d)
+      pending++
+      d.listen(function () {
+        if (--pending === 0) addEdges()
+      })
+    })(i)
+  }
+
+  function addEdges () {
+    var pending = edges.length
+    for (var i = 0; i < edges.length; i++) {
+      (function (e) {
+        dht[e[1]].addNode('127.0.0.1:' + dht[e[0]].address().port)
+        dht[e[1]].once('node', function () {
+          if (--pending === 0) ready()
+        })
+      })(edges[i])
+    }
+  }
+
+  t.once('end', function () {
+    for (var i = 0; i < dht.length; i++) {
+      dht[i].destroy()
+    }
+  })
+
+  function ready () {
+    send(0, 8, Buffer(100).fill('abc'))
+    send(4, 6, Buffer(20).fill('xyz'))
+    send(1, 5, Buffer(500).fill('whatever'))
+  }
+
+  function send (srci, dsti, value) {
+    var src = dht[srci], dst = dht[dsti]
+    var keypair = new EC('ed25519').genKeyPair()
+    var sig = keypair.sign(value)
+    var opts = {
+      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      seq: 0,
+      v: value,
+      sig: Buffer.concat([
+        bpad(32, Buffer(sig.r.toArray())),
+        bpad(32, Buffer(sig.s.toArray()))
+      ])
+    }
+    var xhash = sha('sha1').update(opts.k).digest()
+    src.put(opts, function (errors, hash) {
+      errors.forEach(t.error.bind(t))
+      t.equal(hash.toString('hex'), xhash.toString('hex'))
+
+      dst.get(xhash, function (err, buf) {
+        t.ifError(err)
+        t.equal(buf.toString('utf8'), opts.v.toString('utf8'),
+          'from ' + srci + ' to ' + dsti
+        )
+      })
+    })
+  }
+})
