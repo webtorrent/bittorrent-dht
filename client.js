@@ -19,6 +19,7 @@ var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 var sha = require('sha.js')
+var verify = require('./lib/verify.js')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -426,26 +427,28 @@ DHT.prototype.get = function (hash, cb) {
 
 DHT.prototype._onPut = function (addr, message) {
   var self = this
-  var res = {
-    t: message.t,
-    y: MESSAGE_TYPE.RESPONSE,
-    r: { id: self.nodeId }
-  }
   var msg = message.a
   if (!msg || !msg.v || !msg.id) {
-    return self._debug('skipping put from %s: not enough parameters', addr)
+    return self._sendError(addr, message.t, 400, 'not enough parameters')
   }
 
   var isMutable = message.a.k || message.a.sig
-  self._debug('got put from %s', addr)
+  self._debug('put from %s', addr)
 
   var data = {
     id: message.a.id,
     addr: addr,
     v: message.a.v
   }
+  if (data.v && data.v.length > 1000) {
+    return self._sendError(addr, message.t, 205, 'data payload too large')
+  }
 
   if (isMutable) {
+    if (!verify(msg.k, msg.v, msg.sig)) {
+      return self._sendError(addr, message.t, 206, 'invalid signature')
+    }
+
     if (msg.cas) data.cas = msg.cas
     data.sig = msg.sig
     data.k = msg.k
@@ -454,7 +457,11 @@ DHT.prototype._onPut = function (addr, message) {
   }
   var hash = sha1(data.v)
   self.nodes.add({ id: hash, addr: addr, data: data })
-  self._send(addr, res)
+  self._send(addr, {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: { id: self.nodeId }
+  })
 }
 
 DHT.prototype._onGet = function (addr, message) {
@@ -466,14 +473,10 @@ DHT.prototype._onGet = function (addr, message) {
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (!rec) {
-    return self._send(addr, {
-      e: [ 404, 'hash not found' ],
-      t: message.t,
-      y: 'e'
-    })
+    return self._sendError(addr, message.t, 404, 'hash not found')
   }
 
-  var res = {
+  self._send(addr, {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
     r: {
@@ -486,8 +489,7 @@ DHT.prototype._onGet = function (addr, message) {
       token: rec.data.token,
       v: rec.data.v
     }
-  }
-  self._send(addr, res)
+  })
 }
 
 /**
