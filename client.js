@@ -503,7 +503,9 @@ DHT.prototype._onGet = function (addr, message) {
     })
   } else {
     self.lookup(hash, function (err, nodes) {
+      if (err && self.destroyed) return
       if (err) return self._sendError(addr, message.t, 201, err)
+
       var res = {
         t: message.t,
         y: MESSAGE_TYPE.RESPONSE,
