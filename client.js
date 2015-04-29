@@ -443,6 +443,9 @@ DHT.prototype._onPut = function (addr, message) {
   if (data.v && data.v.length > 1000) {
     return self._sendError(addr, message.t, 205, 'data payload too large')
   }
+  if (isMutable && !msg.k) {
+    return self._sendError(addr, message.t, 206, 'missing signature')
+  }
 
   if (isMutable) {
     if (!verify(msg.k, msg.v, msg.sig)) {

@@ -1,5 +1,6 @@
 var common = require('./common')
 var DHT = require('../')
+var bpad = require('../lib/bpad.js')
 var test = require('tape')
 var EC = require('elliptic').ec
 var sha = require('sha.js')
@@ -407,13 +408,3 @@ test('transitive mutable update', function (t) {
   }
   */
 })
-
-function bpad (n, buf) {
-  if (buf.length === n) return buf
-  if (buf.length < n) {
-    var b = new Buffer(n)
-    buf.copy(b, n - buf.length)
-    for (var i = 0; i < n - buf.length; i++) b[i] = 0
-    return b
-  }
-}
