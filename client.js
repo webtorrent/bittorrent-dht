@@ -273,45 +273,35 @@ DHT.prototype.put = function (opts, cb) {
   var self = this
   var isMutable = opts.k || opts.sig
   if (opts.v === undefined) {
-    cb([ new Error('opts.v not given') ])
-    return null
+    throw new Error('opts.v not given')
   }
   if (opts.v.length >= 1000) {
-    cb([ new Error('v must be less than 1000 bytes in put()') ])
-    return null
+    throw new Error('v must be less than 1000 bytes in put()')
   }
 
   if (isMutable && opts.cas && typeof opts.cas !== 'number') {
-    cb([ new Error('opts.cas must be an integer if provided') ])
-    return null
+    throw new Error('opts.cas must be an integer if provided')
   }
   if (isMutable && !opts.k) {
-    cb([ new Error('opts.k ed25519 public key required for mutable put') ])
-    return null
+    throw new Error('opts.k ed25519 public key required for mutable put')
   }
   if (isMutable && opts.k.length !== 32) {
-    cb([ new Error('opts.k ed25519 public key must be 32 bytes') ])
-    return null
+    throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
   if (isMutable && !opts.sig) {
-    cb([ new Error('opts.sig signature required for mutable put') ])
-    return null
+    throw new Error('opts.sig signature required for mutable put')
   }
   if (isMutable && opts.sig.length !== 64) {
-    cb([ new Error('opts.sig signature must be 64 bytes') ])
-    return null
+    throw new Error('opts.sig signature must be 64 bytes')
   }
   if (isMutable && opts.salt && opts.salt.length > 64) {
-    cb([ new Error('opts.salt is > 64 bytes long') ])
-    return null
+    throw new Error('opts.salt is > 64 bytes long')
   }
   if (isMutable && opts.seq === undefined) {
-    cb([ new Error('opts.seq not provided for a mutable update') ])
-    return null
+    throw new Error('opts.seq not provided for a mutable update')
   }
   if (isMutable && typeof opts.seq !== 'number') {
-    cb([ new Error('opts.seq not an integer') ])
-    return null
+    throw new Error('opts.seq not an integer')
   }
   return self._put(opts, cb)
 }
