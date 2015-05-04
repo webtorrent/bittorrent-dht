@@ -12,7 +12,7 @@ test('local immutable put/get', function (t) {
   common.failOnWarningOrError(t, dht)
 
   dht.on('ready', function () {
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     dht.put({ v: value }, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -55,7 +55,7 @@ test('multi-party immutable put/get', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     dht1.put({ v: value }, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
@@ -72,3 +72,12 @@ test('multi-party immutable put/get', function (t) {
     })
   }
 })
+
+function fill (n, s) {
+  var bs = Buffer(s)
+  var b = new Buffer(n)
+  for (var i = 0; i < n; i++) {
+    b[i] = bs[i % bs.length]
+  }
+  return b
+}

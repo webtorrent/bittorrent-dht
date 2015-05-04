@@ -17,7 +17,7 @@ test('local mutable put/get', function (t) {
   common.failOnWarningOrError(t, dht)
 
   dht.on('ready', function () {
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     var sig = keypair.sign(value)
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
@@ -77,7 +77,7 @@ test('multiparty mutable put/get', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     var sig = keypair.sign(value)
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
@@ -136,7 +136,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     var sig = keypair.sign(value)
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
@@ -168,7 +168,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
     function putSomethingElse () {
       opts.seq ++
-      opts.v = Buffer(32).fill('whatever')
+      opts.v = fill(32, 'whatever')
       var sig = keypair.sign(opts.v)
       opts.sig = Buffer.concat([
         bpad(32, Buffer(sig.r.toArray())),
@@ -195,7 +195,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
     function yetStillMore () {
       opts.seq ++
-      opts.v = Buffer(999).fill('cool')
+      opts.v = fill(999, 'cool')
       var sig = keypair.sign(opts.v)
       opts.sig = Buffer.concat([
         bpad(32, Buffer(sig.r.toArray())),
@@ -249,7 +249,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var fvalue = Buffer(500).fill('abc')
+    var fvalue = fill(500, 'abc')
     var fsig = keypair.sign(fvalue)
     var fopts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
@@ -261,7 +261,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
       ]),
       v: fvalue
     }
-    var svalue = Buffer(20).fill('z')
+    var svalue = fill(20, 'z')
     var ssig = keypair.sign(svalue)
     var sopts = {
       k: fopts.k,
@@ -314,7 +314,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
     function yetStillMore () {
       fopts.seq ++
-      fopts.v = Buffer(999).fill('cool')
+      fopts.v = fill(999, 'cool')
       var sig = keypair.sign(fopts.v)
       fopts.sig = Buffer.concat([
         bpad(32, Buffer(sig.r.toArray())),
@@ -372,7 +372,7 @@ test('transitive mutable update', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = Buffer(500).fill('abc')
+    var value = fill(500, 'abc')
     var sig = keypair.sign(value)
     var opts = {
       k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
@@ -457,9 +457,9 @@ test('mutable update mesh', function (t) {
   })
 
   function ready () {
-    send(0, 8, Buffer(100).fill('abc'))
-    send(4, 6, Buffer(20).fill('xyz'))
-    send(1, 5, Buffer(500).fill('whatever'))
+    send(0, 8, fill(100, 'abc'))
+    send(4, 6, fill(20, 'xyz'))
+    send(1, 5, fill(500, 'whatever'))
   }
 
   function send (srci, dsti, value) {
@@ -489,3 +489,12 @@ test('mutable update mesh', function (t) {
     })
   }
 })
+
+function fill (n, s) {
+  var bs = Buffer(s)
+  var b = new Buffer(n)
+  for (var i = 0; i < n; i++) {
+    b[i] = bs[i % bs.length]
+  }
+  return b
+}
