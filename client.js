@@ -548,6 +548,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var idHex = idToHexString(id)
 
   if (self.destroyed) return cb(new Error('dht is destroyed'))
+  if (self._binding) return self.once('listening', self.lookup.bind(self, id, opts, cb))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
   if (id.length !== 20) throw new Error('invalid node id / info hash length')
 
