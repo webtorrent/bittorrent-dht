@@ -10,12 +10,16 @@
   "bugs": {
     "url": "https://github.com/feross/bittorrent-dht/issues"
   },
+  "browser": {
+    "dns": "dns.js"
+  },
   "dependencies": {
     "addr-to-ip-port": "^1.0.0",
     "bencode": "^0.7.0",
     "buffer-equal": "0.0.1",
     "compact2string": "^1.2.0",
     "debug": "^2.1.0",
+    "dns.js": "^1.0.0",
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
     "is-ip": "^1.0.0",

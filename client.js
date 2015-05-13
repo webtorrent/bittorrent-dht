@@ -509,7 +509,7 @@ DHT.prototype._resolveContacts = function (contacts, done) {
       if (isIP(addrData[0])) {
         cb(null, contact)
       } else {
-        dns.lookup(addrData[0], self._ipv, function (err, host) {
+        dnsLookup(addrData[0], self._ipv, function (err, host) {
           if (err) return cb(null, null)
           contact.addr = host + ':' + addrData[1]
           cb(null, contact)
@@ -1320,4 +1320,23 @@ function idToHexString (id) {
 // Return sha1 hash **as a buffer**
 function sha1 (buf) {
   return crypto.createHash('sha1').update(buf).digest()
+}
+
+/**
+ *
+ * uses dns.lookup if available (using underlying OS's facilities)
+ * uses dns.resolve otherwise   (performs a DNS query on the network)
+ * this allows to use dns.js in browser
+ */
+function dnsLookup (hostname, ipv, cb) {
+  if ('lookup' in dns) return dns.lookup(hostname, ipv, cb)
+
+  ipv = ipv || '4'
+  var method = 'resolve' + ipv
+
+  return dns[method](hostname, function (err, addresses) {
+    if (err) return cb(err)
+
+    cb(null, addresses[0])
+  })
 }
