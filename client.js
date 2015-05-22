@@ -528,21 +528,30 @@ DHT.prototype._onGet = function (addr, message) {
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (rec && rec.data) {
-    self._send(addr, {
+    var msg = {
       t: message.t,
       y: MESSAGE_TYPE.RESPONSE,
       r: {
         id: self.nodeId,
-        k: rec.data.k,
         nodes: [], // found, so we don't need to know the nodes
         nodes6: [],
-        seq: rec.data.seq,
-        sig: rec.data.sig,
-        salt: rec.data.salt,
-        token: rec.data.token,
         v: rec.data.v
       }
-    })
+    }
+    var isMutable = message.a.k || message.a.sig
+    if (isMutable) {
+      msg.k = rec.data.k
+      msg.seq = rec.data.seq
+      msg.sig = rec.data.sig
+      msg.token = rec.data.token
+      if (rec.data.salt) {
+        msg.salt = rec.data.salt
+      }
+      if (rec.data.cas) {
+        msg.cas = rec.data.cas
+      }
+    }
+    self._send(addr, msg)
   } else {
     self.lookup(hash, function (err, nodes) {
       if (err && self.destroyed) return
