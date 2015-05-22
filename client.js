@@ -432,7 +432,7 @@ DHT.prototype.get = function (hash, cb) {
           var isMutable = res.k || res.sig
           if (isMutable && !verify(res.k, res.v, res.sig)) {
             self._debug('invalid mutable hash from %s', node.addr)
-          } else if (!isMutable && bufcmp(sha1(res.v), hash)) {
+          } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
             self._debug('invalid immutable hash from %s', node.addr)
           } else {
             match = true
