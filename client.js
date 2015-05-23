@@ -538,17 +538,17 @@ DHT.prototype._onGet = function (addr, message) {
         v: rec.data.v
       }
     }
-    var isMutable = message.a.k || message.a.sig
+    var isMutable = rec.data.k || rec.data.sig
     if (isMutable) {
-      msg.k = rec.data.k
-      msg.seq = rec.data.seq
-      msg.sig = rec.data.sig
-      msg.token = rec.data.token
+      msg.r.k = rec.data.k
+      msg.r.seq = rec.data.seq
+      msg.r.sig = rec.data.sig
+      msg.r.token = rec.data.token
       if (rec.data.salt) {
-        msg.salt = rec.data.salt
+        msg.r.salt = rec.data.salt
       }
       if (rec.data.cas) {
-        msg.cas = rec.data.cas
+        msg.r.cas = rec.data.cas
       }
     }
     self._send(addr, msg)
