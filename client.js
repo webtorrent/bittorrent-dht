@@ -319,10 +319,6 @@ DHT.prototype.addNode = function (addr, nodeId) {
   if (nodeId.length !== 20) throw new Error('invalid node id length')
 
   self._addNode(addr, nodeId)
-  process.nextTick(function () {
-    // TODO: only emit this event for new nodes
-    self.emit('node', addr, nodeId, addr)
-  })
 }
 
 /**
@@ -331,7 +327,7 @@ DHT.prototype.addNode = function (addr, nodeId) {
  * @param {string} addr
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
- * @return {boolean} was the node valid and added to the table
+ * @return {boolean} was the node valid and new and added to the table
  */
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
@@ -348,11 +344,17 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
     return false
   }
 
-  var contact = {
+  var existing = self.nodes.get(nodeId)
+  if (existing && existing.addr === addr) return
+
+  self.nodes.add({
     id: nodeId,
     addr: addr
-  }
-  self.nodes.add(contact)
+  })
+
+  process.nextTick(function () {
+    self.emit('node', addr, nodeId, from)
+  })
 
   self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
   return true
@@ -451,8 +453,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        var valid = self._addNode(contact.addr, contact.id, contact.from)
-        if (valid) self.emit('node', contact.addr, contact.id, contact.from)
+        self._addNode(contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -707,9 +708,7 @@ DHT.prototype._onData = function (data, rinfo) {
   var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
   if (nodeId) {
     // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
-    var valid = self._addNode(addr, nodeId, addr)
-    // TODO: only emit this event for new nodes
-    if (valid) self.emit('node', addr, nodeId, addr)
+    self._addNode(addr, nodeId, addr)
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
@@ -865,9 +864,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        var valid = self._addNode(node.addr, node.id, addr)
-        // TODO: only emit this event for new nodes
-        if (valid) self.emit('node', node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -933,9 +930,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        var valid = self._addNode(node.addr, node.id, addr)
-        // TODO: only emit this event for new nodes
-        if (valid) self.emit('node', node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     if (res.values) {
