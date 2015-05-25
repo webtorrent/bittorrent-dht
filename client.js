@@ -432,7 +432,7 @@ DHT.prototype.get = function (hash, cb) {
           var isMutable = res.k || res.sig
           if (isMutable && !verify(res.k, res.v, res.sig)) {
             self._debug('invalid mutable hash from %s', node.addr)
-          } else if (!isMutable && bufcmp(sha1(res.v), hash)) {
+          } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
             self._debug('invalid immutable hash from %s', node.addr)
           } else {
             match = true
@@ -528,21 +528,30 @@ DHT.prototype._onGet = function (addr, message) {
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (rec && rec.data) {
-    self._send(addr, {
+    var msg = {
       t: message.t,
       y: MESSAGE_TYPE.RESPONSE,
       r: {
         id: self.nodeId,
-        k: rec.data.k,
         nodes: [], // found, so we don't need to know the nodes
         nodes6: [],
-        seq: rec.data.seq,
-        sig: rec.data.sig,
-        salt: rec.data.salt,
-        token: rec.data.token,
         v: rec.data.v
       }
-    })
+    }
+    var isMutable = rec.data.k || rec.data.sig
+    if (isMutable) {
+      msg.r.k = rec.data.k
+      msg.r.seq = rec.data.seq
+      msg.r.sig = rec.data.sig
+      msg.r.token = rec.data.token
+      if (rec.data.salt) {
+        msg.r.salt = rec.data.salt
+      }
+      if (rec.data.cas) {
+        msg.r.cas = rec.data.cas
+      }
+    }
+    self._send(addr, msg)
   } else {
     self.lookup(hash, function (err, nodes) {
       if (err && self.destroyed) return
