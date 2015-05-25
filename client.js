@@ -331,17 +331,17 @@ DHT.prototype.addNode = function (addr, nodeId) {
  */
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
-  if (self.destroyed) return false
+  if (self.destroyed) return
   nodeId = idToBuffer(nodeId)
 
   if (nodeId.length !== 20) {
     self._debug('skipping addNode %s %s; invalid id length', addr, idToHexString(nodeId))
-    return false
+    return
   }
 
   if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
     self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
-    return false
+    return
   }
 
   var existing = self.nodes.get(nodeId)
@@ -357,7 +357,6 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
   })
 
   self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
-  return true
 }
 
 /**
