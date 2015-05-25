@@ -4,6 +4,7 @@ var bpad = require('../lib/bpad.js')
 var test = require('tape')
 var EC = require('elliptic').ec
 var sha = require('sha.js')
+var bencode = require('bencode')
 
 // test vectors from http://bittorrent.org/beps/bep_0044.html
 test('dht store test vectors', function (t) {
@@ -29,22 +30,28 @@ test('dht store test vectors', function (t) {
   common.failOnWarningOrError(t, dht)
 
   dht.on('ready', function () {
-    var sig = keypair.sign(value)
+    var opts = {
+      k: pub,
+      seq: 1,
+      v: value
+    }
+    var svalue = bencode.encode({
+      seq: opts.seq,
+      v: opts.v
+    }).slice(1, -1)
+    console.log('svalue=' + svalue)
+
+    var sig = keypair.sign(svalue)
     var bsig = Buffer.concat([
       bpad(32, Buffer(sig.r.toArray())),
       bpad(32, Buffer(sig.s.toArray()))
     ])
+    opts.sig = bsig
     t.equal(
       bsig.toString('hex'),
       '305ac8aeb6c9c151fa120f120ea2cfb923564e11552d06a5d856091e5e853cff'
       + '1260d3f39e4999684aa92eb73ffd136e6f4f3ecbfda0ce53a1608ecd7ae21f01'
     )
-    var opts = {
-      k: pub,
-      seq: 0,
-      v: value,
-      sig: bsig
-    }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
     dht.put(opts, function (errors, hash) {
@@ -65,12 +72,3 @@ test('dht store test vectors', function (t) {
     })
   })
 })
-
-function fill (n, s) {
-  var bs = Buffer(s)
-  var b = new Buffer(n)
-  for (var i = 0; i < n; i++) {
-    b[i] = bs[i % bs.length]
-  }
-  return b
-}

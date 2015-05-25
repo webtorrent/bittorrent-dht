@@ -528,7 +528,7 @@ DHT.prototype._onGet = function (addr, message) {
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (rec && rec.data) {
-    var msg = {
+    msg = {
       t: message.t,
       y: MESSAGE_TYPE.RESPONSE,
       r: {
