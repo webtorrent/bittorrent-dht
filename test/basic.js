@@ -78,3 +78,22 @@ test('call `addNode` without nodeId argument, and invalid addr', function (t) {
     dht.destroy()
   }, 2000)
 })
+
+test('`addNode` only emits events for new nodes', function (t) {
+  t.plan(1)
+
+  var dht = new DHT({ bootstrap: false })
+  common.failOnWarningOrError(t, dht)
+
+  dht.on('node', function () {
+    if (--togo < 0) t.fail()
+  })
+
+  var nodeId = common.randomId()
+  dht.addNode('127.0.0.1:9999', nodeId)
+  dht.addNode('127.0.0.1:9999', nodeId)
+  dht.addNode('127.0.0.1:9999', nodeId)
+
+  var togo = 1
+  setTimeout(t.pass(), 100)
+})
