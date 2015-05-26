@@ -32,6 +32,7 @@ var MAX_CONCURRENCY = 6 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
+var UINT16 = 0xffff
 
 var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
   QUERY: 'q',
@@ -1108,7 +1109,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
     reqs.nextTransactionId = 0
   }
   var transactionId = reqs.nextTransactionId
-  reqs.nextTransactionId += 1
+  reqs.nextTransactionId = UINT16 & (reqs.nextTransactionId + 1)
 
   function onTimeout () {
     reqs[transactionId] = null
