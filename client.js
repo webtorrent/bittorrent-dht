@@ -745,11 +745,11 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var self = this
   if (self.destroyed) return
 
-  var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
-    && message.t.readUInt16BE(0)
+  var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2 &&
+    message.t.readUInt16BE(0)
 
-  var transaction = self.transactions && self.transactions[addr]
-    && self.transactions[addr][transactionId]
+  var transaction = self.transactions && self.transactions[addr] &&
+    self.transactions[addr][transactionId]
 
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
