@@ -97,3 +97,21 @@ test('`addNode` only emits events for new nodes', function (t) {
   var togo = 1
   setTimeout(t.pass(), 100)
 })
+
+test('queue msg while binding', function (t) {
+  t.plan(1)
+
+  var a = new DHT({ bootstrap: false })
+  a.listen(function () {
+    var port = a.address().port
+    var b = new DHT({ bootstrap: false })
+    b.listen()
+    b._sendPing('127.0.0.1:' + port, function (err) {
+      if (err) throw err
+
+      t.pass()
+      a.destroy()
+      b.destroy()
+    })
+  })
+})
