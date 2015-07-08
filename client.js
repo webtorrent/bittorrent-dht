@@ -146,7 +146,7 @@ function DHT (opts) {
 
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
-  self._rotateInterval.unref && self._rotateInterval.unref()
+  if (self._rotateInterval.unref) self._rotateInterval.unref()
 
   process.nextTick(function () {
     if (opts.bootstrap === false) {
@@ -484,14 +484,15 @@ DHT.prototype._bootstrap = function (nodes) {
     }
 
     function startBootstrapTimeout () {
-      setTimeout(function () {
+      var bootstrapTimeout = setTimeout(function () {
         if (self.destroyed) return
         // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
         if (self.nodes.count() === 0) {
           self._debug('No DHT bootstrap nodes replied, retry')
           lookup()
         }
-      }, BOOTSTRAP_TIMEOUT).unref()
+      }, BOOTSTRAP_TIMEOUT)
+      if (bootstrapTimeout.unref) bootstrapTimeout.unref()
     }
 
     lookup()
