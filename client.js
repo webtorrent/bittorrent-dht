@@ -83,6 +83,7 @@ function DHT (opts) {
   self._binding = false
   self._port = null
   self._ipv = opts.ipv || 4
+  self._rotateInterval = null
 
   /**
    * Query Handlers table
@@ -280,7 +281,6 @@ DHT.prototype.destroy = function (cb) {
   self.transactions = null
   self.peers = null
 
-  clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
 
   self.socket.on('close', cb)
@@ -480,19 +480,21 @@ DHT.prototype._bootstrap = function (nodes) {
           self.emit('ready')
         }
       })
+      startBootstrapTimeout()
     }
-    lookup()
 
-    // TODO: keep retrying after one failure
-    self._bootstrapTimeout = setTimeout(function () {
-      if (self.destroyed) return
-      // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
-      if (self.nodes.count() === 0) {
-        self._debug('No DHT bootstrap nodes replied, retry')
-        lookup()
-      }
-    }, BOOTSTRAP_TIMEOUT)
-    if (self._bootstrapTimeout.unref) self._bootstrapTimeout.unref()
+    function startBootstrapTimeout () {
+      setTimeout(function () {
+        if (self.destroyed) return
+        // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
+        if (self.nodes.count() === 0) {
+          self._debug('No DHT bootstrap nodes replied, retry')
+          lookup()
+        }
+      }, BOOTSTRAP_TIMEOUT).unref()
+    }
+
+    lookup()
   })
 }
 
