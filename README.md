@@ -223,7 +223,7 @@ informational.
 ### further reading
 
 - [BitTorrent DHT protocol](http://www.bittorrent.org/beps/bep_0005.html)
-- [Kademlia: A Peer-to-peer Information System Based on the XOR Metric](http://www.cs.rice.edu/Conferences/IPTPS02/109.pdf)
+- [Kademlia: A Peer-to-peer Information System Based on the XOR Metric](http://www.ic.unicamp.br/~bit/ensino/mo809_1s13/papers/P2P/Kademlia-%20A%20Peer-to-Peer%20Information%20System%20Based%20on%20the%20XOR%20Metric%20.pdf)
 
 
 ### license
