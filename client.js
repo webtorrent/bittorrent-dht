@@ -35,6 +35,7 @@ var MAX_CONCURRENCY = 6 // α from Kademlia paper
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var SECRET_ENTROPY = 160 // entropy of token secrets
 var SEND_TIMEOUT = 2000
+var UINT16 = 0xffff
 
 var MESSAGE_TYPE = module.exports.MESSAGE_TYPE = {
   QUERY: 'q',
@@ -85,6 +86,7 @@ function DHT (opts) {
   self._binding = false
   self._port = null
   self._ipv = opts.ipv || 4
+  self._rotateInterval = null
 
   /**
    * Query Handlers table
@@ -149,7 +151,7 @@ function DHT (opts) {
 
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
-  self._rotateInterval.unref && self._rotateInterval.unref()
+  if (self._rotateInterval.unref) self._rotateInterval.unref()
 
   process.nextTick(function () {
     if (opts.bootstrap === false) {
@@ -599,7 +601,6 @@ DHT.prototype.destroy = function (cb) {
   self.transactions = null
   self.peers = null
 
-  clearTimeout(self._bootstrapTimeout)
   clearInterval(self._rotateInterval)
 
   self.socket.on('close', cb)
@@ -639,10 +640,6 @@ DHT.prototype.addNode = function (addr, nodeId) {
   if (nodeId.length !== 20) throw new Error('invalid node id length')
 
   self._addNode(addr, nodeId)
-  process.nextTick(function () {
-    // TODO: only emit this event for new nodes
-    self.emit('node', addr, nodeId, addr)
-  })
 }
 
 /**
@@ -651,31 +648,36 @@ DHT.prototype.addNode = function (addr, nodeId) {
  * @param {string} addr
  * @param {string|Buffer} nodeId
  * @param {string=} from addr
- * @return {boolean} was the node valid and added to the table
+ * @return {boolean} was the node valid and new and added to the table
  */
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
-  if (self.destroyed) return false
+  if (self.destroyed) return
   nodeId = idToBuffer(nodeId)
 
   if (nodeId.length !== 20) {
     self._debug('skipping addNode %s %s; invalid id length', addr, idToHexString(nodeId))
-    return false
+    return
   }
 
   if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
     self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
-    return false
+    return
   }
 
-  var contact = {
+  var existing = self.nodes.get(nodeId)
+  if (existing && existing.addr === addr) return
+
+  self.nodes.add({
     id: nodeId,
     addr: addr
-  }
-  self.nodes.add(contact)
+  })
+
+  process.nextTick(function () {
+    self.emit('node', addr, nodeId, from)
+  })
 
   self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
-  return true
 }
 
 /**
@@ -771,8 +773,7 @@ DHT.prototype._bootstrap = function (nodes) {
         return !!contact.id
       })
       .forEach(function (contact) {
-        var valid = self._addNode(contact.addr, contact.id, contact.from)
-        if (valid) self.emit('node', contact.addr, contact.id, contact.from)
+        self._addNode(contact.addr, contact.id, contact.from)
       })
 
     // get addresses of bootstrap nodes
@@ -799,19 +800,22 @@ DHT.prototype._bootstrap = function (nodes) {
           self.emit('ready')
         }
       })
+      startBootstrapTimeout()
     }
-    lookup()
 
-    // TODO: keep retrying after one failure
-    self._bootstrapTimeout = setTimeout(function () {
-      if (self.destroyed) return
-      // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
-      if (self.nodes.count() === 0) {
-        self._debug('No DHT bootstrap nodes replied, retry')
-        lookup()
-      }
-    }, BOOTSTRAP_TIMEOUT)
-    if (self._bootstrapTimeout.unref) self._bootstrapTimeout.unref()
+    function startBootstrapTimeout () {
+      var bootstrapTimeout = setTimeout(function () {
+        if (self.destroyed) return
+        // If 0 nodes are in the table after a timeout, retry with bootstrap nodes
+        if (self.nodes.count() === 0) {
+          self._debug('No DHT bootstrap nodes replied, retry')
+          lookup()
+        }
+      }, BOOTSTRAP_TIMEOUT)
+      if (bootstrapTimeout.unref) bootstrapTimeout.unref()
+    }
+
+    lookup()
   })
 }
 
@@ -868,6 +872,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var idHex = idToHexString(id)
 
   if (self.destroyed) return cb(new Error('dht is destroyed'))
+  if (self._binding) return self.once('listening', self.lookup.bind(self, id, opts, cb))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
   if (id.length !== 20) throw new Error('invalid node id / info hash length')
 
@@ -1026,9 +1031,7 @@ DHT.prototype._onData = function (data, rinfo) {
   var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
   if (nodeId) {
     // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
-    var valid = self._addNode(addr, nodeId, addr)
-    // TODO: only emit this event for new nodes
-    if (valid) self.emit('node', addr, nodeId, addr)
+    self._addNode(addr, nodeId, addr)
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
@@ -1066,11 +1069,11 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
   var self = this
   if (self.destroyed) return
 
-  var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2
-    && message.t.readUInt16BE(0)
+  var transactionId = Buffer.isBuffer(message.t) && message.t.length === 2 &&
+    message.t.readUInt16BE(0)
 
-  var transaction = self.transactions && self.transactions[addr]
-    && self.transactions[addr][transactionId]
+  var transaction = self.transactions && self.transactions[addr] &&
+    self.transactions[addr][transactionId]
 
   var err = null
   if (type === MESSAGE_TYPE.ERROR) {
@@ -1103,12 +1106,9 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
  */
 DHT.prototype._send = function (addr, message, cb) {
   var self = this
-  if (!self.listening && self._binding) {
-    return self.once('listening', function () {
-      self._send(addr, message, cb)
-    })
+  if (!self.listening || self._binding) {
+    return self.once('listening', self._send.bind(self, addr, message, cb))
   }
-  if (!self.listening) return self.listen(self._send.bind(self, addr, message, cb))
   if (!cb) cb = function () {}
   var addrData = addrToIPPort(addr)
   var host = addrData[0]
@@ -1189,9 +1189,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        var valid = self._addNode(node.addr, node.id, addr)
-        // TODO: only emit this event for new nodes
-        if (valid) self.emit('node', node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     cb(null, res)
@@ -1257,9 +1255,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.nodes) {
       res.nodes = parseNodeInfo(res.nodes)
       res.nodes.forEach(function (node) {
-        var valid = self._addNode(node.addr, node.id, addr)
-        // TODO: only emit this event for new nodes
-        if (valid) self.emit('node', node.addr, node.id, addr)
+        self._addNode(node.addr, node.id, addr)
       })
     }
     if (res.values) {
@@ -1438,7 +1434,7 @@ DHT.prototype._getTransactionId = function (addr, fn) {
     reqs.nextTransactionId = 0
   }
   var transactionId = reqs.nextTransactionId
-  reqs.nextTransactionId += 1
+  reqs.nextTransactionId = UINT16 & (reqs.nextTransactionId + 1)
 
   function onTimeout () {
     reqs[transactionId] = null
