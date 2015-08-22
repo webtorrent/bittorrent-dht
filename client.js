@@ -481,7 +481,7 @@ DHT.prototype._onPut = function (addr, message) {
 
   var hash
   if (isMutable) {
-    if (!verify(msg.k, msg.v, msg.sig)) {
+    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !verify(msg.k, msg.v, msg.sig)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
