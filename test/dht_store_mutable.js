@@ -1,6 +1,5 @@
 var common = require('./common')
 var DHT = require('../')
-var bpad = require('../lib/bpad.js')
 var test = require('tape')
 var ed = require('ed25519-supercop')
 var sha = require('sha.js')
@@ -344,7 +343,7 @@ test('transitive mutable update', function (t) {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey),
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
