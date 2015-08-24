@@ -2,15 +2,15 @@ var common = require('./common')
 var DHT = require('../')
 var bpad = require('../lib/bpad.js')
 var test = require('tape')
-var EC = require('elliptic').ec
+var ed = require('ed25519-supercop')
 var sha = require('sha.js')
 
 test('local mutable put/get', function (t) {
   t.plan(4)
 
-  var keypair = new EC('ed25519').genKeyPair()
+  var keypair = ed.createKeyPair(ed.createSeed())
 
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, verify: ed.verify })
   t.once('end', function () {
     dht.destroy()
   })
@@ -18,15 +18,11 @@ test('local mutable put/get', function (t) {
 
   dht.on('ready', function () {
     var value = fill(500, 'abc')
-    var sig = keypair.sign(value)
     var opts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -52,10 +48,10 @@ test('local mutable put/get', function (t) {
 test('multiparty mutable put/get', function (t) {
   t.plan(3)
 
-  var keypair = new EC('ed25519').genKeyPair()
+  var keypair = ed.createKeyPair(ed.createSeed())
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
   t.once('end', function () {
     dht1.destroy()
@@ -78,15 +74,11 @@ test('multiparty mutable put/get', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
-    var sig = keypair.sign(value)
     var opts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: bpad(64, Buffer.concat([
-        Buffer(sig.r.toArray()),
-        Buffer(sig.s.toArray())
-      ]))
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -111,10 +103,9 @@ test('multiparty mutable put/get', function (t) {
 test('multiparty mutable put/get sequence', function (t) {
   t.plan(9)
 
-  var keypair = new EC('ed25519').genKeyPair()
-
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var keypair = ed.createKeyPair(ed.createSeed())
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
   t.once('end', function () {
     dht1.destroy()
@@ -137,15 +128,11 @@ test('multiparty mutable put/get sequence', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
-    var sig = keypair.sign(value)
     var opts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -169,11 +156,7 @@ test('multiparty mutable put/get sequence', function (t) {
     function putSomethingElse () {
       opts.seq ++
       opts.v = fill(32, 'whatever')
-      var sig = keypair.sign(opts.v)
-      opts.sig = Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      opts.sig = ed.sign(opts.v, keypair.publicKey, keypair.secretKey)
 
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -196,11 +179,7 @@ test('multiparty mutable put/get sequence', function (t) {
     function yetStillMore () {
       opts.seq ++
       opts.v = fill(999, 'cool')
-      var sig = keypair.sign(opts.v)
-      opts.sig = Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      opts.sig = ed.sign(opts.v, keypair.publicKey, keypair.secretKey)
 
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -224,10 +203,10 @@ test('multiparty mutable put/get sequence', function (t) {
 test('salted multikey multiparty mutable put/get sequence', function (t) {
   t.plan(9)
 
-  var keypair = new EC('ed25519').genKeyPair()
+  var keypair = ed.createKeyPair(ed.createSeed())
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
   t.once('end', function () {
     dht1.destroy()
@@ -250,27 +229,19 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
   function ready () {
     if (--pending !== 0) return
     var fvalue = fill(500, 'abc')
-    var fsig = keypair.sign(fvalue)
     var fopts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       salt: Buffer('first'),
-      sig: Buffer.concat([
-        bpad(32, Buffer(fsig.r.toArray())),
-        bpad(32, Buffer(fsig.s.toArray()))
-      ]),
+      sig: ed.sign(fvalue, keypair.publicKey, keypair.secretKey),
       v: fvalue
     }
     var svalue = fill(20, 'z')
-    var ssig = keypair.sign(svalue)
     var sopts = {
       k: fopts.k,
       seq: 0,
       salt: Buffer('second'),
-      sig: Buffer.concat([
-        bpad(32, Buffer(ssig.r.toArray())),
-        bpad(32, Buffer(ssig.s.toArray()))
-      ]),
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey),
       v: svalue
     }
     var first = sha('sha1').update('first').update(fopts.k).digest()
@@ -315,11 +286,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     function yetStillMore () {
       fopts.seq ++
       fopts.v = fill(999, 'cool')
-      var sig = keypair.sign(fopts.v)
-      fopts.sig = Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      fopts.sig = ed.sign(fopts.v, keypair.publicKey, keypair.secretKey)
 
       dht1.put(fopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -343,12 +310,12 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 test('transitive mutable update', function (t) {
   t.plan(3)
 
-  var keypair = new EC('ed25519').genKeyPair()
+  var keypair = ed.createKeyPair(ed.createSeed())
 
   // dht1 <-> dht2 <-> dht3
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
-  var dht3 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht3 = new DHT({ bootstrap: false, verify: ed.verify })
 
   t.once('end', function () {
     dht1.destroy()
@@ -373,15 +340,11 @@ test('transitive mutable update', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
-    var sig = keypair.sign(value)
     var opts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey),
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -428,7 +391,7 @@ test('mutable update mesh', function (t) {
   var pending = 0
   for (var i = 0; i < 9; i++) {
     (function (i) {
-      var d = new DHT({ bootstrap: false })
+      var d = new DHT({ bootstrap: false, verify: ed.verify })
       dht.push(d)
       common.failOnWarningOrError(t, d)
       pending++
@@ -464,16 +427,12 @@ test('mutable update mesh', function (t) {
 
   function send (srci, dsti, value) {
     var src = dht[srci], dst = dht[dsti]
-    var keypair = new EC('ed25519').genKeyPair()
-    var sig = keypair.sign(value)
+    var keypair = ed.createKeyPair(ed.createSeed())
     var opts = {
-      k: bpad(32, Buffer(keypair.getPublic().x.toArray())),
+      k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: Buffer.concat([
-        bpad(32, Buffer(sig.r.toArray())),
-        bpad(32, Buffer(sig.s.toArray()))
-      ])
+      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
     }
     var xhash = sha('sha1').update(opts.k).digest()
     src.put(opts, function (errors, hash) {

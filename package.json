@@ -16,7 +16,6 @@
     "buffer-equal": "0.0.1",
     "compact2string": "^1.2.0",
     "debug": "^2.1.0",
-    "elliptic": "^3.0.3",
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
     "is-ip": "^1.0.0",
@@ -32,6 +31,7 @@
   },
   "devDependencies": {
     "ip": "^0.3.0",
+    "ed25519-supercop": "^1.0.0",
     "standard": "^4.5.2",
     "tape": "^4.0.0"
   },
