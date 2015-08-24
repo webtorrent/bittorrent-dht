@@ -61,7 +61,7 @@ test('dht store test vectors', function (t) {
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
         )
-        t.equal(res.seq, 0)
+        t.equal(res.seq, 1)
       })
     })
   })
