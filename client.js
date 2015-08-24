@@ -19,7 +19,6 @@ var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 var sha = require('sha.js')
-var verify = require('./lib/verify.js')
 var isarray = require('isarray')
 var bufcmp = require('buffer-equal')
 
@@ -87,6 +86,7 @@ function DHT (opts) {
   self._port = null
   self._ipv = opts.ipv || 4
   self._rotateInterval = null
+  self._verify = opts.verify
 
   /**
    * Query Handlers table
@@ -432,7 +432,9 @@ DHT.prototype.get = function (hash, cb) {
         if (match) return
         if (res && res.v) {
           var isMutable = res.k || res.sig
-          if (isMutable && !verify(res.k, res.v, res.sig)) {
+          if (isMutable && !self._verify) {
+            self._debug('ed25519 verify not provided')
+          } else if (isMutable && !self._verify(res.sig, res.v, res.k)) {
             self._debug('invalid mutable hash from %s', node.addr)
           } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
             self._debug('invalid immutable hash from %s', node.addr)
@@ -481,7 +483,10 @@ DHT.prototype._onPut = function (addr, message) {
 
   var hash
   if (isMutable) {
-    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !verify(msg.k, msg.v, msg.sig)) {
+    if (!self._verify) {
+      return self._sendError(addr, message.t, 400, 'verification not supported')
+    }
+    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !self._verify(msg.sig, msg.v, msg.k)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
