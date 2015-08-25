@@ -422,7 +422,8 @@ test('mutable update mesh', function (t) {
   }
 
   function send (srci, dsti, value) {
-    var src = dht[srci], dst = dht[dsti]
+    var src = dht[srci]
+    var dst = dht[dsti]
     var keypair = ed.createKeyPair(ed.createSeed())
     var opts = {
       k: keypair.publicKey,
