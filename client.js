@@ -273,7 +273,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
  */
 DHT.prototype.put = function (opts, cb) {
   var self = this
-  var isMutable = opts.k || opts.sig
+  var isMutable = opts.k
   if (opts.v === undefined) {
     throw new Error('opts.v not given')
   }
@@ -290,11 +290,8 @@ DHT.prototype.put = function (opts, cb) {
   if (isMutable && opts.k.length !== 32) {
     throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
-  if (isMutable && !opts.sig) {
-    throw new Error('opts.sig signature required for mutable put')
-  }
-  if (isMutable && opts.sig.length !== 64) {
-    throw new Error('opts.sig signature must be 64 bytes')
+  if (isMutable && typeof opts.sign !== 'function') {
+    throw new Error('opts.sign function required for mutable put')
   }
   if (isMutable && opts.salt && opts.salt.length > 64) {
     throw new Error('opts.salt is > 64 bytes long')
@@ -317,7 +314,7 @@ DHT.prototype._put = function (opts, cb) {
   var self = this
   var pending = 0
   var errors = []
-  var isMutable = opts.k || opts.sig
+  var isMutable = opts.k
   var hash = isMutable
     ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
     : sha1(opts.v)
@@ -346,7 +343,7 @@ DHT.prototype._put = function (opts, cb) {
     var localAddr = '127.0.0.1:' + self._port
     if (isMutable) {
       if (opts.cas) localData.cas = opts.cas
-      localData.sig = opts.sig
+      localData.sig = opts.sign(encodeSigData(opts))
       localData.k = opts.k
       localData.seq = opts.seq
       localData.token = opts.token || self._generateToken(localAddr)
@@ -377,11 +374,11 @@ DHT.prototype._put = function (opts, cb) {
     }
     if (isMutable) {
       data.a.token = opts.token || self._generateToken(node.addr)
-      data.a.seq = Math.round(opts.seq)
-      data.a.sig = opts.sig
+      data.a.seq = opts.seq
+      data.a.sig = opts.sign(encodeSigData(opts))
       data.a.k = opts.k
       if (opts.salt) data.a.salt = opts.salt
-      if (opts.cas) data.a.cas = Math.round(opts.cas)
+      if (opts.cas) data.a.cas = opts.cas
     }
     self._send(node.addr, data)
   }
