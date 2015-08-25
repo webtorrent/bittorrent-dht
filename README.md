@@ -213,7 +213,7 @@ For mutable content, the hash will be the hash of the public key, `opts.k`.
 These options are available:
 
 * `opts.k` - ed25519 public key buffer (32 bytes) (REQUIRED)
-* `opts.sig` - ed25519 signature buffer (64 bytes) (REQUIRED)
+* `opts.sign(buf)` - function to generate an ed25519 signature buffer (64 bytes) corresponding to the `opts.k` public key (REQUIRED)
 * `opts.seq` - optional sequence (integer), must monotonically increase
 * `opts.cas` - optional previous sequence for compare-and-swap
 * `opts.salt` - optional salt buffer to include (< 64 bytes) when calculating
@@ -239,7 +239,9 @@ var opts = {
   k: keypair.publicKey,
   seq: 0,
   v: value,
-  sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+  sign: function (buf) {
+    return ed.sign(buf, keypair.publicKey, keypair.secretKey)
+  }
 }
 
 var DHT = require('bittorrent-dht')
