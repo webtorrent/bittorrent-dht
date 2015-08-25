@@ -2,7 +2,6 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 var sha = require('sha.js')
-var bencode = require('bencode')
 
 var ed = require('ed25519-supercop')
 
