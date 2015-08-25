@@ -3,6 +3,7 @@ var DHT = require('../')
 var test = require('tape')
 var ed = require('ed25519-supercop')
 var sha = require('sha.js')
+var bencode = require('bencode')
 
 test('local mutable put/get', function (t) {
   t.plan(4)
@@ -17,11 +18,12 @@ test('local mutable put/get', function (t) {
 
   dht.on('ready', function () {
     var value = fill(500, 'abc')
+    var svalue = bencode.encode({ seq: 0, v: value }).slice(1, -1)
     var opts = {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -73,11 +75,12 @@ test('multiparty mutable put/get', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
+    var svalue = bencode.encode({ seq: 0, v: value }).slice(1, -1)
     var opts = {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -127,11 +130,12 @@ test('multiparty mutable put/get sequence', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
+    var svalue = bencode.encode({ seq: 0, v: value }).slice(1, -1)
     var opts = {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -155,7 +159,8 @@ test('multiparty mutable put/get sequence', function (t) {
     function putSomethingElse () {
       opts.seq ++
       opts.v = fill(32, 'whatever')
-      opts.sig = ed.sign(opts.v, keypair.publicKey, keypair.secretKey)
+      var svalue = bencode.encode({ seq: opts.seq, v: opts.v }).slice(1, -1)
+      opts.sig = ed.sign(svalue, keypair.publicKey, keypair.secretKey)
 
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -178,7 +183,8 @@ test('multiparty mutable put/get sequence', function (t) {
     function yetStillMore () {
       opts.seq ++
       opts.v = fill(999, 'cool')
-      opts.sig = ed.sign(opts.v, keypair.publicKey, keypair.secretKey)
+      var svalue = bencode.encode({ seq: opts.seq, v: opts.v }).slice(1, -1)
+      opts.sig = ed.sign(svalue, keypair.publicKey, keypair.secretKey)
 
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -228,19 +234,29 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
   function ready () {
     if (--pending !== 0) return
     var fvalue = fill(500, 'abc')
+    var sfvalue = bencode.encode({
+      salt: 'first',
+      seq: 0,
+      v: fvalue
+    }).slice(1, -1)
     var fopts = {
       k: keypair.publicKey,
       seq: 0,
       salt: Buffer('first'),
-      sig: ed.sign(fvalue, keypair.publicKey, keypair.secretKey),
+      sig: ed.sign(sfvalue, keypair.publicKey, keypair.secretKey),
       v: fvalue
     }
     var svalue = fill(20, 'z')
+    var ssvalue = bencode.encode({
+      salt: 'second',
+      seq: 0,
+      v: svalue
+    }).slice(1, -1)
     var sopts = {
       k: fopts.k,
       seq: 0,
       salt: Buffer('second'),
-      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey),
+      sig: ed.sign(ssvalue, keypair.publicKey, keypair.secretKey),
       v: svalue
     }
     var first = sha('sha1').update('first').update(fopts.k).digest()
@@ -285,7 +301,12 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     function yetStillMore () {
       fopts.seq ++
       fopts.v = fill(999, 'cool')
-      fopts.sig = ed.sign(fopts.v, keypair.publicKey, keypair.secretKey)
+      var ssvalue = bencode.encode({
+        salt: 'first',
+        seq: fopts.seq,
+        v: fopts.v
+      }).slice(1, -1)
+      fopts.sig = ed.sign(ssvalue, keypair.publicKey, keypair.secretKey)
 
       dht1.put(fopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
@@ -339,11 +360,12 @@ test('transitive mutable update', function (t) {
   function ready () {
     if (--pending !== 0) return
     var value = fill(500, 'abc')
+    var svalue = bencode.encode({ seq: 0, v: value }).slice(1, -1)
     var opts = {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey)
     }
     var expectedHash = sha('sha1').update(opts.k).digest()
 
@@ -427,11 +449,12 @@ test('mutable update mesh', function (t) {
   function send (srci, dsti, value) {
     var src = dht[srci], dst = dht[dsti]
     var keypair = ed.createKeyPair(ed.createSeed())
+    var svalue = bencode.encode({ seq: 0, v: value }).slice(1, -1)
     var opts = {
       k: keypair.publicKey,
       seq: 0,
       v: value,
-      sig: ed.sign(value, keypair.publicKey, keypair.secretKey)
+      sig: ed.sign(svalue, keypair.publicKey, keypair.secretKey)
     }
     var xhash = sha('sha1').update(opts.k).digest()
     src.put(opts, function (errors, hash) {

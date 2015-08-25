@@ -432,9 +432,10 @@ DHT.prototype.get = function (hash, cb) {
         if (match) return
         if (res && res.v) {
           var isMutable = res.k || res.sig
+          var sdata = encodeSigData(res)
           if (isMutable && !self._verify) {
             self._debug('ed25519 verify not provided')
-          } else if (isMutable && !self._verify(res.sig, res.v, res.k)) {
+          } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
             self._debug('invalid mutable hash from %s', node.addr)
           } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
             self._debug('invalid immutable hash from %s', node.addr)
@@ -486,7 +487,8 @@ DHT.prototype._onPut = function (addr, message) {
     if (!self._verify) {
       return self._sendError(addr, message.t, 400, 'verification not supported')
     }
-    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !self._verify(msg.sig, msg.v, msg.k)) {
+    var sdata = encodeSigData(msg)
+    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !self._verify(msg.sig, sdata, msg.k)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
@@ -1645,4 +1647,10 @@ function idToHexString (id) {
 // Return sha1 hash **as a buffer**
 function sha1 (buf) {
   return sha('sha1').update(buf).digest()
+}
+
+function encodeSigData (msg) {
+  var ref = { seq: msg.seq || 0, v: msg.v }
+  if (msg.salt) ref.salt = msg.salt
+  return bencode.encode(ref).slice(1, -1)
 }
