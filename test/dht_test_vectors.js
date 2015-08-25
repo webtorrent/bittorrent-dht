@@ -31,21 +31,18 @@ test('dht store test vectors', function (t) {
     var opts = {
       k: pub,
       seq: 1,
-      v: value
+      v: value,
+      sign: function (buf) {
+        t.equal(buf.toString(), '3:seqi1e1:v12:Hello World!')
+        var sig = ed.sign(buf, pub, priv)
+        t.equal(
+          sig.toString('hex'),
+          '305ac8aeb6c9c151fa120f120ea2cfb923564e11552d06a5d856091e5e853cff'
+          + '1260d3f39e4999684aa92eb73ffd136e6f4f3ecbfda0ce53a1608ecd7ae21f01'
+        )
+        return sig
+      }
     }
-    var svalue = bencode.encode({
-      seq: opts.seq,
-      v: opts.v
-    }).slice(1, -1)
-    t.equal(svalue.toString(), '3:seqi1e1:v12:Hello World!')
-
-    var sig = ed.sign(svalue, pub, priv)
-    opts.sig = sig
-    t.equal(
-      sig.toString('hex'),
-      '305ac8aeb6c9c151fa120f120ea2cfb923564e11552d06a5d856091e5e853cff'
-      + '1260d3f39e4999684aa92eb73ffd136e6f4f3ecbfda0ce53a1608ecd7ae21f01'
-    )
     var expectedHash = sha('sha1').update(opts.k).digest()
 
     dht.put(opts, function (errors, hash) {
