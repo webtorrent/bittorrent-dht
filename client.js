@@ -5,7 +5,6 @@ var addrToIPPort = require('addr-to-ip-port')
 var bencode = require('bencode')
 var bufferEqual = require('buffer-equal')
 var compact2string = require('compact2string')
-var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
 var dns = require('dns')
 var EventEmitter = require('events').EventEmitter
@@ -19,6 +18,9 @@ var os = require('os')
 var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
+var sha = require('sha.js')
+var isarray = require('isarray')
+var bufcmp = require('buffer-equal')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -84,6 +86,7 @@ function DHT (opts) {
   self._port = null
   self._ipv = opts.ipv || 4
   self._rotateInterval = null
+  self._verify = opts.verify
 
   /**
    * Query Handlers table
@@ -93,7 +96,9 @@ function DHT (opts) {
     ping: self._onPing,
     find_node: self._onFindNode,
     get_peers: self._onGetPeers,
-    announce_peer: self._onAnnouncePeer
+    announce_peer: self._onAnnouncePeer,
+    put: self._onPut,
+    get: self._onGet
   }
 
   /**
@@ -257,6 +262,325 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     })
     self._debug('announce end %s %s', infoHashHex, port)
     cb(null)
+  }
+}
+
+/**
+ * Write arbitrary mutable and immutable data to the DHT.
+ * Specified in BEP44: http://bittorrent.org/beps/bep_0044.html
+ * @param {Object} opts
+ * @param {function=} cb
+ */
+DHT.prototype.put = function (opts, cb) {
+  var self = this
+  var isMutable = opts.k
+  if (opts.v === undefined) {
+    throw new Error('opts.v not given')
+  }
+  if (opts.v.length >= 1000) {
+    throw new Error('v must be less than 1000 bytes in put()')
+  }
+
+  if (isMutable && opts.cas && typeof opts.cas !== 'number') {
+    throw new Error('opts.cas must be an integer if provided')
+  }
+  if (isMutable && !opts.k) {
+    throw new Error('opts.k ed25519 public key required for mutable put')
+  }
+  if (isMutable && opts.k.length !== 32) {
+    throw new Error('opts.k ed25519 public key must be 32 bytes')
+  }
+  if (isMutable && typeof opts.sign !== 'function') {
+    throw new Error('opts.sign function required for mutable put')
+  }
+  if (isMutable && opts.salt && opts.salt.length > 64) {
+    throw new Error('opts.salt is > 64 bytes long')
+  }
+  if (isMutable && opts.seq === undefined) {
+    throw new Error('opts.seq not provided for a mutable update')
+  }
+  if (isMutable && typeof opts.seq !== 'number') {
+    throw new Error('opts.seq not an integer')
+  }
+  return self._put(opts, cb)
+}
+
+/**
+ * put() without type checks for internal use
+ * @param {Object} opts
+ * @param {function=} cb
+ */
+DHT.prototype._put = function (opts, cb) {
+  var self = this
+  var pending = 0
+  var errors = []
+  var isMutable = opts.k
+  var hash = isMutable
+    ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
+    : sha1(opts.v)
+
+  if (self.nodes.toArray().length === 0) {
+    process.nextTick(function () {
+      addLocal(null, [])
+    })
+  } else {
+    self.lookup(hash, onLookup)
+  }
+
+  function onLookup (err, nodes) {
+    if (err) return cb(err)
+    nodes.forEach(function (node) {
+      put(node)
+    })
+    addLocal()
+  }
+
+  function addLocal () {
+    var localData = {
+      id: self.nodeId,
+      v: opts.v
+    }
+    var localAddr = '127.0.0.1:' + self._port
+    if (isMutable) {
+      if (opts.cas) localData.cas = opts.cas
+      localData.sig = opts.sign(encodeSigData(opts))
+      localData.k = opts.k
+      localData.seq = opts.seq
+      localData.token = opts.token || self._generateToken(localAddr)
+    }
+    self.nodes.add({
+      id: hash,
+      addr: localAddr,
+      data: localData
+    })
+    if (pending === 0) {
+      process.nextTick(function () { cb(errors, hash) })
+    }
+  }
+  return hash
+
+  function put (node) {
+    if (node.data) return // skip data nodes
+    pending += 1
+    var t = self._getTransactionId(node.addr, next(node))
+    var data = {
+      a: {
+        id: opts.id || self.nodeId,
+        v: opts.v
+      },
+      t: transactionIdToBuffer(t),
+      y: 'q',
+      q: 'put'
+    }
+    if (isMutable) {
+      data.a.token = opts.token || self._generateToken(node.addr)
+      data.a.seq = opts.seq
+      data.a.sig = opts.sign(encodeSigData(opts))
+      data.a.k = opts.k
+      if (opts.salt) data.a.salt = opts.salt
+      if (opts.cas) data.a.cas = opts.cas
+    }
+    self._send(node.addr, data)
+  }
+
+  function next (node) {
+    return function (err) {
+      if (err) {
+        err.address = node.addr
+        errors.push(err)
+      }
+      if (--pending === 0) cb(errors, hash)
+    }
+  }
+}
+
+DHT.prototype.get = function (hash, cb) {
+  var self = this
+  var local = self.nodes.get(hash)
+  if (local && local.data) {
+    return process.nextTick(function () {
+      cb(null, local.data)
+    })
+  }
+
+  self.lookup(hash, fromNodes)
+
+  function fromNodes (err, nodes) {
+    if (err) return cb(err)
+
+    var pending = nodes.length
+    var match = false
+    var nextNodes = {}
+
+    nodes.forEach(function (node) {
+      var t = self._getTransactionId(node.addr, next)
+      self._send(node.addr, {
+        a: {
+          id: self.nodeId,
+          target: hash
+        },
+        t: transactionIdToBuffer(t),
+        y: 'q',
+        q: 'get'
+      })
+
+      function next (err, res) {
+        if (err) {} // not important
+        if (match) return
+        if (res && res.v) {
+          var isMutable = res.k || res.sig
+          var sdata = encodeSigData(res)
+          if (isMutable && !self._verify) {
+            self._debug('ed25519 verify not provided')
+          } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
+            self._debug('invalid mutable hash from %s', node.addr)
+          } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
+            self._debug('invalid immutable hash from %s', node.addr)
+          } else {
+            match = true
+            return cb(null, res)
+          }
+        }
+
+        if (res && isarray(res.nodes)) {
+          res.nodes.forEach(function (n) {
+            nextNodes[n] = true
+          })
+        }
+        if (--pending === 0) {
+          var keys = Object.keys(nextNodes)
+          if (keys.length === 0) cb(new Error('hash not found'))
+          else fromNodes(keys.map(function (key) { return { addr: key } }))
+        }
+      }
+    })
+  }
+}
+
+DHT.prototype._onPut = function (addr, message) {
+  var self = this
+  var msg = message.a
+  if (!msg || !msg.v || !msg.id) {
+    return self._sendError(addr, message.t, 203, 'not enough parameters')
+  }
+
+  var isMutable = message.a.k || message.a.sig
+  self._debug('put from %s', addr)
+
+  var data = {
+    id: message.a.id,
+    addr: addr,
+    v: message.a.v
+  }
+  if (data.v && data.v.length > 1000) {
+    return self._sendError(addr, message.t, 205, 'data payload too large')
+  }
+  if (isMutable && !msg.k) {
+    return self._sendError(addr, message.t, 203, 'missing public key')
+  }
+
+  var hash
+  if (isMutable) {
+    if (!self._verify) {
+      return self._sendError(addr, message.t, 400, 'verification not supported')
+    }
+    var sdata = encodeSigData(msg)
+    if (!msg.sig || !Buffer.isBuffer(msg.sig) || !self._verify(msg.sig, sdata, msg.k)) {
+      return self._sendError(addr, message.t, 206, 'invalid signature')
+    }
+    var prev = self.nodes.get(hash)
+    if (prev && prev.seq !== undefined && msg.cas) {
+      if (msg.cas !== prev.seq) {
+        return self._sendError(addr, message.t, 301,
+          'CAS mismatch, re-read and try again')
+      }
+    }
+    if (prev && prev.seq !== undefined) {
+      if (msg.seq === undefined || msg.seq <= prev.seq) {
+        return self._sendError(addr, message.t, 302,
+          'sequence number less than current')
+      }
+    }
+
+    data.sig = msg.sig
+    data.k = msg.k
+    data.seq = msg.seq
+    data.token = msg.token
+    if (msg.salt && msg.salt.length > 64) {
+      return self._sendError(addr, message.t, 207, 'salt too big')
+    }
+    if (msg.salt) data.salt = msg.salt
+    hash = data.salt
+      ? sha1(Buffer.concat([ data.salt, data.k ]))
+      : sha1(data.k)
+  } else {
+    hash = sha1(data.v)
+  }
+
+  self.nodes.add({ id: hash, addr: addr, data: data })
+  self._send(addr, {
+    t: message.t,
+    y: MESSAGE_TYPE.RESPONSE,
+    r: { id: self.nodeId }
+  })
+}
+
+DHT.prototype._onGet = function (addr, message) {
+  var self = this
+  var msg = message.a
+  if (!msg) return self._debug('skipping malformed get request from %s', addr)
+  if (!msg.target) return self._debug('missing a.target in get() from %s', addr)
+
+  var hash = message.a.target
+  var rec = self.nodes.get(hash)
+  if (rec && rec.data) {
+    msg = {
+      t: message.t,
+      y: MESSAGE_TYPE.RESPONSE,
+      r: {
+        id: self.nodeId,
+        nodes: [], // found, so we don't need to know the nodes
+        nodes6: [],
+        v: rec.data.v
+      }
+    }
+    var isMutable = rec.data.k || rec.data.sig
+    if (isMutable) {
+      msg.r.k = rec.data.k
+      msg.r.seq = rec.data.seq
+      msg.r.sig = rec.data.sig
+      msg.r.token = rec.data.token
+      if (rec.data.salt) {
+        msg.r.salt = rec.data.salt
+      }
+      if (rec.data.cas) {
+        msg.r.cas = rec.data.cas
+      }
+    }
+    self._send(addr, msg)
+  } else {
+    self.lookup(hash, function (err, nodes) {
+      if (err && self.destroyed) return
+      if (err) return self._sendError(addr, message.t, 201, err)
+
+      var res = {
+        t: message.t,
+        y: MESSAGE_TYPE.RESPONSE,
+        r: {
+          id: self.nodeId,
+          nodes: nodes.map(function (node) {
+            return node.addr
+          }),
+          nodes6: [] // todo: filter the addrs
+        }
+      }
+      if (rec && rec.data && rec.data.k) res.k = rec.data.k
+      if (rec && rec.data && rec.data.seq) res.seq = rec.data.seq
+      if (rec && rec.data && rec.data.sig) res.sig = rec.data.sig
+      if (rec && rec.data && rec.data.token) res.token = rec.data.token
+      if (rec && rec.data && rec.data.v) res.v = rec.data.v
+      self._send(addr, res)
+    })
   }
 }
 
@@ -787,7 +1111,6 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
 DHT.prototype._send = function (addr, message, cb) {
   var self = this
   if (self._binding) return self.once('listening', self._send.bind(self, addr, message, cb))
-  if (!self.listening) return self.listen(self._send.bind(self, addr, message, cb))
   if (!cb) cb = function () {}
   var addrData = addrToIPPort(addr)
   var host = addrData[0]
@@ -1194,7 +1517,7 @@ DHT.prototype._rotateSecrets = function () {
  */
 DHT.prototype.toArray = function () {
   var self = this
-  var nodes = self.nodes.toArray().map(function (contact) {
+  var nodes = self.nodes.toArray().filter(dropData).map(function (contact) {
     // to remove properties added by k-bucket, like `distance`, etc.
     return {
       id: contact.id.toString('hex'),
@@ -1202,6 +1525,8 @@ DHT.prototype.toArray = function () {
     }
   })
   return nodes
+
+  function dropData (x) { return !x.data }
 }
 
 DHT.prototype._addrIsSelf = function (addr) {
@@ -1318,5 +1643,11 @@ function idToHexString (id) {
 
 // Return sha1 hash **as a buffer**
 function sha1 (buf) {
-  return crypto.createHash('sha1').update(buf).digest()
+  return sha('sha1').update(buf).digest()
+}
+
+function encodeSigData (msg) {
+  var ref = { seq: msg.seq || 0, v: msg.v }
+  if (msg.salt) ref.salt = msg.salt
+  return bencode.encode(ref).slice(1, -1)
 }
