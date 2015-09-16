@@ -466,7 +466,7 @@ test('sequence', function (t) {
   common.failOnWarningOrError(t, dht0)
   common.failOnWarningOrError(t, dht1)
 
-  dht0.on('ready', function () {
+  dht0.on('node', function () {
     var opts0 = {
       k: keypair.publicKey,
       sign: sign(keypair),
@@ -479,15 +479,13 @@ test('sequence', function (t) {
       seq: 4,
       v: Buffer(500).fill('4')
     }
-    var hash0, hash1
+    var hash0
 
     dht0.put(opts0, function (errors, hash) {
       errors.forEach(t.error.bind(t))
       hash0 = hash
       dht0.put(opts1, function (errors, hash) {
-        errors.forEach(t.error.bind(t))
-        hash1 = hash
-        t.deepEqual(hash0, hash1)
+        t.ok(errors.length, 'caught expected error: ' + errors[0])
         check()
       })
     })

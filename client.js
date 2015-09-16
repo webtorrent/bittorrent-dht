@@ -481,6 +481,13 @@ DHT.prototype._onPut = function (addr, message) {
 
   var hash
   if (isMutable) {
+    hash = msg.salt
+      ? sha1(Buffer.concat([ msg.salt, msg.k ]))
+      : sha1(msg.k)
+  } else {
+    hash = sha1(data.v)
+  }
+  if (isMutable) {
     if (!self._verify) {
       return self._sendError(addr, message.t, 400, 'verification not supported')
     }
@@ -489,14 +496,14 @@ DHT.prototype._onPut = function (addr, message) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
-    if (prev && prev.seq !== undefined && msg.cas) {
-      if (msg.cas !== prev.seq) {
+    if (prev && prev.data.seq !== undefined && msg.cas) {
+      if (msg.cas !== prev.data.seq) {
         return self._sendError(addr, message.t, 301,
           'CAS mismatch, re-read and try again')
       }
     }
-    if (prev && prev.seq !== undefined) {
-      if (msg.seq === undefined || msg.seq <= prev.seq) {
+    if (prev && prev.data.seq !== undefined) {
+      if (msg.seq === undefined || msg.seq <= prev.data.seq) {
         return self._sendError(addr, message.t, 302,
           'sequence number less than current')
       }
@@ -510,11 +517,6 @@ DHT.prototype._onPut = function (addr, message) {
       return self._sendError(addr, message.t, 207, 'salt too big')
     }
     if (msg.salt) data.salt = msg.salt
-    hash = data.salt
-      ? sha1(Buffer.concat([ data.salt, data.k ]))
-      : sha1(data.k)
-  } else {
-    hash = sha1(data.v)
   }
 
   self.nodes.add({ id: hash, addr: addr, data: data })
