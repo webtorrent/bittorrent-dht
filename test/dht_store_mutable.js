@@ -446,7 +446,7 @@ test('mutable update mesh', function (t) {
   }
 })
 
-test('sequence', function (t) {
+test('invalid sequence', function (t) {
   t.plan(4)
 
   var keypair = ed.createKeyPair(ed.createSeed())
@@ -486,6 +486,66 @@ test('sequence', function (t) {
       hash0 = hash
       dht0.put(opts1, function (errors, hash) {
         t.ok(errors.length, 'caught expected error: ' + errors[0])
+        check()
+      })
+    })
+
+    function check () {
+      dht1.get(hash0, function (err, res) {
+        t.ifError(err)
+        t.deepEqual(
+          res.v.toString('utf8'),
+          Buffer(500).fill('5').toString('utf8'),
+          'greater sequence expected'
+        )
+        t.equal(res.seq, 5)
+      })
+    }
+  })
+})
+
+test('valid sequence', function (t) {
+  t.plan(4)
+
+  var keypair = ed.createKeyPair(ed.createSeed())
+
+  var dht0 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  dht0.listen(0, function () {
+    dht1.addNode('127.0.0.1:' + dht0.address().port)
+  })
+  dht1.listen(0, function () {
+    dht0.addNode('127.0.0.1:' + dht1.address().port)
+  })
+  t.once('end', function () {
+    dht0.destroy()
+    dht1.destroy()
+  })
+  common.failOnWarningOrError(t, dht0)
+  common.failOnWarningOrError(t, dht1)
+
+  dht0.on('node', function () {
+    var opts0 = {
+      k: keypair.publicKey,
+      sign: sign(keypair),
+      seq: 4,
+      v: Buffer(500).fill('4')
+    }
+    var opts1 = {
+      k: keypair.publicKey,
+      sign: sign(keypair),
+      seq: 5,
+      v: Buffer(500).fill('5')
+    }
+    var hash0, hash1
+
+    dht0.put(opts0, function (errors, hash) {
+      errors.forEach(t.error.bind(t))
+      hash0 = hash
+      dht0.put(opts1, function (errors, hash) {
+        errors.forEach(t.error.bind(t))
+        hash1 = hash
+        t.deepEqual(hash0, hash1)
         check()
       })
     })
