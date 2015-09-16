@@ -471,13 +471,13 @@ test('invalid sequence', function (t) {
       k: keypair.publicKey,
       sign: sign(keypair),
       seq: 5,
-      v: Buffer(500).fill('5')
+      v: fill(500, '5')
     }
     var opts1 = {
       k: keypair.publicKey,
       sign: sign(keypair),
       seq: 4,
-      v: Buffer(500).fill('4')
+      v: fill(500, '4')
     }
     var hash0
 
@@ -495,7 +495,7 @@ test('invalid sequence', function (t) {
         t.ifError(err)
         t.deepEqual(
           res.v.toString('utf8'),
-          Buffer(500).fill('5').toString('utf8'),
+          fill(500, '5').toString('utf8'),
           'greater sequence expected'
         )
         t.equal(res.seq, 5)
@@ -529,13 +529,13 @@ test('valid sequence', function (t) {
       k: keypair.publicKey,
       sign: sign(keypair),
       seq: 4,
-      v: Buffer(500).fill('4')
+      v: fill(500, '4')
     }
     var opts1 = {
       k: keypair.publicKey,
       sign: sign(keypair),
       seq: 5,
-      v: Buffer(500).fill('5')
+      v: fill(500, '5')
     }
     var hash0, hash1
 
@@ -555,7 +555,7 @@ test('valid sequence', function (t) {
         t.ifError(err)
         t.deepEqual(
           res.v.toString('utf8'),
-          Buffer(500).fill('5').toString('utf8'),
+          fill(500, '5').toString('utf8'),
           'greater sequence expected'
         )
         t.equal(res.seq, 5)
