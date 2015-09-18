@@ -177,13 +177,12 @@ test('`announce_peer` query gets ack response', function (t) {
       t.ok(Buffer.isBuffer(res1.token))
 
       dht2._sendAnnouncePeer('127.0.0.1:' + port, infoHash, 9999, res1.token, function (err, res2) {
-          t.error(err)
-          t.deepEqual(res2.id, dht1.nodeId)
+        t.error(err)
+        t.deepEqual(res2.id, dht1.nodeId)
 
-          dht1.destroy()
-          dht2.destroy()
-        }
-      )
+        dht1.destroy()
+        dht2.destroy()
+      })
     })
   })
 })
