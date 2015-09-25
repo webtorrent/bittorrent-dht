@@ -18,7 +18,7 @@ test('local immutable put/get', function (t) {
 
       t.equal(
         hash.toString('hex'),
-        '3ab87d68b1be9dc63da13faf18a7d2376ccd938a' // sha1 of the value
+        '3a34a097641348623d123acfba3aa589028f241e' // sha1 of the value
       )
       dht.get(hash, function (err, res) {
         t.ifError(err)
@@ -61,7 +61,7 @@ test('multi-party immutable put/get', function (t) {
 
       t.equal(
         hash.toString('hex'),
-        '3ab87d68b1be9dc63da13faf18a7d2376ccd938a' // sha1 of the value
+        '3a34a097641348623d123acfba3aa589028f241e' // sha1 of the value
       )
       dht2.get(hash, function (err, res) {
         t.ifError(err)
