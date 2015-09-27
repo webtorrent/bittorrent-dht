@@ -19,7 +19,6 @@ var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 var sha = require('sha.js')
-var isarray = require('isarray')
 var bufcmp = require('buffer-equal')
 
 var BOOTSTRAP_NODES = [
@@ -317,14 +316,14 @@ DHT.prototype._put = function (opts, cb) {
   var isMutable = opts.k
   var hash = isMutable
     ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
-    : sha1(opts.v)
+    : sha1(bencode.encode(opts.v))
 
   if (self.nodes.toArray().length === 0) {
     process.nextTick(function () {
       addLocal(null, [])
     })
   } else {
-    self.lookup(hash, onLookup)
+    self.lookup(hash, {findNode: true}, onLookup)
   }
 
   function onLookup (err, nodes) {
@@ -362,25 +361,43 @@ DHT.prototype._put = function (opts, cb) {
   function put (node) {
     if (node.data) return // skip data nodes
     pending += 1
-    var t = self._getTransactionId(node.addr, next(node))
-    var data = {
+
+    var t = self._getTransactionId(node.addr, putOnGet)
+    self._send(node.addr, {
       a: {
-        id: opts.id || self.nodeId,
-        v: opts.v
+        id: self.nodeId,
+        target: hash
       },
       t: transactionIdToBuffer(t),
       y: 'q',
-      q: 'put'
+      q: 'get'
+    })
+
+    function putOnGet (err, res) {
+      if (err) return next(node)(err)
+
+      var t = self._getTransactionId(node.addr, next(node))
+      var data = {
+        a: {
+          id: opts.id || self.nodeId,
+          v: opts.v,
+          token: res && res.token
+        },
+        t: transactionIdToBuffer(t),
+        y: 'q',
+        q: 'put'
+      }
+
+      if (isMutable) {
+        data.a.token = opts.token || self._generateToken(node.addr)
+        data.a.seq = opts.seq
+        data.a.sig = opts.sign(encodeSigData(opts))
+        data.a.k = opts.k
+        if (opts.salt) data.a.salt = opts.salt
+        if (opts.cas) data.a.cas = opts.cas
+      }
+      self._send(node.addr, data)
     }
-    if (isMutable) {
-      data.a.token = opts.token || self._generateToken(node.addr)
-      data.a.seq = opts.seq
-      data.a.sig = opts.sign(encodeSigData(opts))
-      data.a.k = opts.k
-      if (opts.salt) data.a.salt = opts.salt
-      if (opts.cas) data.a.cas = opts.cas
-    }
-    self._send(node.addr, data)
   }
 
   function next (node) {
@@ -403,58 +420,7 @@ DHT.prototype.get = function (hash, cb) {
     })
   }
 
-  self.lookup(hash, fromNodes)
-
-  function fromNodes (err, nodes) {
-    if (err) return cb(err)
-
-    var pending = nodes.length
-    var match = false
-    var nextNodes = {}
-
-    nodes.forEach(function (node) {
-      var t = self._getTransactionId(node.addr, next)
-      self._send(node.addr, {
-        a: {
-          id: self.nodeId,
-          target: hash
-        },
-        t: transactionIdToBuffer(t),
-        y: 'q',
-        q: 'get'
-      })
-
-      function next (err, res) {
-        if (err) {} // not important
-        if (match) return
-        if (res && res.v) {
-          var isMutable = res.k || res.sig
-          var sdata = encodeSigData(res)
-          if (isMutable && !self._verify) {
-            self._debug('ed25519 verify not provided')
-          } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
-            self._debug('invalid mutable hash from %s', node.addr)
-          } else if (!isMutable && !bufcmp(sha1(res.v), hash)) {
-            self._debug('invalid immutable hash from %s', node.addr)
-          } else {
-            match = true
-            return cb(null, res)
-          }
-        }
-
-        if (res && isarray(res.nodes)) {
-          res.nodes.forEach(function (n) {
-            nextNodes[n] = true
-          })
-        }
-        if (--pending === 0) {
-          var keys = Object.keys(nextNodes)
-          if (keys.length === 0) cb(new Error('hash not found'))
-          else fromNodes(keys.map(function (key) { return { addr: key } }))
-        }
-      }
-    })
-  }
+  self.lookup(hash, {get: true}, cb)
 }
 
 DHT.prototype._onPut = function (addr, message) {
@@ -485,7 +451,7 @@ DHT.prototype._onPut = function (addr, message) {
       ? sha1(Buffer.concat([ msg.salt, msg.k ]))
       : sha1(msg.k)
   } else {
-    hash = sha1(data.v)
+    hash = sha1(bencode.encode(data.v))
   }
   if (isMutable) {
     if (!self._verify) {
@@ -496,13 +462,13 @@ DHT.prototype._onPut = function (addr, message) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
-    if (prev && prev.data.seq !== undefined && msg.cas) {
+    if (prev && prev.data && prev.data.seq !== undefined && msg.cas) {
       if (msg.cas !== prev.data.seq) {
         return self._sendError(addr, message.t, 301,
           'CAS mismatch, re-read and try again')
       }
     }
-    if (prev && prev.data.seq !== undefined) {
+    if (prev && prev.data && prev.data.seq !== undefined) {
       if (msg.seq === undefined || msg.seq <= prev.data.seq) {
         return self._sendError(addr, message.t, 302,
           'sequence number less than current')
@@ -533,6 +499,7 @@ DHT.prototype._onGet = function (addr, message) {
   if (!msg) return self._debug('skipping malformed get request from %s', addr)
   if (!msg.target) return self._debug('missing a.target in get() from %s', addr)
 
+  var addrData = addrToIPPort(addr)
   var hash = message.a.target
   var rec = self.nodes.get(hash)
   if (rec && rec.data) {
@@ -569,6 +536,7 @@ DHT.prototype._onGet = function (addr, message) {
         t: message.t,
         y: MESSAGE_TYPE.RESPONSE,
         r: {
+          token: self._generateToken(addrData[0]),
           id: self.nodeId,
           nodes: nodes.map(function (node) {
             return node.addr
@@ -933,7 +901,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
     pending += 1
     queried[addr] = true
 
-    if (opts.findNode) {
+    if (opts.get) {
+      self._sendGet(addr, id, onResponse.bind(null, addr))
+    } else if (opts.findNode) {
       self._sendFindNode(addr, id, onResponse.bind(null, addr))
     } else {
       self._sendGetPeers(addr, id, onResponse.bind(null, addr))
@@ -949,7 +919,21 @@ DHT.prototype.lookup = function (id, opts, cb) {
   // Note: `_sendFindNode` and `_sendGetPeers` will insert newly discovered nodes into
   // the routing table, so that's not done here.
   function onResponse (addr, err, res) {
+    if (cb.called) return
     if (self.destroyed) return cb(new Error('dht is destroyed'))
+    if (opts.get && res && res.v) {
+      var isMutable = res.k || res.sig
+      var sdata = encodeSigData(res)
+      if (isMutable && !self._verify) {
+        self._debug('ed25519 verify not provided')
+      } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
+        self._debug('invalid mutable hash from %s', addr)
+      } else if (!isMutable && !bufcmp(sha1(bencode.encode(res.v)), id)) {
+        self._debug('invalid immutable hash from %s', addr)
+      } else {
+        return cb(null, res)
+      }
+    }
 
     pending -= 1
     var nodeId = res && res.id
@@ -995,6 +979,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
       closest.forEach(function (contact) {
         self._debug('  ' + contact.addr + ' ' + idToHexString(contact.id))
       })
+      if (opts.get) return cb(new Error('hash not found'))
       cb(null, closest)
     }
   }
@@ -1201,6 +1186,31 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
 
   var data = {
     q: 'find_node',
+    a: {
+      id: self.nodeId,
+      target: nodeId
+    }
+  }
+
+  self._query(data, addr, onResponse)
+}
+
+DHT.prototype._sendGet = function (addr, nodeId, cb) {
+  var self = this
+
+  function onResponse (err, res) {
+    if (err) return cb(err)
+    if (res.nodes) {
+      res.nodes = parseNodeInfo(res.nodes)
+      res.nodes.forEach(function (node) {
+        self._addNode(node.addr, node.id, addr)
+      })
+    }
+    cb(null, res)
+  }
+
+  var data = {
+    q: 'get',
     a: {
       id: self.nodeId,
       target: nodeId
