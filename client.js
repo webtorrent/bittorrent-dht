@@ -280,7 +280,7 @@ DHT.prototype.put = function (opts, cb) {
     throw new Error('v must be less than 1000 bytes in put()')
   }
 
-  if (isMutable && opts.cas && typeof opts.cas !== 'number') {
+  if (isMutable && opts.cas !== undefined && typeof opts.cas !== 'number') {
     throw new Error('opts.cas must be an integer if provided')
   }
   if (isMutable && !opts.k) {
@@ -389,13 +389,13 @@ DHT.prototype._put = function (opts, cb) {
       }
 
       if (isMutable) {
-        data.a.token = opts.token || self._generateToken(node.addr)
         data.a.seq = opts.seq
         data.a.sig = opts.sign(encodeSigData(opts))
         data.a.k = opts.k
         if (opts.salt) data.a.salt = opts.salt
-        if (opts.cas) data.a.cas = opts.cas
+        if (typeof opts.cas === 'number') data.a.cas = opts.cas
       }
+
       self._send(node.addr, data)
     }
   }
@@ -462,7 +462,7 @@ DHT.prototype._onPut = function (addr, message) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
     var prev = self.nodes.get(hash)
-    if (prev && prev.data && prev.data.seq !== undefined && msg.cas) {
+    if (prev && prev.data && prev.data.seq !== undefined && typeof msg.cas === 'number') {
       if (msg.cas !== prev.data.seq) {
         return self._sendError(addr, message.t, 301,
           'CAS mismatch, re-read and try again')
