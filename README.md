@@ -182,7 +182,7 @@ If `nodeId` is undefined, then the peer will be pinged to learn their node id. I
 
 Destroy the DHT. Closes the socket and cleans up large data structure resources.
 
-#### `dht.put(opts, callback)
+#### `dht.put(opts, callback)`
 
 Write an arbitrary payload to the DHT.
 ([BEP 44](http://bittorrent.org/beps/bep_0044.html)).
