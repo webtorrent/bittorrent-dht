@@ -262,7 +262,7 @@ and `hash`, the location where the mutable or immutable content can be retrieved
 Note that you should call `.put()` every hour for content that you want to keep
 alive, since nodes may discard data nodes older than 2 hours.
 
-#### `dht.get(hash, callback)
+#### `dht.get(hash, callback)`
 
 Read a data record (created with `.put()`) from the DHT.
 ([BEP 44](http://bittorrent.org/beps/bep_0044.html))
