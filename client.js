@@ -232,34 +232,34 @@ DHT.prototype.address = function () {
  * @param  {number} port
  * @param  {function=} cb
  */
-DHT.prototype.announce = function (infoHash, port, cb) {
+DHT.prototype.announce = function (infoHashBuffer, port, cb) {
   var self = this
   if (!cb) cb = function () {}
   if (self.destroyed) return cb(new Error('dht is destroyed'))
 
-  infoHash = idToBuffer(infoHash)
-  var infoHashHex = idToHexString(infoHash)
+  infoHashBuffer = idToBuffer(infoHashBuffer)
+  var infoHash = idToHexString(infoHashBuffer)
 
-  self._debug('announce %s %s', infoHashHex, port)
+  self._debug('announce %s %s', infoHash, port)
 
   self.localAddresses.forEach(function (address) {
-    self._addPeer(address + ':' + port, infoHashHex)
+    self._addPeer(address + ':' + port, infoHash)
   })
 
   // TODO: it would be nice to not use a table when a lookup is in progress
-  var table = self.tables[infoHashHex]
+  var table = self.tables[infoHash]
   if (table) {
-    onClosest(null, table.closest({ id: infoHash }, K))
+    onClosest(null, table.closest({ id: infoHashBuffer }, K))
   } else {
-    self.lookup(infoHash, onClosest)
+    self.lookup(infoHashBuffer, onClosest)
   }
 
   function onClosest (err, closest) {
     if (err) return cb(err)
     closest.forEach(function (contact) {
-      self._sendAnnouncePeer(contact.addr, infoHash, port, contact.token)
+      self._sendAnnouncePeer(contact.addr, infoHashBuffer, port, contact.token)
     })
-    self._debug('announce end %s %s', infoHashHex, port)
+    self._debug('announce end %s %s', infoHash, port)
     cb(null)
   }
 }
@@ -1259,10 +1259,10 @@ DHT.prototype._onFindNode = function (addr, message) {
  * @param {Buffer|string} infoHash
  * @param {function} cb called with response
  */
-DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
+DHT.prototype._sendGetPeers = function (addr, infoHashBuffer, cb) {
   var self = this
-  infoHash = idToBuffer(infoHash)
-  var infoHashHex = idToHexString(infoHash)
+  infoHashBuffer = idToBuffer(infoHashBuffer)
+  var infoHash = idToHexString(infoHashBuffer)
 
   function onResponse (err, res) {
     if (err) return cb(err)
@@ -1275,8 +1275,8 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     if (res.values) {
       res.values = parsePeerInfo(res.values)
       res.values.forEach(function (peerAddr) {
-        self._debug('emit peer %s %s from %s', peerAddr, infoHashHex, addr)
-        self.emit('peer', peerAddr, infoHashHex, addr)
+        self._debug('emit peer %s %s from %s', peerAddr, infoHash, addr)
+        self.emit('peer', peerAddr, infoHash, addr)
       })
     }
     cb(null, res)
@@ -1286,7 +1286,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
     q: 'get_peers',
     a: {
       id: self.nodeId,
-      info_hash: infoHash
+      info_hash: infoHashBuffer
     }
   }
 
@@ -1302,15 +1302,15 @@ DHT.prototype._onGetPeers = function (addr, message) {
   var self = this
   var addrData = addrToIPPort(addr)
 
-  var infoHash = message.a && message.a.info_hash
-  if (!infoHash) {
+  var infoHashBuffer = message.a && message.a.info_hash
+  if (!infoHashBuffer) {
     var errMessage = '`get_peers` missing required `a.info_hash` field'
     self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
-  var infoHashHex = idToHexString(infoHash)
-  self._debug('got get_peers %s from %s', infoHashHex, addr)
+  var infoHash = idToHexString(infoHashBuffer)
+  self._debug('got get_peers %s from %s', infoHash, addr)
 
   var res = {
     t: message.t,
@@ -1321,7 +1321,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
     }
   }
 
-  var peers = self.peers[infoHashHex] && self.peers[infoHashHex].list
+  var peers = self.peers[infoHash] && self.peers[infoHash].list
   if (peers) {
     // We know of peers for the target info hash. Peers are stored as an array of
     // compact peer info, so return it as-is.
@@ -1329,7 +1329,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
   } else {
     // No peers, so return the K closest nodes instead. Convert nodes to "compact node
     // info" representation
-    res.r.nodes = convertToNodeInfo(self.nodes.closest({ id: infoHash }, K))
+    res.r.nodes = convertToNodeInfo(self.nodes.closest({ id: infoHashBuffer }, K))
   }
 
   self._send(addr, res)
@@ -1343,16 +1343,16 @@ DHT.prototype._onGetPeers = function (addr, message) {
  * @param {Buffer} token
  * @param {function=} cb called with response
  */
-DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
+DHT.prototype._sendAnnouncePeer = function (addr, infoHashBuffer, port, token, cb) {
   var self = this
-  infoHash = idToBuffer(infoHash)
+  infoHashBuffer = idToBuffer(infoHashBuffer)
   if (!cb) cb = function () {}
 
   var data = {
     q: 'announce_peer',
     a: {
       id: self.nodeId,
-      info_hash: infoHash,
+      info_hash: infoHashBuffer,
       port: port,
       token: token,
       implied_port: 0
