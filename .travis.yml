@@ -9,7 +9,8 @@ addons:
     packages:
       - g++-4.8
 node_js:
-  - "iojs"
+  - "node"
+  - "4"
   - "0.12"
   - "0.10"
 install:
