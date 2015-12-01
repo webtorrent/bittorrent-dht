@@ -30,9 +30,9 @@
     "thunky": "^0.1.0"
   },
   "devDependencies": {
-    "ip": "^0.3.0",
     "ed25519-supercop": "^1.0.0",
-    "standard": "^4.5.2",
+    "ip": "^0.3.0",
+    "standard": "^5.4.1",
     "tape": "^4.0.0"
   },
   "keywords": [
