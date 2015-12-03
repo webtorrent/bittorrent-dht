@@ -12,7 +12,7 @@ test('explicitly set nodeId', function (t) {
 
   common.failOnWarningOrError(t, dht)
 
-  t.equal(dht.nodeId, nodeId)
+  t.deepEqual(dht.nodeId, nodeId.toString('hex'))
   dht.destroy()
   t.end()
 })
@@ -27,7 +27,7 @@ test('call `addNode` with nodeId argument', function (t) {
 
   dht.on('node', function (addr, _nodeId) {
     t.equal(addr, '127.0.0.1:9999')
-    t.deepEqual(_nodeId, nodeId)
+    t.deepEqual(_nodeId, nodeId.toString('hex'))
     dht.destroy()
   })
 

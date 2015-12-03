@@ -19,7 +19,6 @@ var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var string2compact = require('string2compact')
 var sha = require('sha.js')
-var bufcmp = require('buffer-equal')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -72,10 +71,10 @@ function DHT (opts) {
 
   if (!opts) opts = {}
 
-  self.nodeId = idToBuffer(opts.nodeId || hat(160))
-  self.nodeIdHex = idToHexString(self.nodeId)
+  self.nodeId = idToHexString(opts.nodeId || hat(160))
+  self.nodeIdBuffer = idToBuffer(self.nodeId)
 
-  self._debug('new DHT %s', self.nodeIdHex)
+  self._debug('new DHT %s', self.nodeId)
 
   self.ready = false
   self.listening = false
@@ -105,7 +104,7 @@ function DHT (opts) {
    * @type {KBucket}
    */
   self.nodes = new KBucket({
-    localNodeId: self.nodeId,
+    localNodeId: self.nodeIdBuffer,
     numberOfNodesPerKBucket: K,
     numberOfNodesToPing: MAX_CONCURRENCY
   })
@@ -146,7 +145,7 @@ function DHT (opts) {
   self.socket = module.exports.dgram.createSocket('udp' + self._ipv)
   self.socket.on('message', self._onData.bind(self))
   self.socket.on('listening', self._onListening.bind(self))
-  self.socket.on('error', function () {}) // throw away errors
+  self.socket.on('error', noop) // throw away errors
 
   self._rotateSecrets()
   self._rotateInterval = setInterval(self._rotateSecrets.bind(self), ROTATE_INTERVAL)
@@ -232,13 +231,13 @@ DHT.prototype.address = function () {
  * @param  {number} port
  * @param  {function=} cb
  */
-DHT.prototype.announce = function (infoHashBuffer, port, cb) {
+DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
-  if (!cb) cb = function () {}
+  if (!cb) cb = noop
   if (self.destroyed) return cb(new Error('dht is destroyed'))
 
-  infoHashBuffer = idToBuffer(infoHashBuffer)
-  var infoHash = idToHexString(infoHashBuffer)
+  var infoHashBuffer = idToBuffer(infoHash)
+  infoHash = idToHexString(infoHash)
 
   self._debug('announce %s %s', infoHash, port)
 
@@ -251,7 +250,7 @@ DHT.prototype.announce = function (infoHashBuffer, port, cb) {
   if (table) {
     onClosest(null, table.closest({ id: infoHashBuffer }, K))
   } else {
-    self.lookup(infoHashBuffer, onClosest)
+    self.lookup(infoHash, onClosest)
   }
 
   function onClosest (err, closest) {
@@ -336,7 +335,7 @@ DHT.prototype._put = function (opts, cb) {
 
   function addLocal () {
     var localData = {
-      id: self.nodeId,
+      id: self.nodeIdBuffer,
       v: opts.v
     }
     var localAddr = '127.0.0.1:' + self._port
@@ -365,7 +364,7 @@ DHT.prototype._put = function (opts, cb) {
     var t = self._getTransactionId(node.addr, putOnGet)
     self._send(node.addr, {
       a: {
-        id: self.nodeId,
+        id: self.nodeIdBuffer,
         target: hash
       },
       t: transactionIdToBuffer(t),
@@ -379,7 +378,7 @@ DHT.prototype._put = function (opts, cb) {
       var t = self._getTransactionId(node.addr, next(node))
       var data = {
         a: {
-          id: opts.id || self.nodeId,
+          id: opts.id || self.nodeIdBuffer,
           v: opts.v,
           token: res && res.token
         },
@@ -489,7 +488,7 @@ DHT.prototype._onPut = function (addr, message) {
   self._send(addr, {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
-    r: { id: self.nodeId }
+    r: { id: self.nodeIdBuffer }
   })
 }
 
@@ -507,7 +506,7 @@ DHT.prototype._onGet = function (addr, message) {
       t: message.t,
       y: MESSAGE_TYPE.RESPONSE,
       r: {
-        id: self.nodeId,
+        id: self.nodeIdBuffer,
         nodes: [], // found, so we don't need to know the nodes
         nodes6: [],
         v: rec.data.v
@@ -537,7 +536,7 @@ DHT.prototype._onGet = function (addr, message) {
         y: MESSAGE_TYPE.RESPONSE,
         r: {
           token: self._generateToken(addrData[0]),
-          id: self.nodeId,
+          id: self.nodeIdBuffer,
           nodes: nodes.map(function (node) {
             return node.addr
           }),
@@ -560,8 +559,10 @@ DHT.prototype._onGet = function (addr, message) {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
-  if (!cb) cb = function () {}
-  cb = once(cb)
+
+  if (cb) cb = once(cb)
+  else cb = noop
+
   if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
   self._debug('destroy')
@@ -610,10 +611,10 @@ DHT.prototype.addNode = function (addr, nodeId) {
     return
   }
 
-  nodeId = idToBuffer(nodeId)
-  if (nodeId.length !== 20) throw new Error('invalid node id length')
+  var nodeIdBuffer = idToBuffer(nodeId)
+  if (nodeIdBuffer.length !== 20) throw new Error('invalid node id length')
 
-  self._addNode(addr, nodeId)
+  self._addNode(addr, nodeIdBuffer)
 }
 
 /**
@@ -627,23 +628,25 @@ DHT.prototype.addNode = function (addr, nodeId) {
 DHT.prototype._addNode = function (addr, nodeId, from) {
   var self = this
   if (self.destroyed) return
-  nodeId = idToBuffer(nodeId)
 
-  if (nodeId.length !== 20) {
-    self._debug('skipping addNode %s %s; invalid id length', addr, idToHexString(nodeId))
+  var nodeIdBuffer = idToBuffer(nodeId)
+  nodeId = idToHexString(nodeId)
+
+  if (nodeIdBuffer.length !== 20) {
+    self._debug('skipping addNode %s %s; invalid id length', addr, nodeId)
     return
   }
 
-  if (self._addrIsSelf(addr) || bufferEqual(nodeId, self.nodeId)) {
-    self._debug('skip addNode %s %s; that is us!', addr, idToHexString(nodeId))
+  if (self._addrIsSelf(addr) || nodeId === self.nodeId) {
+    self._debug('skip addNode %s %s; that is us!', addr, nodeId)
     return
   }
 
-  var existing = self.nodes.get(nodeId)
+  var existing = self.nodes.get(nodeIdBuffer)
   if (existing && existing.addr === addr) return
 
   self.nodes.add({
-    id: nodeId,
+    id: nodeIdBuffer,
     addr: addr
   })
 
@@ -651,7 +654,7 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
     self.emit('node', addr, nodeId, from)
   })
 
-  self._debug('addNode %s %s discovered from %s', idToHexString(nodeId), addr, from)
+  self._debug('addNode %s %s discovered from %s', nodeId, addr, from)
 }
 
 /**
@@ -661,7 +664,8 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
 DHT.prototype.removeNode = function (nodeId) {
   var self = this
   if (self.destroyed) throw new Error('dht is destroyed')
-  var contact = self.nodes.get(idToBuffer(nodeId))
+  var nodeIdBuffer = idToBuffer(nodeId)
+  var contact = self.nodes.get(nodeIdBuffer)
   if (contact) {
     self._debug('removeNode %s %s', contact.nodeId, contact.addr)
     self.nodes.remove(contact)
@@ -676,7 +680,6 @@ DHT.prototype.removeNode = function (nodeId) {
 DHT.prototype._addPeer = function (addr, infoHash) {
   var self = this
   if (self.destroyed) return
-
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
@@ -703,7 +706,6 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 DHT.prototype._removePeer = function (addr, infoHash) {
   var self = this
   if (self.destroyed) return
-
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
@@ -839,48 +841,49 @@ DHT.prototype.lookup = function (id, opts, cb) {
     opts = {}
   }
   if (!opts) opts = {}
-  if (!cb) cb = function () {}
-  cb = once(cb)
 
-  id = idToBuffer(id)
-  var idHex = idToHexString(id)
+  if (cb) cb = once(cb)
+  else cb = noop
+
+  var idBuffer = idToBuffer(id)
+  id = idToHexString(id)
 
   if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.lookup.bind(self, id, opts, cb))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
-  if (id.length !== 20) throw new Error('invalid node id / info hash length')
+  if (idBuffer.length !== 20) throw new Error('invalid node id / info hash length')
 
-  self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
+  self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), id)
 
   // Return local peers, if we have any in our table
-  var peers = self.peers[idHex]
+  var peers = self.peers[id]
   if (peers) {
     peers = parsePeerInfo(peers.list)
     peers.forEach(function (peerAddr) {
-      self._debug('emit peer %s %s from %s', peerAddr, idHex, 'local')
-      self.emit('peer', peerAddr, idHex, 'local')
+      self._debug('emit peer %s %s from %s', peerAddr, id, 'local')
+      self.emit('peer', peerAddr, id, 'local')
     })
   }
 
   var table = new KBucket({
-    localNodeId: id,
+    localNodeId: idBuffer,
     numberOfNodesPerKBucket: K,
     numberOfNodesToPing: MAX_CONCURRENCY
   })
 
   // NOT the same table as the one used for the lookup, as that table may have nodes without tokens
-  if (!self.tables[idHex]) {
-    self.tables[idHex] = new KBucket({
-      localNodeId: id,
+  if (!self.tables[id]) {
+    self.tables[id] = new KBucket({
+      localNodeId: idBuffer,
       numberOfNodesPerKBucket: K,
       numberOfNodesToPing: MAX_CONCURRENCY
     })
   }
 
-  var tokenful = self.tables[idHex]
+  var tokenful = self.tables[id]
 
   function add (contact) {
-    if (self._addrIsSelf(contact.addr) || bufferEqual(contact.id, self.nodeId)) return
+    if (self._addrIsSelf(contact.addr) || bufferEqual(contact.id, self.nodeIdBuffer)) return
     if (contact.token) tokenful.add(contact)
 
     table.add(contact)
@@ -902,16 +905,16 @@ DHT.prototype.lookup = function (id, opts, cb) {
     queried[addr] = true
 
     if (opts.get) {
-      self._sendGet(addr, id, onResponse.bind(null, addr))
+      self._sendGet(addr, idBuffer, onResponse.bind(null, addr))
     } else if (opts.findNode) {
-      self._sendFindNode(addr, id, onResponse.bind(null, addr))
+      self._sendFindNode(addr, idBuffer, onResponse.bind(null, addr))
     } else {
-      self._sendGetPeers(addr, id, onResponse.bind(null, addr))
+      self._sendGetPeers(addr, idBuffer, onResponse.bind(null, addr))
     }
   }
 
   function queryClosest () {
-    self.nodes.closest({ id: id }, K).forEach(function (contact) {
+    self.nodes.closest({ id: idBuffer }, K).forEach(function (contact) {
       query(contact.addr)
     })
   }
@@ -928,7 +931,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
         self._debug('ed25519 verify not provided')
       } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
         self._debug('invalid mutable hash from %s', addr)
-      } else if (!isMutable && !bufcmp(sha1(bencode.encode(res.v)), id)) {
+      } else if (!isMutable && !bufferEqual(sha1(bencode.encode(res.v)), idBuffer)) {
         self._debug('invalid immutable hash from %s', addr)
       } else {
         return cb(null, res)
@@ -936,17 +939,17 @@ DHT.prototype.lookup = function (id, opts, cb) {
     }
 
     pending -= 1
-    var nodeId = res && res.id
-    var nodeIdHex = idToHexString(nodeId)
+    var nodeIdBuffer = res && res.id
+    var nodeId = idToHexString(nodeIdBuffer)
 
     // ignore errors - they are just timeouts
     if (err) {
       self._debug('got lookup error: %s', err.message)
     } else {
-      self._debug('got lookup response from %s', nodeIdHex)
+      self._debug('got lookup response from %s', nodeId)
 
       // add node that sent this response
-      var contact = table.get(nodeId) || { id: nodeId, addr: addr }
+      var contact = table.get(nodeIdBuffer) || { id: nodeIdBuffer, addr: addr }
       contact.token = res && res.token
       add(contact)
 
@@ -959,7 +962,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
     }
 
     // find closest unqueried nodes
-    var candidates = table.closest({ id: id }, K)
+    var candidates = table.closest({ id: idBuffer }, K)
       .filter(function (contact) {
         return !queried[contact.addr]
       })
@@ -972,9 +975,9 @@ DHT.prototype.lookup = function (id, opts, cb) {
     if (pending === 0 && candidates.length === 0) {
       // recursive lookup should terminate because there are no closer nodes to find
       self._debug('terminating lookup %s %s',
-          (opts.findNode ? '(find_node)' : '(get_peers)'), idHex)
+          (opts.findNode ? '(find_node)' : '(get_peers)'), id)
 
-      var closest = (opts.findNode ? table : tokenful).closest({ id: id }, K)
+      var closest = (opts.findNode ? table : tokenful).closest({ id: idBuffer }, K)
       self._debug('K closest nodes are:')
       closest.forEach(function (contact) {
         self._debug('  ' + contact.addr + ' ' + idToHexString(contact.id))
@@ -1019,10 +1022,10 @@ DHT.prototype._onData = function (data, rinfo) {
 
   // Attempt to add every (valid) node that we see to the routing table.
   // TODO: If the node is already in the table, just update the "last heard from" time
-  var nodeId = (message.r && message.r.id) || (message.a && message.a.id)
-  if (nodeId) {
+  var nodeIdBuffer = (message.r && message.r.id) || (message.a && message.a.id)
+  if (nodeIdBuffer) {
     // self._debug('adding (potentially) new node %s %s', idToHexString(nodeId), addr)
-    self._addNode(addr, nodeId, addr)
+    self._addNode(addr, nodeIdBuffer, addr)
   }
 
   if (type === MESSAGE_TYPE.QUERY) {
@@ -1098,7 +1101,7 @@ DHT.prototype._onResponseOrError = function (addr, type, message) {
 DHT.prototype._send = function (addr, message, cb) {
   var self = this
   if (self._binding) return self.once('listening', self._send.bind(self, addr, message, cb))
-  if (!cb) cb = function () {}
+  if (!cb) cb = noop
   var addrData = addrToIPPort(addr)
   var host = addrData[0]
   var port = addrData[1]
@@ -1116,7 +1119,7 @@ DHT.prototype._query = function (data, addr, cb) {
   var self = this
 
   if (!data.a) data.a = {}
-  if (!data.a.id) data.a.id = self.nodeId
+  if (!data.a.id) data.a.id = self.nodeIdBuffer
 
   var transactionId = self._getTransactionId(addr, cb)
   var message = {
@@ -1156,7 +1159,7 @@ DHT.prototype._onPing = function (addr, message) {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
     r: {
-      id: self.nodeId
+      id: self.nodeIdBuffer
     }
   }
 
@@ -1167,11 +1170,12 @@ DHT.prototype._onPing = function (addr, message) {
 /**
  * Send "find_node" query to given addr.
  * @param {string} addr
- * @param {Buffer} nodeId
+ * @param {Buffer|string} nodeId
  * @param {function} cb called with response
  */
 DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
   var self = this
+  var nodeIdBuffer = idToBuffer(nodeId)
 
   function onResponse (err, res) {
     if (err) return cb(err)
@@ -1187,8 +1191,8 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
   var data = {
     q: 'find_node',
     a: {
-      id: self.nodeId,
-      target: nodeId
+      id: self.nodeIdBuffer,
+      target: nodeIdBuffer
     }
   }
 
@@ -1197,6 +1201,7 @@ DHT.prototype._sendFindNode = function (addr, nodeId, cb) {
 
 DHT.prototype._sendGet = function (addr, nodeId, cb) {
   var self = this
+  var nodeIdBuffer = idToBuffer(nodeId)
 
   function onResponse (err, res) {
     if (err) return cb(err)
@@ -1212,8 +1217,8 @@ DHT.prototype._sendGet = function (addr, nodeId, cb) {
   var data = {
     q: 'get',
     a: {
-      id: self.nodeId,
-      target: nodeId
+      id: self.nodeIdBuffer,
+      target: nodeIdBuffer
     }
   }
 
@@ -1228,24 +1233,25 @@ DHT.prototype._sendGet = function (addr, nodeId, cb) {
 DHT.prototype._onFindNode = function (addr, message) {
   var self = this
 
-  var nodeId = message.a && message.a.target
+  var nodeIdBuffer = message.a && message.a.target
+  var nodeId = idToHexString(nodeIdBuffer)
 
-  if (!nodeId) {
+  if (!nodeIdBuffer) {
     var errMessage = '`find_node` missing required `a.target` field'
     self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
-  self._debug('got find_node %s from %s', idToHexString(nodeId), addr)
+  self._debug('got find_node %s from %s', nodeId, addr)
 
   // Convert nodes to "compact node info" representation
-  var nodes = convertToNodeInfo(self.nodes.closest({ id: nodeId }, K))
+  var nodes = convertToNodeInfo(self.nodes.closest({ id: nodeIdBuffer }, K))
 
   var res = {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
     r: {
-      id: self.nodeId,
+      id: self.nodeIdBuffer,
       nodes: nodes
     }
   }
@@ -1259,10 +1265,10 @@ DHT.prototype._onFindNode = function (addr, message) {
  * @param {Buffer|string} infoHash
  * @param {function} cb called with response
  */
-DHT.prototype._sendGetPeers = function (addr, infoHashBuffer, cb) {
+DHT.prototype._sendGetPeers = function (addr, infoHash, cb) {
   var self = this
-  infoHashBuffer = idToBuffer(infoHashBuffer)
-  var infoHash = idToHexString(infoHashBuffer)
+  var infoHashBuffer = idToBuffer(infoHash)
+  infoHash = idToHexString(infoHash)
 
   function onResponse (err, res) {
     if (err) return cb(err)
@@ -1285,7 +1291,7 @@ DHT.prototype._sendGetPeers = function (addr, infoHashBuffer, cb) {
   var data = {
     q: 'get_peers',
     a: {
-      id: self.nodeId,
+      id: self.nodeIdBuffer,
       info_hash: infoHashBuffer
     }
   }
@@ -1316,7 +1322,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
     r: {
-      id: self.nodeId,
+      id: self.nodeIdBuffer,
       token: self._generateToken(addrData[0])
     }
   }
@@ -1343,15 +1349,15 @@ DHT.prototype._onGetPeers = function (addr, message) {
  * @param {Buffer} token
  * @param {function=} cb called with response
  */
-DHT.prototype._sendAnnouncePeer = function (addr, infoHashBuffer, port, token, cb) {
+DHT.prototype._sendAnnouncePeer = function (addr, infoHash, port, token, cb) {
   var self = this
-  infoHashBuffer = idToBuffer(infoHashBuffer)
-  if (!cb) cb = function () {}
+  var infoHashBuffer = idToBuffer(infoHash)
+  if (!cb) cb = noop
 
   var data = {
     q: 'announce_peer',
     a: {
-      id: self.nodeId,
+      id: self.nodeIdBuffer,
       info_hash: infoHashBuffer,
       port: port,
       token: token,
@@ -1372,13 +1378,14 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
   var errMessage
   var addrData = addrToIPPort(addr)
 
-  var infoHash = idToHexString(message.a && message.a.info_hash)
-  if (!infoHash) {
+  var infoHashBuffer = message.a && message.a.info_hash
+  if (!infoHashBuffer) {
     errMessage = '`announce_peer` missing required `a.info_hash` field'
     self._debug(errMessage)
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
     return
   }
+  var infoHash = idToHexString(infoHashBuffer)
 
   var token = message.a && message.a.token
   if (!self._isValidToken(token, addrData[0])) {
@@ -1391,8 +1398,10 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
     ? addrData[1] // use port of udp packet
     : message.a.port // use port in `announce_peer` message
 
-  self._debug('got announce_peer %s %s from %s with token %s', idToHexString(infoHash),
-              port, addr, idToHexString(token))
+  self._debug(
+    'got announce_peer %s %s from %s with token %s',
+    infoHash, port, addr, idToHexString(token)
+  )
 
   self._addPeer(addrData[0] + ':' + port, infoHash)
 
@@ -1401,7 +1410,7 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
     r: {
-      id: self.nodeId
+      id: self.nodeIdBuffer
     }
   }
   self._send(addr, res)
@@ -1550,7 +1559,7 @@ DHT.prototype._addrIsSelf = function (addr) {
 DHT.prototype._debug = function () {
   var self = this
   var args = [].slice.call(arguments)
-  args[0] = '[' + self.nodeIdHex.substring(0, 7) + '] ' + args[0]
+  args[0] = '[' + self.nodeId.substring(0, 7) + '] ' + args[0]
   debug.apply(null, args)
 }
 
@@ -1663,3 +1672,5 @@ function encodeSigData (msg) {
   if (msg.salt) ref.salt = msg.salt
   return bencode.encode(ref).slice(1, -1)
 }
+
+function noop () {}
