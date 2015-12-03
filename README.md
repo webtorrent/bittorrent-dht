@@ -267,8 +267,8 @@ alive, since nodes may discard data nodes older than 2 hours.
 Read a data record (created with `.put()`) from the DHT.
 ([BEP 44](http://bittorrent.org/beps/bep_0044.html))
 
-Given `hash`, a buffer, lookup data content from the DHT, sending the result in
-`callback(err, res)`.
+Given `hash`, a hex string or buffer, lookup data content from the DHT, sending the
+result in `callback(err, res)`.
 
 `res` objects are similar to the options objects written to the DHT with
 `.put()`:

@@ -17,8 +17,8 @@ var once = require('once')
 var os = require('os')
 var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
+var sha1 = require('simple-sha1')
 var string2compact = require('string2compact')
-var sha = require('sha.js')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -128,6 +128,11 @@ function DHT (opts) {
    * @type {Object} infoHash:string -> Object {index:Object, list:Array.<Buffer>}
    */
   self.peers = {}
+
+  /**
+   * Secrets for token generation.
+   */
+  self.secrets = null
 
   /**
    * IP addresses of the local DHT node. Used to store the peer, controlling this DHT
@@ -314,8 +319,9 @@ DHT.prototype._put = function (opts, cb) {
   var errors = []
   var isMutable = opts.k
   var hash = isMutable
-    ? sha1(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
-    : sha1(bencode.encode(opts.v))
+    ? sha1.sync(opts.salt ? Buffer.concat([ opts.salt, opts.k ]) : opts.k)
+    : sha1.sync(bencode.encode(opts.v))
+  var hashBuffer = idToBuffer(hash)
 
   if (self.nodes.toArray().length === 0) {
     process.nextTick(function () {
@@ -344,10 +350,10 @@ DHT.prototype._put = function (opts, cb) {
       localData.sig = opts.sign(encodeSigData(opts))
       localData.k = opts.k
       localData.seq = opts.seq
-      localData.token = opts.token || self._generateToken(localAddr)
+      localData.token = idToBuffer(opts.token || self._generateToken(localAddr))
     }
     self.nodes.add({
-      id: hash,
+      id: hashBuffer,
       addr: localAddr,
       data: localData
     })
@@ -365,7 +371,7 @@ DHT.prototype._put = function (opts, cb) {
     self._send(node.addr, {
       a: {
         id: self.nodeIdBuffer,
-        target: hash
+        target: hashBuffer
       },
       t: transactionIdToBuffer(t),
       y: 'q',
@@ -412,7 +418,8 @@ DHT.prototype._put = function (opts, cb) {
 
 DHT.prototype.get = function (hash, cb) {
   var self = this
-  var local = self.nodes.get(hash)
+  var hashBuffer = idToBuffer(hash)
+  var local = self.nodes.get(hashBuffer)
   if (local && local.data) {
     return process.nextTick(function () {
       cb(null, local.data)
@@ -447,11 +454,13 @@ DHT.prototype._onPut = function (addr, message) {
   var hash
   if (isMutable) {
     hash = msg.salt
-      ? sha1(Buffer.concat([ msg.salt, msg.k ]))
-      : sha1(msg.k)
+      ? sha1.sync(Buffer.concat([ msg.salt, msg.k ]))
+      : sha1.sync(msg.k)
   } else {
-    hash = sha1(bencode.encode(data.v))
+    hash = sha1.sync(bencode.encode(data.v))
   }
+  var hashBuffer = idToBuffer(hash)
+
   if (isMutable) {
     if (!self._verify) {
       return self._sendError(addr, message.t, 400, 'verification not supported')
@@ -460,7 +469,7 @@ DHT.prototype._onPut = function (addr, message) {
     if (!msg.sig || !Buffer.isBuffer(msg.sig) || !self._verify(msg.sig, sdata, msg.k)) {
       return self._sendError(addr, message.t, 206, 'invalid signature')
     }
-    var prev = self.nodes.get(hash)
+    var prev = self.nodes.get(hashBuffer)
     if (prev && prev.data && prev.data.seq !== undefined && typeof msg.cas === 'number') {
       if (msg.cas !== prev.data.seq) {
         return self._sendError(addr, message.t, 301,
@@ -484,7 +493,7 @@ DHT.prototype._onPut = function (addr, message) {
     if (msg.salt) data.salt = msg.salt
   }
 
-  self.nodes.add({ id: hash, addr: addr, data: data })
+  self.nodes.add({ id: hashBuffer, addr: addr, data: data })
   self._send(addr, {
     t: message.t,
     y: MESSAGE_TYPE.RESPONSE,
@@ -499,8 +508,8 @@ DHT.prototype._onGet = function (addr, message) {
   if (!msg.target) return self._debug('missing a.target in get() from %s', addr)
 
   var addrData = addrToIPPort(addr)
-  var hash = message.a.target
-  var rec = self.nodes.get(hash)
+  var hashBuffer = message.a.target
+  var rec = self.nodes.get(hashBuffer)
   if (rec && rec.data) {
     msg = {
       t: message.t,
@@ -527,7 +536,7 @@ DHT.prototype._onGet = function (addr, message) {
     }
     self._send(addr, msg)
   } else {
-    self.lookup(hash, function (err, nodes) {
+    self.lookup(hashBuffer, function (err, nodes) {
       if (err && self.destroyed) return
       if (err) return self._sendError(addr, message.t, 201, err)
 
@@ -535,7 +544,7 @@ DHT.prototype._onGet = function (addr, message) {
         t: message.t,
         y: MESSAGE_TYPE.RESPONSE,
         r: {
-          token: self._generateToken(addrData[0]),
+          token: idToBuffer(self._generateToken(addrData[0])),
           id: self.nodeIdBuffer,
           nodes: nodes.map(function (node) {
             return node.addr
@@ -931,7 +940,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
         self._debug('ed25519 verify not provided')
       } else if (isMutable && !self._verify(res.sig, sdata, res.k)) {
         self._debug('invalid mutable hash from %s', addr)
-      } else if (!isMutable && !bufferEqual(sha1(bencode.encode(res.v)), idBuffer)) {
+      } else if (!isMutable && sha1.sync(bencode.encode(res.v)) !== id) {
         self._debug('invalid immutable hash from %s', addr)
       } else {
         return cb(null, res)
@@ -1323,7 +1332,7 @@ DHT.prototype._onGetPeers = function (addr, message) {
     y: MESSAGE_TYPE.RESPONSE,
     r: {
       id: self.nodeIdBuffer,
-      token: self._generateToken(addrData[0])
+      token: idToBuffer(self._generateToken(addrData[0]))
     }
   }
 
@@ -1387,7 +1396,8 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
   }
   var infoHash = idToHexString(infoHashBuffer)
 
-  var token = message.a && message.a.token
+  var tokenBuffer = message.a && message.a.token
+  var token = idToHexString(tokenBuffer)
   if (!self._isValidToken(token, addrData[0])) {
     errMessage = 'cannot `announce_peer` with bad token'
     self._sendError(addr, message.t, ERROR_TYPE.PROTOCOL, errMessage)
@@ -1400,7 +1410,7 @@ DHT.prototype._onAnnouncePeer = function (addr, message) {
 
   self._debug(
     'got announce_peer %s %s from %s with token %s',
-    infoHash, port, addr, idToHexString(token)
+    infoHash, port, addr, token
   )
 
   self._addPeer(addrData[0] + ':' + port, infoHash)
@@ -1485,19 +1495,19 @@ DHT.prototype._getTransactionId = function (addr, fn) {
  * the IP address concatenated onto a secret that changes every five minutes. Tokens up
  * to ten minutes old are accepted.
  * @param {string} host
- * @param {Buffer=} secret force token to use this secret, otherwise use current one
- * @return {Buffer}
+ * @param {string=} secret force token to use this secret, otherwise use current one
+ * @return {string}
  */
 DHT.prototype._generateToken = function (host, secret) {
   var self = this
   if (!secret) secret = self.secrets[0]
-  return sha1(Buffer.concat([ new Buffer(host, 'utf8'), secret ]))
+  return sha1.sync(host + secret)
 }
 
 /**
  * Checks if a token is valid for a given node's IP address.
  *
- * @param  {Buffer} token
+ * @param  {string} token
  * @param  {string} host
  * @return {boolean}
  */
@@ -1505,7 +1515,7 @@ DHT.prototype._isValidToken = function (token, host) {
   var self = this
   var validToken0 = self._generateToken(host, self.secrets[0])
   var validToken1 = self._generateToken(host, self.secrets[1])
-  return bufferEqual(token, validToken0) || bufferEqual(token, validToken1)
+  return token === validToken0 || token === validToken1
 }
 
 /**
@@ -1516,7 +1526,7 @@ DHT.prototype._rotateSecrets = function () {
   var self = this
 
   function createSecret () {
-    return new Buffer(hat(SECRET_ENTROPY), 'hex')
+    return hat(SECRET_ENTROPY)
   }
 
   // Initialize secrets array
@@ -1660,11 +1670,6 @@ function idToHexString (id) {
   } else {
     return id
   }
-}
-
-// Return sha1 hash **as a buffer**
-function sha1 (buf) {
-  return sha('sha1').update(buf).digest()
 }
 
 function encodeSigData (msg) {

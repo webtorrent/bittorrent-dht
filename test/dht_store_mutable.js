@@ -2,7 +2,7 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 var ed = require('ed25519-supercop')
-var sha = require('sha.js')
+var sha1 = require('simple-sha1')
 
 test('local mutable put/get', function (t) {
   t.plan(4)
@@ -23,16 +23,12 @@ test('local mutable put/get', function (t) {
       seq: 0,
       v: value
     }
-    var expectedHash = sha('sha1').update(opts.k).digest()
+    var expectedHash = sha1.sync(opts.k)
 
     dht.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        expectedHash.toString('hex'),
-        'hash of the public key'
-      )
+      t.equal(hash, expectedHash, 'hash of the public key')
       dht.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
@@ -79,16 +75,12 @@ test('multiparty mutable put/get', function (t) {
       sign: sign(keypair),
       v: value
     }
-    var expectedHash = sha('sha1').update(opts.k).digest()
+    var expectedHash = sha1.sync(opts.k)
 
     dht1.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        expectedHash.toString('hex'),
-        'hash of the public key'
-      )
+      t.equal(hash, expectedHash, 'hash of the public key')
       dht2.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
@@ -133,16 +125,12 @@ test('multiparty mutable put/get sequence', function (t) {
       seq: 0,
       v: value
     }
-    var expectedHash = sha('sha1').update(opts.k).digest()
+    var expectedHash = sha1.sync(opts.k)
 
     dht1.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        expectedHash.toString('hex'),
-        'hash of the public key'
-      )
+      t.equal(hash, expectedHash, 'hash of the public key')
       dht2.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
@@ -159,11 +147,7 @@ test('multiparty mutable put/get sequence', function (t) {
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
 
-        t.equal(
-          hash.toString('hex'),
-          expectedHash.toString('hex'),
-          'hash of the public key (again)'
-        )
+        t.equal(hash, expectedHash, 'hash of the public key (again)')
         dht2.get(hash, function (err, res) {
           t.ifError(err)
           t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
@@ -181,11 +165,7 @@ test('multiparty mutable put/get sequence', function (t) {
       dht1.put(opts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
 
-        t.equal(
-          hash.toString('hex'),
-          expectedHash.toString('hex'),
-          'hash of the public key (yet again)'
-        )
+        t.equal(hash, expectedHash, 'hash of the public key (yet again)')
         dht2.get(hash, function (err, res) {
           t.ifError(err)
           t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
@@ -241,17 +221,13 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
       sign: sign(keypair),
       v: svalue
     }
-    var first = sha('sha1').update('first').update(fopts.k).digest()
-    var second = sha('sha1').update('second').update(sopts.k).digest()
+    var first = sha1.sync(Buffer.concat([ new Buffer('first'), fopts.k ]))
+    var second = sha1.sync(Buffer.concat([ new Buffer('second'), sopts.k ]))
 
     dht1.put(fopts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        first.toString('hex'),
-        'first hash'
-      )
+      t.equal(hash, first, 'first hash')
       dht2.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), fopts.v.toString('utf8'),
@@ -265,11 +241,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
       dht1.put(sopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
 
-        t.equal(
-          hash.toString('hex'),
-          second.toString('hex'),
-          'second hash'
-        )
+        t.equal(hash, second, 'second hash')
         dht2.get(hash, function (err, res) {
           t.ifError(err)
           t.equal(res.v.toString('utf8'), sopts.v.toString('utf8'),
@@ -287,11 +259,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
       dht1.put(fopts, function (errors, hash) {
         errors.forEach(t.error.bind(t))
 
-        t.equal(
-          hash.toString('hex'),
-          first.toString('hex'),
-          'first salt (again)'
-        )
+        t.equal(hash, first, 'first salt (again)')
         dht2.get(hash, function (err, res) {
           t.ifError(err)
           t.equal(res.v.toString('utf8'), fopts.v.toString('utf8'),
@@ -342,16 +310,12 @@ test('transitive mutable update', function (t) {
       seq: 0,
       v: value
     }
-    var expectedHash = sha('sha1').update(opts.k).digest()
+    var expectedHash = sha1.sync(opts.k)
 
     dht1.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        expectedHash.toString('hex'),
-        'hash of the public key'
-      )
+      t.equal(hash, expectedHash, 'hash of the public key')
 
       dht3.get(expectedHash, function (err, res) {
         t.ifError(err)
@@ -431,10 +395,10 @@ test('mutable update mesh', function (t) {
       seq: 0,
       v: value
     }
-    var xhash = sha('sha1').update(opts.k).digest()
+    var xhash = sha1.sync(opts.k)
     src.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
-      t.equal(hash.toString('hex'), xhash.toString('hex'))
+      t.equal(hash, xhash)
 
       dst.get(xhash, function (err, res) {
         t.ifError(err)

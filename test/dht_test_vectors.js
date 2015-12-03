@@ -1,7 +1,7 @@
 var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
-var sha = require('sha.js')
+var sha1 = require('simple-sha1')
 
 var ed = require('ed25519-supercop')
 
@@ -42,16 +42,12 @@ test('dht store test vectors', function (t) {
         return sig
       }
     }
-    var expectedHash = sha('sha1').update(opts.k).digest()
+    var expectedHash = sha1.sync(opts.k)
 
     dht.put(opts, function (errors, hash) {
       errors.forEach(t.error.bind(t))
 
-      t.equal(
-        hash.toString('hex'),
-        expectedHash.toString('hex'),
-        'hash of the public key'
-      )
+      t.equal(hash, expectedHash, 'hash of the public key')
       dht.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
