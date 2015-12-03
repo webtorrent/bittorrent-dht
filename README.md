@@ -35,8 +35,8 @@ npm install bittorrent-dht
 npm install magnet-uri
 ```
 
-```javascript
-var DHT    = require('bittorrent-dht')
+```js
+var DHT = require('bittorrent-dht')
 var magnet = require('magnet-uri')
 
 var uri = 'magnet:?xt=urn:btih:e3811b9539cacff680e418124272177c47477157'
@@ -58,10 +58,9 @@ dht.on('ready', function () {
   dht.lookup(parsed.infoHash)
 })
 
-dht.on('peer', function (addr, hash, from) {
+dht.on('peer', function (addr, infoHash, from) {
   console.log('found potential peer ' + addr + ' through ' + from)
 })
-
 ```
 
 ### api
