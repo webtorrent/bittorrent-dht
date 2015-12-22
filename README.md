@@ -233,7 +233,6 @@ var ed = require('ed25519-supercop')
 var keypair = ed.createKeyPair(ed.createSeed())
 
 var value = new Buffer(200).fill('whatever') // the payload you want to send
-var sig = keypair.sign(value)
 var opts = {
   k: keypair.publicKey,
   seq: 0,
@@ -274,7 +273,7 @@ result in `callback(err, res)`.
 
 * `res.v` - the value put in
 * `res.id` - the node that returned the content
-* `res.k` - the value put in (required for mutable data)
+* `res.k` - the public key (required for mutable data)
 * `res.sig` - signature (required for mutable data)
 * `res.seq` - sequence (optional, only present for mutable data)
 * `res.salt` - sequence (optional, only present for mutable data)
