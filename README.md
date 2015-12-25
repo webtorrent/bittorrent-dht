@@ -273,10 +273,10 @@ result in `callback(err, res)`.
 
 * `res.v` - the value put in
 * `res.id` - the node that returned the content
-* `res.k` - the public key (required for mutable data)
-* `res.sig` - signature (required for mutable data)
-* `res.seq` - sequence (optional, only present for mutable data)
-* `res.salt` - sequence (optional, only present for mutable data)
+* `res.k` - the public key (only present for mutable data)
+* `res.sig` - the signature (only present for mutable data)
+* `res.seq` - the sequence (optional, only present for mutable data)
+* `res.salt` - the salt (optional, only present for mutable data)
 
 ### events
 
