@@ -16,6 +16,7 @@
     "buffer-equal": "0.0.1",
     "compact2string": "^1.2.0",
     "debug": "^2.1.0",
+    "dezalgo": "^1.0.3",
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
     "is-ip": "^1.0.0",
