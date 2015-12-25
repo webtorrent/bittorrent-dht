@@ -19,6 +19,7 @@ var parallel = require('run-parallel')
 var publicAddress = require('./lib/public-address')
 var sha1 = require('simple-sha1')
 var string2compact = require('string2compact')
+var dezalgo = require('dezalgo')
 
 var BOOTSTRAP_NODES = [
   'router.bittorrent.com:6881',
@@ -238,7 +239,7 @@ DHT.prototype.address = function () {
  */
 DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
-  if (!cb) cb = noop
+  cb = cb ? dezalgo(cb) : noop
   if (self.destroyed) return cb(new Error('dht is destroyed'))
 
   var infoHashBuffer = idToBuffer(infoHash)
@@ -568,9 +569,7 @@ DHT.prototype._onGet = function (addr, message) {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
-
-  if (cb) cb = once(cb)
-  else cb = noop
+  cb = cb ? once(cb) : noop
 
   if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
@@ -851,8 +850,7 @@ DHT.prototype.lookup = function (id, opts, cb) {
   }
   if (!opts) opts = {}
 
-  if (cb) cb = once(cb)
-  else cb = noop
+  cb = cb ? once(dezalgo(cb)) : noop
 
   var idBuffer = idToBuffer(id)
   id = idToHexString(id)
