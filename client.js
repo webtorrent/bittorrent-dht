@@ -257,7 +257,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
       onClosest(null, table.closest({ id: infoHashBuffer }, K))
     })
   } else {
-    self.lookup(infoHash, onClosest)
+    self._lookup(infoHash, onClosest)
   }
 
   function onClosest (err, closest) {
@@ -278,6 +278,8 @@ DHT.prototype.announce = function (infoHash, port, cb) {
  */
 DHT.prototype.put = function (opts, cb) {
   var self = this
+  if (self.destroyed) throw new Error('dht is destroyed')
+
   var isMutable = opts.k
   if (opts.v === undefined) {
     throw new Error('opts.v not given')
@@ -330,7 +332,7 @@ DHT.prototype._put = function (opts, cb) {
       addLocal(null, [])
     })
   } else {
-    self.lookup(hash, {findNode: true}, onLookup)
+    self._lookup(hash, {findNode: true}, onLookup)
   }
 
   function onLookup (err, nodes) {
@@ -420,6 +422,8 @@ DHT.prototype._put = function (opts, cb) {
 
 DHT.prototype.get = function (hash, cb) {
   var self = this
+  if (self.destroyed) throw new Error('dht is destroyed')
+
   var hashBuffer = idToBuffer(hash)
   var local = self.nodes.get(hashBuffer)
   if (local && local.data) {
@@ -428,7 +432,7 @@ DHT.prototype.get = function (hash, cb) {
     })
   }
 
-  self.lookup(hash, {get: true}, cb)
+  self._lookup(hash, {get: true}, cb)
 }
 
 DHT.prototype._onPut = function (addr, message) {
@@ -538,7 +542,7 @@ DHT.prototype._onGet = function (addr, message) {
     }
     self._send(addr, msg)
   } else {
-    self.lookup(hashBuffer, function (err, nodes) {
+    self._lookup(hashBuffer, function (err, nodes) {
       if (err && self.destroyed) return
       if (err) return self._sendError(addr, message.t, 201, err)
 
@@ -744,6 +748,7 @@ DHT.prototype._removePeer = function (addr, infoHash) {
  */
 DHT.prototype._bootstrap = function (nodes) {
   var self = this
+  if (self.destroyed) return
 
   self._debug('bootstrap with %s', JSON.stringify(nodes))
 
@@ -756,6 +761,7 @@ DHT.prototype._bootstrap = function (nodes) {
   })
 
   self._resolveContacts(contacts, function (err, contacts) {
+    if (self.destroyed) return
     if (err) return self.emit('error', err)
 
     // add all non-bootstrap nodes to routing table
@@ -776,12 +782,14 @@ DHT.prototype._bootstrap = function (nodes) {
         return contact.addr
       })
 
+    lookup()
+
     function lookup () {
-      self.lookup(self.nodeId, {
+      self._lookup(self.nodeId, {
         findNode: true,
         addrs: addrs.length ? addrs : null
       }, function (err) {
-        if (err) self._debug('lookup error during bootstrap: %s', err.message)
+        if (err) return self._debug('lookup error during bootstrap: %s', err.message)
 
         // emit `ready` once the recursive lookup for our own node ID is finished
         // (successful or not), so that later get_peer lookups will have a good shot at
@@ -805,8 +813,6 @@ DHT.prototype._bootstrap = function (nodes) {
       }, BOOTSTRAP_TIMEOUT)
       if (bootstrapTimeout.unref) bootstrapTimeout.unref()
     }
-
-    lookup()
   })
 }
 
@@ -852,6 +858,20 @@ DHT.prototype._resolveContacts = function (contacts, cb) {
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
   if (self.destroyed) throw new Error('dht is destroyed')
+  self._lookup(id, opts, cb)
+}
+
+/**
+ * lookup() for private use. If DHT is destroyed, returns an error via callback.
+ */
+DHT.prototype._lookup = function (id, opts, cb) {
+  var self = this
+
+  if (self.destroyed) {
+    return process.nextTick(function () {
+      cb(new Error('dht is destroyed'))
+    })
+  }
 
   if (typeof opts === 'function') {
     cb = opts
@@ -865,8 +885,8 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var idBuffer = idToBuffer(id)
   id = idToHexString(id)
 
-  if (self._binding) return self.once('listening', self.lookup.bind(self, id, opts, cb))
-  if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
+  if (self._binding) return self.once('listening', self._lookup.bind(self, id, opts, cb))
+  if (!self.listening) return self.listen(self._lookup.bind(self, id, opts, cb))
   if (idBuffer.length !== 20) throw new Error('invalid node id / info hash length')
 
   self._debug('lookup %s %s', (opts.findNode ? '(find_node)' : '(get_peers)'), id)
