@@ -1,7 +1,7 @@
 var common = require('./common')
 var DHT = require('../')
-var test = require('tape')
 var sha1 = require('simple-sha1')
+var test = require('tape')
 
 var ed = require('ed25519-supercop')
 
