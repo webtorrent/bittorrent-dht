@@ -1,7 +1,8 @@
-var test = require('tape')
-var parallel = require('run-parallel')
 var common = require('./common')
 var DHT = require('../')
+var once = require('once')
+var parallel = require('run-parallel')
+var test = require('tape')
 
 test('announce+lookup with 2-20 DHTs', function (t) {
   var from = 2
@@ -39,6 +40,7 @@ test('announce+lookup with 2-20 DHTs', function (t) {
  *  lookup. Times out after a while.
  */
 function findPeers (numInstances, t, cb) {
+  cb = once(cb)
   var dhts = []
   var timeoutId = setTimeout(function () {
     cb(new Error('Timed out for ' + numInstances + ' instances'))
@@ -54,13 +56,13 @@ function findPeers (numInstances, t, cb) {
   }
 
   // wait until every dht is listening
-  parallel(dhts.map(function (dht) {
+  var tasks = dhts.map(function (dht) {
     return function (cb) {
-      dht.listen(function () {
-        cb(null)
-      })
+      dht.listen(cb)
     }
-  }), function () {
+  })
+
+  parallel(tasks, function () {
     // add each other to routing tables
     makeFriends(dhts)
 
