@@ -239,7 +239,7 @@ DHT.prototype.address = function () {
 DHT.prototype.announce = function (infoHash, port, cb) {
   var self = this
   if (!cb) cb = noop
-  if (self.destroyed) return cb(new Error('dht is destroyed'))
+  if (self.destroyed) throw new Error('dht is destroyed')
 
   var infoHashBuffer = idToBuffer(infoHash)
   infoHash = idToHexString(infoHash)
@@ -253,7 +253,9 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   // TODO: it would be nice to not use a table when a lookup is in progress
   var table = self.tables[infoHash]
   if (table) {
-    onClosest(null, table.closest({ id: infoHashBuffer }, K))
+    process.nextTick(function () {
+      onClosest(null, table.closest({ id: infoHashBuffer }, K))
+    })
   } else {
     self.lookup(infoHash, onClosest)
   }
@@ -568,11 +570,11 @@ DHT.prototype._onGet = function (addr, message) {
  */
 DHT.prototype.destroy = function (cb) {
   var self = this
+  if (self.destroyed) throw new Error('dht is destroyed')
 
   if (cb) cb = once(cb)
   else cb = noop
 
-  if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.destroy.bind(self, cb))
   self._debug('destroy')
 
@@ -593,7 +595,9 @@ DHT.prototype.destroy = function (cb) {
     self.socket.close()
   } catch (err) {
     // ignore error, socket was either already closed / not yet bound
-    cb(null)
+    process.nextTick(function () {
+      cb(null)
+    })
   }
 }
 
@@ -673,6 +677,7 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
 DHT.prototype.removeNode = function (nodeId) {
   var self = this
   if (self.destroyed) throw new Error('dht is destroyed')
+
   var nodeIdBuffer = idToBuffer(nodeId)
   var contact = self.nodes.get(nodeIdBuffer)
   if (contact) {
@@ -715,6 +720,7 @@ DHT.prototype._addPeer = function (addr, infoHash) {
 DHT.prototype._removePeer = function (addr, infoHash) {
   var self = this
   if (self.destroyed) return
+
   infoHash = idToHexString(infoHash)
 
   var peers = self.peers[infoHash]
@@ -808,9 +814,9 @@ DHT.prototype._bootstrap = function (nodes) {
  * Resolve the DNS for nodes whose hostname is a domain name (often the case for
  * bootstrap nodes).
  * @param  {Array.<Object>} contacts array of contact objects with domain addresses
- * @param  {function} done
+ * @param  {function} cb
  */
-DHT.prototype._resolveContacts = function (contacts, done) {
+DHT.prototype._resolveContacts = function (contacts, cb) {
   var self = this
   var tasks = contacts.map(function (contact) {
     return function (cb) {
@@ -827,10 +833,10 @@ DHT.prototype._resolveContacts = function (contacts, done) {
     }
   })
   parallel(tasks, function (err, contacts) {
-    if (err) return done(err)
+    if (err) return cb(err)
     // filter out hosts that don't resolve
     contacts = contacts.filter(function (contact) { return !!contact })
-    done(null, contacts)
+    cb(null, contacts)
   })
 }
 
@@ -845,6 +851,8 @@ DHT.prototype._resolveContacts = function (contacts, done) {
  */
 DHT.prototype.lookup = function (id, opts, cb) {
   var self = this
+  if (self.destroyed) throw new Error('dht is destroyed')
+
   if (typeof opts === 'function') {
     cb = opts
     opts = {}
@@ -857,7 +865,6 @@ DHT.prototype.lookup = function (id, opts, cb) {
   var idBuffer = idToBuffer(id)
   id = idToHexString(id)
 
-  if (self.destroyed) return cb(new Error('dht is destroyed'))
   if (self._binding) return self.once('listening', self.lookup.bind(self, id, opts, cb))
   if (!self.listening) return self.listen(self.lookup.bind(self, id, opts, cb))
   if (idBuffer.length !== 20) throw new Error('invalid node id / info hash length')
