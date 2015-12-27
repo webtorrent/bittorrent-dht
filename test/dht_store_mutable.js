@@ -1,8 +1,8 @@
 var common = require('./common')
 var DHT = require('../')
-var test = require('tape')
 var ed = require('ed25519-supercop')
 var sha1 = require('simple-sha1')
+var test = require('tape')
 
 test('local mutable put/get', function (t) {
   t.plan(4)
