@@ -4,16 +4,16 @@ var once = require('once')
 var parallel = require('run-parallel')
 var test = require('tape')
 
-test('announce+lookup with 2-20 DHTs', function (t) {
-  var from = 2
-  var to = 20
+var from = 2
+var to = 20
 
-  var numRunning = to - from + 1
-  for (var i = from; i <= to; i++) {
-    runAnnounceLookupTest(i)
-  }
+for (var i = from; i <= to; i++) {
+  runAnnounceLookupTest(i)
+}
 
-  function runAnnounceLookupTest (numInstances) {
+function runAnnounceLookupTest (numInstances) {
+  test('horde: announce+lookup with ' + numInstances + ' DHTs', function (t) {
+    var numRunning = numInstances
     findPeers(numInstances, t, function (err, dhts) {
       if (err) throw err
 
@@ -26,14 +26,15 @@ test('announce+lookup with 2-20 DHTs', function (t) {
         }
 
         process.nextTick(function () {
-          dht.destroy(function () {
+          dht.destroy(function (err) {
+            t.error(err, 'destroyed dht')
             if (--numRunning === 0) t.end()
           })
         })
       })
     })
-  }
-})
+  })
+}
 
 /**
  *  Initialize [numInstances] dhts, have one announce an infoHash, and another perform a
