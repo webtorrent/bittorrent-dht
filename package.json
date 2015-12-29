@@ -19,7 +19,7 @@
     "hat": "^0.0.3",
     "inherits": "^2.0.1",
     "is-ip": "^1.0.0",
-    "isarray": "0.0.1",
+    "isarray": "^1.0.0",
     "k-bucket": "^0.6.0",
     "network-address": "^1.0.0",
     "once": "^1.3.1",
