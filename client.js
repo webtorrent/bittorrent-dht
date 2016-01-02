@@ -647,6 +647,7 @@ DHT.prototype._addNode = function (addr, nodeId, from) {
   if (self.destroyed) return
 
   var nodeIdBuffer = idToBuffer(nodeId)
+  if (!nodeIdBuffer) return
   nodeId = idToHexString(nodeId)
 
   if (nodeIdBuffer.length !== 20) {
@@ -1681,8 +1682,10 @@ function transactionIdToBuffer (transactionId) {
 function idToBuffer (id) {
   if (Buffer.isBuffer(id)) {
     return id
-  } else {
+  } else if (typeof id === 'string') {
     return new Buffer(id, 'hex')
+  } else {
+    return null
   }
 }
 
