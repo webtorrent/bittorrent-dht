@@ -10,6 +10,7 @@ test('`node` event fires for each added node (100x)', function (t) {
   dht.on('node', function () {
     numNodes += 1
     if (numNodes === 100) {
+      dht.destroy()
       t.pass('100 nodes added, 100 `node` events emitted')
       t.end()
     }
@@ -26,6 +27,7 @@ test('`node` event fires for each added node (10000x)', function (t) {
   dht.on('node', function () {
     numNodes += 1
     if (numNodes === 10000) {
+      dht.destroy()
       t.pass('10000 nodes added, 10000 `node` events emitted')
       t.end()
     }
@@ -42,6 +44,7 @@ test('`announce` event fires for each added peer (100x)', function (t) {
   dht.on('announce', function () {
     numPeers += 1
     if (numPeers === 100) {
+      dht.destroy()
       t.pass('100 peers added, 100 `announce` events emitted')
       t.end()
     }
@@ -58,6 +61,7 @@ test('`announce` event fires for each added peer (10000x)', function (t) {
   dht.on('announce', function () {
     numPeers += 1
     if (numPeers === 10000) {
+      dht.destroy()
       t.pass('10000 peers added, 10000 `announce` events emitted')
       t.end()
     }

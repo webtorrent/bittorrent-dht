@@ -31,7 +31,7 @@ test('Default bootstrap server returns a peer for one torrent', function (t) {
 
     dht.once('peer', function (peer, infoHash) {
       t.pass('Found at least one peer that has the file')
-      t.equal(infoHash, pride)
+      t.equal(infoHash.toString('hex'), pride)
       dht.destroy()
     })
   })
@@ -51,11 +51,11 @@ test('Default bootstrap server returns a peer for two torrents (simultaneously)'
     var prideDone = false
     var leavesDone = false
     dht.on('peer', function (peer, infoHash) {
-      if (!prideDone && infoHash === pride) {
+      if (!prideDone && infoHash.toString('hex') === pride) {
         prideDone = true
         t.pass('Found at least one peer for Pride & Prejudice')
       }
-      if (!leavesDone && infoHash === leaves) {
+      if (!leavesDone && infoHash.toString('hex') === leaves) {
         leavesDone = true
         t.pass('Found at least one peer for Leaves of Grass')
       }
@@ -64,4 +64,23 @@ test('Default bootstrap server returns a peer for two torrents (simultaneously)'
       }
     })
   })
+})
+
+test('Find peers before ready is emitted', function (t) {
+  t.plan(3)
+
+  var dht = new DHT()
+  var then = Date.now()
+
+  dht.once('node', function (node) {
+    t.pass('Found at least one other DHT node')
+  })
+
+  dht.once('peer', function (peer, infoHash) {
+    t.pass('Found at least one peer that has the file')
+    t.equal(infoHash.toString('hex'), pride, 'found a peer in ' + (Date.now() - then) + ' ms')
+    dht.destroy()
+  })
+
+  dht.lookup(pride)
 })

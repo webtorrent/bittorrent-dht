@@ -1,5 +1,4 @@
 var crypto = require('crypto')
-var hat = require('hat')
 var ip = require('ip')
 
 exports.failOnWarningOrError = function (t, dht) {
@@ -7,19 +6,29 @@ exports.failOnWarningOrError = function (t, dht) {
   dht.on('error', function (err) { t.fail(err) })
 }
 
+exports.randomHost = function () {
+  return ip.toString(crypto.randomBytes(4))
+}
+
+exports.randomPort = function () {
+  return crypto.randomBytes(2).readUInt16LE(0)
+}
+
 exports.randomAddr = function () {
-  var host = ip.toString(crypto.randomBytes(4))
-  var port = crypto.randomBytes(2).readUInt16LE(0)
-  return host + ':' + port
+  return exports.randomHost() + ':' + exports.randomPort()
 }
 
 exports.randomId = function () {
-  return new Buffer(hat(160), 'hex')
+  return crypto.randomBytes(20)
 }
 
 exports.addRandomNodes = function (dht, num) {
   for (var i = 0; i < num; i++) {
-    dht.addNode(exports.randomAddr(), exports.randomId())
+    dht.addNode({
+      id: exports.randomId(),
+      host: exports.randomHost(),
+      port: exports.randomPort()
+    })
   }
 }
 
