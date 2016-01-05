@@ -385,7 +385,8 @@ DHT.prototype._ongetpeers = function (query, peer) {
 
 DHT.prototype._onannouncepeer = function (query, peer) {
   var host = peer.address || peer.host
-  var port = query.a.port || peer.port
+  var port = query.a.implied_port ? peer.port : query.a.port
+  if (!port || typeof port !== 'number') return
   var infoHash = query.a.info_hash
   var token = query.a.token
   if (!infoHash || !token) return
