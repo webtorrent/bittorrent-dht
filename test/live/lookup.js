@@ -65,3 +65,22 @@ test('Default bootstrap server returns a peer for two torrents (simultaneously)'
     })
   })
 })
+
+test('Find peers before ready is emitted', function (t) {
+  t.plan(3)
+
+  var dht = new DHT()
+  var then = Date.now()
+
+  dht.once('node', function (node) {
+    t.pass('Found at least one other DHT node')
+  })
+
+  dht.once('peer', function (peer, infoHash) {
+    t.pass('Found at least one peer that has the file')
+    t.equal(infoHash.toString('hex'), pride, 'found a peer in ' + (Date.now() - then) + ' ms')
+    dht.destroy()
+  })
+
+  dht.lookup(pride)
+})
