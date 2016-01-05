@@ -478,6 +478,7 @@ DHT.prototype._bootstrap = function (populate) {
 
   function ready () {
     self._debug('emit ready')
+    self.ready = true
     self.emit('ready')
   }
 }

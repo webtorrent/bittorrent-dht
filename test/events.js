@@ -86,19 +86,20 @@ test('`listening` event fires', function (t) {
 })
 
 test('`ready` event fires when bootstrap === false', function (t) {
-  t.plan(1)
+  t.plan(2)
   var dht = new DHT({ bootstrap: false })
 
   common.failOnWarningOrError(t, dht)
 
   dht.on('ready', function () {
     t.pass('`ready` event fires')
+    t.equal(dht.ready, true)
     dht.destroy()
   })
 })
 
 test('`ready` event fires when there are K nodes', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   // dht1 will simulate an existing node (with a populated routing table)
   var dht1 = new DHT({ bootstrap: false })
@@ -106,6 +107,7 @@ test('`ready` event fires when there are K nodes', function (t) {
 
   dht1.on('ready', function () {
     t.pass('dht1 `ready` event fires because { bootstrap: false }')
+    t.equal(dht1.ready, true)
 
     common.addRandomNodes(dht1, 3)
     t.equal(dht1.nodes.count(), 3, 'dht1 has 3 nodes')
@@ -121,6 +123,7 @@ test('`ready` event fires when there are K nodes', function (t) {
       dht2.on('ready', function () {
         // 5 nodes because dht1 also optimistically captured dht2's addr and included it
         t.equal(dht1.nodes.count(), 4, 'dht2 gets 5 nodes from dht1 and fires `ready`')
+        t.equal(dht2.ready, true)
 
         dht1.destroy()
         dht2.destroy()
