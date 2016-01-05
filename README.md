@@ -175,18 +175,14 @@ an unresponsive node can be evicted to make space), the node will be added. If n
 node will not be added. This is useful to call when a peer wire sends a `PORT` message to
 share their DHT port.
 
-A node should look like this
+A node should look like this:
 
 ``` js
 {
   host: nodeHost,
-  port: nodePort,
-  id: optionalNodeId
+  port: nodePort
 }
 ```
-
-If `id` is undefined, then the peer will be pinged to learn their node id. If the peer does not respond, the will not be added to the routing table.
-
 
 #### `dht.destroy([callback])`
 
