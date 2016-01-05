@@ -73,9 +73,9 @@ function findPeers (numInstances, t, cb) {
     })
   })
 
-  dhts[1].on('peer', function (addr, hash) {
-    t.equal(hash, infoHash)
-    t.equal(Number(addr.split(':')[1]), 9998)
+  dhts[1].on('peer', function (peer, hash) {
+    t.equal(hash.toString('hex'), infoHash)
+    t.equal(peer.port, 9998)
     clearTimeout(timeoutId)
     cb(null, dhts)
   })
@@ -89,6 +89,6 @@ function makeFriends (dhts) {
   var len = dhts.length
   for (var i = 0; i < len; i++) {
     var next = dhts[(i + 1) % len]
-    dhts[i].addNode('127.0.0.1:' + next.address().port, next.nodeId)
+    dhts[i].addNode({host: '127.0.0.1', port: next.address().port, id: next.nodeId})
   }
 }

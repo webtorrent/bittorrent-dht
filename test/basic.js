@@ -12,30 +12,31 @@ test('explicitly set nodeId', function (t) {
 
   common.failOnWarningOrError(t, dht)
 
-  t.deepEqual(dht.nodeId, nodeId.toString('hex'))
+  t.deepEqual(dht.nodeId, nodeId)
   dht.destroy()
   t.end()
 })
 
 test('call `addNode` with nodeId argument', function (t) {
-  t.plan(2)
+  t.plan(3)
 
   var dht = new DHT({ bootstrap: false })
   common.failOnWarningOrError(t, dht)
 
   var nodeId = common.randomId()
 
-  dht.on('node', function (addr, _nodeId) {
-    t.equal(addr, '127.0.0.1:9999')
-    t.deepEqual(_nodeId, nodeId.toString('hex'))
+  dht.on('node', function (node) {
+    t.equal(node.host, '127.0.0.1')
+    t.equal(node.port, 9999)
+    t.deepEqual(node.id, nodeId)
     dht.destroy()
   })
 
-  dht.addNode('127.0.0.1:9999', nodeId)
+  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
 })
 
 test('call `addNode` without nodeId argument', function (t) {
-  t.plan(2)
+  t.plan(3)
 
   var dht1 = new DHT({ bootstrap: false })
   var dht2 = new DHT({ bootstrap: false })
@@ -47,11 +48,12 @@ test('call `addNode` without nodeId argument', function (t) {
     var port = dht1.address().port
 
     // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
-    dht2.addNode('127.0.0.1:' + port)
+    dht2.addNode({host: '127.0.0.1', port: port})
 
-    dht2.on('node', function (addr, _nodeId) {
-      t.equal(addr, '127.0.0.1:' + port)
-      t.deepEqual(_nodeId, dht1.nodeId)
+    dht2.on('node', function (node) {
+      t.equal(node.host, '127.0.0.1')
+      t.equal(node.port, port)
+      t.deepEqual(node.id, dht1.nodeId)
       dht1.destroy()
       dht2.destroy()
     })
@@ -66,7 +68,7 @@ test('call `addNode` without nodeId argument, and invalid addr', function (t) {
 
   // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
   // If the peer DOES NOT RESPOND, the will not be added to the routing table.
-  dht.addNode('127.0.0.1:9999')
+  dht.addNode({host: '127.0.0.1', port: 9999})
 
   dht.on('node', function () {
     // No 'node' event should be emitted if the added node does not respond to ping
@@ -90,12 +92,15 @@ test('`addNode` only emits events for new nodes', function (t) {
   })
 
   var nodeId = common.randomId()
-  dht.addNode('127.0.0.1:9999', nodeId)
-  dht.addNode('127.0.0.1:9999', nodeId)
-  dht.addNode('127.0.0.1:9999', nodeId)
+  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
 
   var togo = 1
-  setTimeout(t.pass(), 100)
+  setTimeout(function () {
+    dht.destroy()
+    t.pass()
+  }, 100)
 })
 
 test('send message while binding (listen)', function (t) {
@@ -106,7 +111,7 @@ test('send message while binding (listen)', function (t) {
     var port = a.address().port
     var b = new DHT({ bootstrap: false })
     b.listen()
-    b._sendPing('127.0.0.1:' + port, function (err) {
+    b._sendPing({host: '127.0.0.1', port: port}, function (err) {
       t.error(err)
       a.destroy()
       b.destroy()
