@@ -252,6 +252,7 @@ DHT.prototype.get = function (key, opts, cb) {
 }
 
 DHT.prototype.announce = function (infoHash, port, cb) {
+  if (typeof port === 'function') return this.announce(infoHash, 0, port)
   infoHash = toBuffer(infoHash)
   if (!cb) cb = noop
 
@@ -259,10 +260,11 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   if (!table) return this._preannounce(infoHash, port, cb)
 
   if (this._host) {
+    var dhtPort = this.listening ? this.address().port : 0
     this._addPeer(
-      {host: this._host, port: port},
+      {host: this._host, port: port || dhtPort},
       infoHash,
-      {host: this._host, port: this.listening ? this.address().port : 0}
+      {host: this._host, port: dhtPort}
     )
   }
 
@@ -272,7 +274,8 @@ DHT.prototype.announce = function (infoHash, port, cb) {
       id: this._rpc.id,
       token: null, // queryAll sets this
       info_hash: infoHash,
-      port: port
+      port: port,
+      implied_port: port ? 0 : 1
     }
   }
 
