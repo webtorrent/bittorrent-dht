@@ -60,12 +60,12 @@ test('multiparty mutable put/get', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
     dht1.once('node', ready)
   })
 
@@ -111,12 +111,12 @@ test('multiparty mutable put/get sequence', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
     dht1.once('node', ready)
   })
 
@@ -199,12 +199,12 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
     dht1.once('node', ready)
   })
 
@@ -298,12 +298,12 @@ test('transitive mutable update', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht3.addNode('127.0.0.1:' + dht2.address().port)
+    dht3.addNode({ host: '127.0.0.1', port: dht2.address().port })
     dht3.once('node', ready)
   })
 
@@ -372,7 +372,7 @@ test('mutable update mesh', function (t) {
     var pending = edges.length
     for (var i = 0; i < edges.length; i++) {
       (function (e) {
-        dht[e[1]].addNode('127.0.0.1:' + dht[e[0]].address().port)
+        dht[e[1]].addNode({ host: '127.0.0.1', port: dht[e[0]].address().port })
         dht[e[1]].once('node', function () {
           if (--pending === 0) ready()
         })
@@ -426,10 +426,10 @@ test('invalid sequence', function (t) {
   var dht0 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   dht0.listen(0, function () {
-    dht1.addNode('127.0.0.1:' + dht0.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht0.address().port })
   })
   dht1.listen(0, function () {
-    dht0.addNode('127.0.0.1:' + dht1.address().port)
+    dht0.addNode({ host: '127.0.0.1', port: dht1.address().port })
   })
   t.once('end', function () {
     dht0.destroy()
@@ -484,10 +484,10 @@ test('valid sequence', function (t) {
   var dht0 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   dht0.listen(0, function () {
-    dht1.addNode('127.0.0.1:' + dht0.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht0.address().port })
   })
   dht1.listen(0, function () {
-    dht0.addNode('127.0.0.1:' + dht1.address().port)
+    dht0.addNode({ host: '127.0.0.1', port: dht1.address().port })
   })
   t.once('end', function () {
     dht0.destroy()

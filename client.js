@@ -32,6 +32,7 @@ function DHT (opts) {
   this._rpc.on('listening', onlistening)
   this._rotateSecrets()
   this._verify = opts.verify || null
+  this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
 
   this.listening = false
@@ -256,6 +257,8 @@ DHT.prototype.announce = function (infoHash, port, cb) {
 
   var table = this._tables.get(infoHash.toString('hex'))
   if (!table) return this._preannounce(infoHash, port, cb)
+
+  if (this._host) this._addPeer({host: this.host, port: port}, infoHash, {host: this.host, port: this.address().port})
 
   var message = {
     q: 'announce_peer',
