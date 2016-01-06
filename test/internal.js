@@ -133,9 +133,9 @@ test('`get_peers` query to node with peers in table', function (t) {
 
   var targetInfoHash = common.randomId()
 
-  dht1._addPeer('1.1.1.1:6969', targetInfoHash)
-  dht1._addPeer('10.10.10.10:6969', targetInfoHash)
-  dht1._addPeer('255.255.255.255:6969', targetInfoHash)
+  dht1._addPeer({ host: '1.1.1.1', port: 6969 }, targetInfoHash)
+  dht1._addPeer({ host: '10.10.10.10', port: 6969 }, targetInfoHash)
+  dht1._addPeer({ host: '255.255.255.255', port: 6969 }, targetInfoHash)
 
   dht1.listen(function () {
     dht2._rpc.query({

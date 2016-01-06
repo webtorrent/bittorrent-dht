@@ -32,6 +32,7 @@ function DHT (opts) {
   this._rpc.on('listening', onlistening)
   this._rotateSecrets()
   this._verify = opts.verify || null
+  this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
 
   this.listening = false
@@ -72,7 +73,6 @@ function DHT (opts) {
 }
 
 DHT.prototype.addNode = function (node) {
-  if (typeof node === 'string') node = parseAddr(node)
   var self = this
   if (node.id) {
     node.id = toBuffer(node.id)
@@ -258,6 +258,14 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   var table = this._tables.get(infoHash.toString('hex'))
   if (!table) return this._preannounce(infoHash, port, cb)
 
+  if (this._host) {
+    this._addPeer(
+      {host: this._host, port: port},
+      infoHash,
+      {host: this._host, port: this.listening ? this.address().port : 0}
+    )
+  }
+
   var message = {
     q: 'announce_peer',
     a: {
@@ -276,6 +284,7 @@ DHT.prototype._preannounce = function (infoHash, port, cb) {
   var self = this
 
   this.lookup(infoHash, function (err) {
+    if (self.destroyed) return cb(new Error('dht is destroyed'))
     if (err) return cb(err)
     self.announce(infoHash, port, cb)
   })
@@ -286,8 +295,8 @@ DHT.prototype.lookup = function (infoHash, cb) {
   if (!cb) cb = noop
   var self = this
 
-  process.nextTick(emit)
   this._debug('lookup %s', infoHash)
+  process.nextTick(emit)
   this._closest(infoHash, {
     q: 'get_peers',
     a: {
@@ -400,7 +409,6 @@ DHT.prototype._onannouncepeer = function (query, peer) {
 }
 
 DHT.prototype._addPeer = function (peer, infoHash, from) {
-  if (typeof peer === 'string') peer = parseAddr(peer)
   this._peers.add(infoHash.toString('hex'), encodePeer(peer.host, peer.port))
   this.emit('announce', peer, infoHash, from)
 }
@@ -649,10 +657,6 @@ PeerStore.prototype.get = function (key) {
   var node = this.peers.get(key)
   if (!node) return []
   return pick(node.values, 100)
-}
-
-function parseAddr (addr) {
-  return {host: addr.split(':')[0], port: Number(addr.split(':')[1])}
 }
 
 function swap (list, a, b) {

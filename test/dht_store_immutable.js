@@ -43,11 +43,11 @@ test('multi-party immutable put/get', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode('127.0.0.1:' + dht1.address().port)
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
     dht2.once('node', ready)
   })
   dht2.listen(function () {
-    dht1.addNode('127.0.0.1:' + dht2.address().port)
+    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
     dht1.once('node', ready)
   })
 
