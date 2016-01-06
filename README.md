@@ -120,9 +120,12 @@ Returns an object containing the address information for the listening socket of
 This object contains `address`, `family` and `port` properties.
 
 
-#### `dht.announce(infoHash, port, [callback])`
+#### `dht.announce(infoHash, [port], [callback])`
 
 Announce that the peer, controlling the querying node, is downloading a torrent on a port.
+
+If you omit `port` the implied port option will be set and other peers will use the public
+dht port as your announced port.
 
 If `dht.announce` is called soon (< 5 minutes) after `dht.lookup`, then the routing table
 generated during the lookup can be re-used, because the "tokens" sent by each node will

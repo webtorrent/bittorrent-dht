@@ -36,3 +36,27 @@ test('`announce` with {host: "127.0.0.1"}', function (t) {
     })
   })
 })
+
+test('announce with implied port', function (t) {
+  t.plan(2)
+  var dht1 = new DHT({ bootstrap: false })
+  var infoHash = common.randomId()
+
+  dht1.listen(function () {
+    var dht2 = new DHT({bootstrap: '127.0.0.1:' + dht1.address().port})
+
+    dht1.on('announce', function (peer) {
+      t.deepEqual(peer, {host: '127.0.0.1', port: dht2.address().port})
+    })
+
+    dht2.announce(infoHash, function () {
+      dht2.once('peer', function (peer) {
+        t.deepEqual(peer, {host: '127.0.0.1', port: dht2.address().port})
+        dht1.destroy()
+        dht2.destroy()
+      })
+
+      dht2.lookup(infoHash)
+    })
+  })
+})
