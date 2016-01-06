@@ -15,7 +15,7 @@ exports.randomPort = function () {
 }
 
 exports.randomAddr = function () {
-  return exports.randomHost() + ':' + exports.randomPort()
+  return { host: exports.randomHost(), port: exports.randomPort() }
 }
 
 exports.randomId = function () {

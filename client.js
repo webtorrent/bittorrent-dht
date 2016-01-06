@@ -72,7 +72,6 @@ function DHT (opts) {
 }
 
 DHT.prototype.addNode = function (node) {
-  if (typeof node === 'string') node = parseAddr(node)
   var self = this
   if (node.id) {
     node.id = toBuffer(node.id)
@@ -400,7 +399,6 @@ DHT.prototype._onannouncepeer = function (query, peer) {
 }
 
 DHT.prototype._addPeer = function (peer, infoHash, from) {
-  if (typeof peer === 'string') peer = parseAddr(peer)
   this._peers.add(infoHash.toString('hex'), encodePeer(peer.host, peer.port))
   this.emit('announce', peer, infoHash, from)
 }
@@ -649,10 +647,6 @@ PeerStore.prototype.get = function (key) {
   var node = this.peers.get(key)
   if (!node) return []
   return pick(node.values, 100)
-}
-
-function parseAddr (addr) {
-  return {host: addr.split(':')[0], port: Number(addr.split(':')[1])}
 }
 
 function swap (list, a, b) {
