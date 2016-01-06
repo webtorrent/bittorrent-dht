@@ -100,8 +100,8 @@ as `peer` events. See the `peer` event below for more info.
 
 `infoHash` can be a string or Buffer. `callback` is called when the recursive lookup has
 terminated, and is called with two paramaters. The first is an `Error` or null. The second
-is an array of the K closest nodes. You usually don't need to use this info and can simply
-listen for `peer` events.
+is the number of nodes found that had peers. You usually don't need to use this info and
+can simply listen for `peer` events.
 
 
 #### `dht.listen([port], [address], [onlistening])`
