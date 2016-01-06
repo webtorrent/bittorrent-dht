@@ -258,7 +258,13 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   var table = this._tables.get(infoHash.toString('hex'))
   if (!table) return this._preannounce(infoHash, port, cb)
 
-  if (this._host) this._addPeer({host: this.host, port: port}, infoHash, {host: this.host, port: this.address().port})
+  if (this._host) {
+    this._addPeer(
+      {host: this._host, port: port},
+      infoHash,
+      {host: this._host, port: this.listening ? this.address().port : 0}
+    )
+  }
 
   var message = {
     q: 'announce_peer',
@@ -278,6 +284,7 @@ DHT.prototype._preannounce = function (infoHash, port, cb) {
   var self = this
 
   this.lookup(infoHash, function (err) {
+    if (self.destroyed) return cb(new Error('dht is destroyed'))
     if (err) return cb(err)
     self.announce(infoHash, port, cb)
   })
@@ -288,8 +295,8 @@ DHT.prototype.lookup = function (infoHash, cb) {
   if (!cb) cb = noop
   var self = this
 
-  process.nextTick(emit)
   this._debug('lookup %s', infoHash)
+  process.nextTick(emit)
   this._closest(infoHash, {
     q: 'get_peers',
     a: {
