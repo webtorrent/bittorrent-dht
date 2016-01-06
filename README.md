@@ -102,6 +102,7 @@ terminated, and is called with two paramaters. The first is an `Error` or null. 
 is an array of the K closest nodes. You usually don't need to use this info and can simply
 listen for `peer` events.
 
+Returns an `abort()` function that would allow us to abort the query.
 
 #### `dht.listen([port], [address], [onlistening])`
 
