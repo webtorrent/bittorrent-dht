@@ -297,6 +297,7 @@ DHT.prototype.lookup = function (infoHash, cb) {
   infoHash = toBuffer(infoHash)
   if (!cb) cb = noop
   var self = this
+  var aborted = false
 
   this._debug('lookup %s', infoHash)
   process.nextTick(emit)
@@ -317,8 +318,11 @@ DHT.prototype.lookup = function (infoHash, cb) {
   }
 
   function onreply (message, node) {
+    if (aborted) return false
     if (message.r.values) emit(message.r.values, node)
   }
+
+  return function abort () { aborted = true }
 }
 
 DHT.prototype.address = function () {
