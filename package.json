@@ -16,7 +16,7 @@
     "debug": "^2.2.0",
     "inherits": "^2.0.1",
     "k-bucket": "^0.6.0",
-    "k-rpc": "^3.4.1",
+    "k-rpc": "^3.5.0",
     "lru": "^1.2.0"
   },
   "devDependencies": {
