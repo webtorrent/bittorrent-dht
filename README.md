@@ -50,13 +50,8 @@ dht.listen(20000, function () {
   console.log('now listening')
 })
 
-dht.on('ready', function () {
-  // DHT is ready to use (i.e. the routing table contains at least K nodes, discovered
-  // via the bootstrap nodes)
-
-  // find peers for the given torrent info hash
-  dht.lookup(parsed.infoHash)
-})
+// find peers for the given torrent info hash
+dht.lookup(parsed.infoHash)
 
 dht.on('peer', function (peer, infoHash, from) {
   console.log('found potential peer ' + peer.host + ':' + peer.port + ' through ' + from.host + ':' + from.port)
@@ -212,11 +207,9 @@ var DHT = require('bittorrent-dht')
 var dht = new DHT()
 var value = new Buffer(200).fill('abc')
 
-dht.on('ready', function () {
-  dht.put({ v: value }, function (err, hash) {
-    console.error('error=', err)
-    console.log('hash=', hash)
-  })
+dht.put({ v: value }, function (err, hash) {
+  console.error('error=', err)
+  console.log('hash=', hash)
 })
 ```
 
@@ -256,11 +249,10 @@ var opts = {
 
 var DHT = require('bittorrent-dht')
 var dht = new DHT
-dht.on('ready', function () {
-  dht.put(opts, function (err, hash) {
-    console.error('error=', err)
-    console.log('hash=', hash)
-  })
+
+dht.put(opts, function (err, hash) {
+  console.error('error=', err)
+  console.log('hash=', hash)
 })
 ```
 
