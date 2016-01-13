@@ -1,10 +1,10 @@
 # bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url]
 
-[travis-image]: https://img.shields.io/travis/feross/bittorrent-dht/master.svg?style=flat
+[travis-image]: https://img.shields.io/travis/feross/bittorrent-dht/master.svg
 [travis-url]: https://travis-ci.org/feross/bittorrent-dht
-[npm-image]: https://img.shields.io/npm/v/bittorrent-dht.svg?style=flat
+[npm-image]: https://img.shields.io/npm/v/bittorrent-dht.svg
 [npm-url]: https://npmjs.org/package/bittorrent-dht
-[downloads-image]: https://img.shields.io/npm/dm/bittorrent-dht.svg?style=flat
+[downloads-image]: https://img.shields.io/npm/dm/bittorrent-dht.svg
 [downloads-url]: https://npmjs.org/package/bittorrent-dht
 
 ### Simple, robust, BitTorrent DHT implementation
