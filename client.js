@@ -9,6 +9,7 @@ var bencode = require('bencode')
 var equals = require('buffer-equals')
 var LRU = require('lru')
 var debug = require('debug')('bittorrent-dht')
+var Buffer = require('safe-buffer')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
@@ -581,7 +582,7 @@ function createGetResponse (id, token, value) {
 }
 
 function encodePeer (host, port) {
-  var buf = new Buffer(6)
+  var buf = Buffer.alloc(6)
   var ip = host.split('.')
   for (var i = 0; i < 4; i++) buf[i] = parseInt(ip[i] || 0, 10)
   buf.writeUInt16BE(port, 4)
