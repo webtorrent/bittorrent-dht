@@ -84,3 +84,23 @@ test('Find peers before ready is emitted', function (t) {
 
   dht.lookup(pride)
 })
+
+test('Set and get before ready is emitted', function (t) {
+  // This test passes when we put and get with the same DHT
+  // https://github.com/feross/bittorrent-dht/issues/102
+  var dht1 = new DHT()
+  var dht2 = new DHT()
+
+  dht1.put({v: 'myvalue'}, function (err, hash) {
+    t.error(err)
+    t.ok(hash)
+
+    dht1.get(hash, function (err, value) {
+      t.error(err)
+      t.same(value.v.toString(), 'myvalue')
+      dht1.destroy()
+      dht2.destroy()
+      t.end()
+    })
+  })
+})
