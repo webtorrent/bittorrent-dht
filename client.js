@@ -7,7 +7,7 @@ var KBucket = require('k-bucket')
 var crypto = require('crypto')
 var bencode = require('bencode')
 var equals = require('buffer-equals')
-var LRU = require('lru')
+var LRU = require('lru-cache')
 var debug = require('debug')('bittorrent-dht')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
