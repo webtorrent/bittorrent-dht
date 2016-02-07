@@ -164,7 +164,7 @@ dht1.destroy()
 var dht2 = new DHT()
 
 arr.forEach(function (node) {
-  dht2.add(node)
+  dht2.addNode(node)
 })
 ```
 
