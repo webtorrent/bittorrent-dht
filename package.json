@@ -17,7 +17,7 @@
     "inherits": "^2.0.1",
     "k-bucket": "^0.6.0",
     "k-rpc": "^3.5.1",
-    "lru": "^1.2.0"
+    "lru-cache": "^4.0.0"
   },
   "devDependencies": {
     "ed25519-supercop": "^1.0.0",
