@@ -127,8 +127,8 @@ DHT.prototype.put = function (opts, cb) {
   if (isMutable && opts.k.length !== 32) {
     throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
-  if (isMutable && typeof opts.sign !== 'function' && !Buffer.isBuffer(opts.sign)) {
-    throw new Error('opts.sign function or signature is required for mutable put')
+  if (isMutable && typeof opts.sign !== 'function' && !Buffer.isBuffer(opts.sig)) {
+    throw new Error('opts.sign function or options.sig signature is required for mutable put')
   }
   if (isMutable && opts.salt && opts.salt.length > 64) {
     throw new Error('opts.salt is > 64 bytes long')
@@ -170,7 +170,7 @@ DHT.prototype._put = function (opts, cb) {
     message.a.k = opts.k
     message.a.seq = opts.seq
     if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
-    else if (Buffer.isBuffer(opts.sign)) message.a.sig = opts.sign
+    else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
   }
 
   this._values.set(key.toString('hex'), message.a)

@@ -265,6 +265,17 @@ content can be retrieved (with `dht.get(hash)`).
 Note that you should call `.put()` every hour for content that you want to keep
 alive, since nodes may discard data nodes older than 2 hours.
 
+If you receive a key/value pair and you want to re-add to the dht it to keep it
+alive you can just `put` it again.
+
+``` js
+dht.get(key, function (err, res) {
+  dht.put(res, function () {
+    // re-added the key/value pair
+  })
+})
+```
+
 #### `dht.get(hash, callback)`
 
 Read a data record (created with `.put()`) from the DHT.

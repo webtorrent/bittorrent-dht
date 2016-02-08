@@ -154,14 +154,7 @@ test('delegated put', function (t) {
       dht2.get(hash, function (err, res) {
         t.error(err)
 
-        var options = {
-          k: res.k,
-          seq: res.seq,
-          v: res.v,
-          sign: res.sig
-        }
-
-        dht3.put(options, function (err, hash) {
+        dht3.put(res, function (err) {
           t.error(err)
 
           dht4.get(hash, function (err, res) {
