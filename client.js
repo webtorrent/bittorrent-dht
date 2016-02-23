@@ -29,6 +29,7 @@ function DHT (opts) {
   this._rpc.on('query', onquery)
   this._rpc.on('node', onnode)
   this._rpc.on('warning', onwarning)
+  this._rpc.on('error', onerror)
   this._rpc.on('listening', onlistening)
   this._rotateSecrets()
   this._verify = opts.verify || null
@@ -65,6 +66,10 @@ function DHT (opts) {
 
   function onwarning (err) {
     self.emit('warning', err)
+  }
+
+  function onerror (err) {
+    self.emit('error', err)
   }
 
   function onnode (node) {
