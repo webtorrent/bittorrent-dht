@@ -17,7 +17,10 @@ This module is used by [WebTorrent](http://webtorrent.io).
 
 - complete implementation of the DHT protocol in JavaScript
 - follows [the spec](http://www.bittorrent.org/beps/bep_0005.html)
-- robust and well-tested (comprehensive test suite, and used by [WebTorrent](http://webtorrent.io) and [peerflix](https://github.com/mafintosh/peerflix))
+- supports [BEP44](http://bittorrent.org/beps/bep_0044.html) for storing arbitrary data in the DHT
+- robust and well-tested
+  - Comprehensive, fully-offline test suite
+  - Used by [WebTorrent](http://webtorrent.io), [peerflix](https://github.com/mafintosh/peerflix), and [Playback](https://mafintosh.github.io/playback/)
 - efficient recursive lookup algorithm minimizes UDP traffic
 - supports multiple, concurrent lookups using the same routing table
 
@@ -142,10 +145,20 @@ module.**
 a single parameter that is an `Error` or null.
 
 
-#### `arr = dht.toArray()`
+#### `arr = dht.toJSON()`
 
-Returns the nodes in the DHT as an array. This is useful for persisting the DHT
-to disk between restarts of a BitTorrent client (as recommended by the spec). Each node in the array is an object with `host` (string) and `port` (number) properties.
+Returns the current state of the DHT, including DHT nodes and BEP44 values.
+
+```json
+{
+  "nodes": [],
+  "values": {}
+}
+```
+
+The DHT nodes, in particular, are useful for persisting the DHT to disk between restarts
+of a BitTorrent client (as recommended by the spec). Each node in the array is an object
+with `host` (string) and `port` (number) properties.
 
 To restore the DHT nodes when instantiating a new `DHT` object, simply loop over the nodes in the array and add them with the `addNode` method.
 
@@ -155,7 +168,7 @@ var dht1 = new DHT()
 // some time passes ...
 
 // destroy the dht
-var arr = dht1.toArray()
+var nodes = dht1.toJSON().nodes
 dht1.destroy()
 
 // some time passes ...
@@ -163,7 +176,7 @@ dht1.destroy()
 // initialize a new dht with the same routing table as the first
 var dht2 = new DHT()
 
-arr.forEach(function (node) {
+nodes.forEach(function (node) {
   dht2.addNode(node)
 })
 ```

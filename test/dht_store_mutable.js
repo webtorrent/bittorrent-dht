@@ -16,10 +16,10 @@ test('local mutable put/get', function (t) {
   common.failOnWarningOrError(t, dht)
 
   dht.on('ready', function () {
-    var value = fill(500, 'abc')
+    var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 0,
       v: value
     }
@@ -71,11 +71,11 @@ test('multiparty mutable put/get', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = fill(500, 'abc')
+    var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
       seq: 0,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       v: value
     }
 
@@ -140,11 +140,11 @@ test('delegated put', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = fill(500, 'abc')
+    var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
       seq: 0,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       v: value
     }
 
@@ -194,10 +194,10 @@ test('multiparty mutable put/get sequence', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = fill(500, 'abc')
+    var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 0,
       v: value
     }
@@ -219,7 +219,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
     function putSomethingElse () {
       opts.seq ++
-      opts.v = fill(32, 'whatever')
+      opts.v = common.fill(32, 'whatever')
 
       dht1.put(opts, function (err, hash) {
         t.error(err)
@@ -237,7 +237,7 @@ test('multiparty mutable put/get sequence', function (t) {
 
     function yetStillMore () {
       opts.seq ++
-      opts.v = fill(999, 'cool')
+      opts.v = common.fill(999, 'cool')
 
       dht1.put(opts, function (err, hash) {
         t.error(err)
@@ -282,20 +282,20 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var fvalue = fill(500, 'abc')
+    var fvalue = common.fill(500, 'abc')
     var fopts = {
       k: keypair.publicKey,
       seq: 0,
       salt: Buffer('first'),
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       v: fvalue
     }
-    var svalue = fill(20, 'z')
+    var svalue = common.fill(20, 'z')
     var sopts = {
       k: fopts.k,
       seq: 0,
       salt: Buffer('second'),
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       v: svalue
     }
 
@@ -332,7 +332,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 
     function yetStillMore () {
       fopts.seq ++
-      fopts.v = fill(999, 'cool')
+      fopts.v = common.fill(999, 'cool')
 
       dht1.put(fopts, function (err, hash) {
         t.error(err)
@@ -381,10 +381,10 @@ test('transitive mutable update', function (t) {
 
   function ready () {
     if (--pending !== 0) return
-    var value = fill(500, 'abc')
+    var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 0,
       v: value
     }
@@ -459,9 +459,9 @@ test('mutable update mesh', function (t) {
   })
 
   function ready () {
-    send(0, 8, fill(100, 'abc'))
-    send(4, 6, fill(20, 'xyz'))
-    send(1, 5, fill(500, 'whatever'))
+    send(0, 8, common.fill(100, 'abc'))
+    send(4, 6, common.fill(20, 'xyz'))
+    send(1, 5, common.fill(500, 'whatever'))
   }
 
   function send (srci, dsti, value) {
@@ -470,7 +470,7 @@ test('mutable update mesh', function (t) {
     var keypair = ed.createKeyPair(ed.createSeed())
     var opts = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 0,
       v: value
     }
@@ -513,15 +513,15 @@ test('invalid sequence', function (t) {
   dht0.on('node', function () {
     var opts0 = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 5,
-      v: fill(500, '5')
+      v: common.fill(500, '5')
     }
     var opts1 = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 4,
-      v: fill(500, '4')
+      v: common.fill(500, '4')
     }
     var hash0
 
@@ -539,7 +539,7 @@ test('invalid sequence', function (t) {
         t.ifError(err)
         t.deepEqual(
           res.v.toString('utf8'),
-          fill(500, '5').toString('utf8'),
+          common.fill(500, '5').toString('utf8'),
           'greater sequence expected'
         )
         t.equal(res.seq, 5)
@@ -571,15 +571,15 @@ test('valid sequence', function (t) {
   dht0.on('node', function () {
     var opts0 = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 4,
-      v: fill(500, '4')
+      v: common.fill(500, '4')
     }
     var opts1 = {
       k: keypair.publicKey,
-      sign: sign(keypair),
+      sign: common.sign(keypair),
       seq: 5,
-      v: fill(500, '5')
+      v: common.fill(500, '5')
     }
     var hash0, hash1
 
@@ -599,7 +599,7 @@ test('valid sequence', function (t) {
         t.ifError(err)
         t.deepEqual(
           res.v.toString('utf8'),
-          fill(500, '5').toString('utf8'),
+          common.fill(500, '5').toString('utf8'),
           'greater sequence expected'
         )
         t.equal(res.seq, 5)
@@ -607,18 +607,3 @@ test('valid sequence', function (t) {
     }
   })
 })
-
-function fill (n, s) {
-  var bs = Buffer(s)
-  var b = new Buffer(n)
-  for (var i = 0; i < n; i++) {
-    b[i] = bs[i % bs.length]
-  }
-  return b
-}
-
-function sign (keypair) {
-  return function (buf) {
-    return ed.sign(buf, keypair.publicKey, keypair.secretKey)
-  }
-}
