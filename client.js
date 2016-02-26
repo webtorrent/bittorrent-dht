@@ -658,7 +658,7 @@ PeerStore.prototype.add = function (key, peer) {
 
 PeerStore.prototype._evict = function () {
   var a = this.peers.peek(this.peers.tail)
-  var b = a.map.remove(a.map.tail).value
+  var b = a.map.remove(a.map.tail)
   var values = a.values
   swap(values, b.index, values.length - 1)
   values.pop()
