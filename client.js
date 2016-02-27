@@ -109,9 +109,23 @@ DHT.prototype._sendPing = function (node, cb) {
   })
 }
 
-DHT.prototype.toJSON =
-DHT.prototype.toArray = function () {
-  return this._rpc.nodes.toArray().map(toNode)
+DHT.prototype.toJSON = function () {
+  var self = this
+  var values = {}
+  Object.keys(this._values.cache).forEach(function (key) {
+    var value = self._values.cache[key].value
+    values[key] = {
+      v: value.v.toString('hex'),
+      id: value.id.toString('hex')
+    }
+    if (value.seq != null) values[key].seq = value.seq
+    if (value.sig != null) values[key].sig = value.sig.toString('hex')
+    if (value.k != null) values[key].k = value.k.toString('hex')
+  })
+  return {
+    nodes: this._rpc.nodes.toArray().map(toNode),
+    values: values
+  }
 }
 
 DHT.prototype.put = function (opts, cb) {

@@ -20,7 +20,7 @@ function runAnnounceLookupTest (numInstances) {
       dhts.forEach(function (dht) {
         for (var infoHash in dht.tables) {
           var table = dht.tables[infoHash]
-          table.toArray().forEach(function (contact) {
+          table.toJSON().nodes.forEach(function (contact) {
             t.ok(contact.token, 'contact has token')
           })
         }
