@@ -209,7 +209,7 @@ Write an arbitrary payload to the DHT.
 
 For all requests, you must specify:
 
-* `opts.v` - a buffer payload to write, no less than 1000 bytes
+* `opts.v` - a buffer payload to write, less than 1000 bytes
 
 If you only specify `opts.v`, the content is considered immutable and the hash
 will just be the hash of the content.
