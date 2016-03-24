@@ -11,7 +11,7 @@
     "url": "https://github.com/feross/bittorrent-dht/issues"
   },
   "dependencies": {
-    "bencode": "^0.7.0",
+    "bencode": "^0.8.0",
     "buffer-equals": "^1.0.3",
     "debug": "^2.2.0",
     "inherits": "^2.0.1",
