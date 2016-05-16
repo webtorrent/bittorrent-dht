@@ -92,7 +92,7 @@ DHT.prototype.addNode = function (node) {
 }
 
 DHT.prototype.removeNode = function (id) {
-  this._rpc.nodes.remove({id: toBuffer(id)})
+  this._rpc.nodes.remove(toBuffer(id))
 }
 
 DHT.prototype._sendPing = function (node, cb) {
@@ -193,7 +193,7 @@ DHT.prototype._put = function (opts, cb) {
   }
 
   this._values.set(key.toString('hex'), message.a)
-  this._rpc.queryAll(table.closest({id: key}), message, null, function (err, n) {
+  this._rpc.queryAll(table.closest(key), message, null, function (err, n) {
     if (err) return cb(err, key, n)
     cb(null, key, n)
   })
@@ -300,7 +300,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   }
 
   this._debug('announce %s %d', infoHash, port)
-  this._rpc.queryAll(table.closest({id: infoHash}), message, null, cb)
+  this._rpc.queryAll(table.closest(infoHash), message, null, cb)
 }
 
 DHT.prototype._preannounce = function (infoHash, port, cb) {
@@ -399,7 +399,7 @@ DHT.prototype._onfindnode = function (query, peer) {
   var target = query.a.target
   if (!target) return this._rpc.error(peer, query, [203, '`find_node` missing required `a.target` field'])
 
-  var nodes = this._rpc.nodes.closest({ id: target })
+  var nodes = this._rpc.nodes.closest(target)
   this._rpc.response(peer, query, {id: this._rpc.id}, nodes)
 }
 
@@ -415,7 +415,7 @@ DHT.prototype._ongetpeers = function (query, peer) {
     r.values = peers
     this._rpc.response(peer, query, r)
   } else {
-    this._rpc.response(peer, query, r, this._rpc.nodes.closest({id: infoHash}))
+    this._rpc.response(peer, query, r, this._rpc.nodes.closest(infoHash))
   }
 }
 
@@ -448,7 +448,7 @@ DHT.prototype._onget = function (query, peer) {
   var value = this._values.get(target.toString('hex'))
 
   if (!value) {
-    var nodes = this._rpc.nodes.closest({id: target})
+    var nodes = this._rpc.nodes.closest(target)
     this._rpc.response(peer, query, {id: this._rpc.id, token: token}, nodes)
   } else {
     this._rpc.response(peer, query, createGetResponse(this._rpc.id, token, value))
