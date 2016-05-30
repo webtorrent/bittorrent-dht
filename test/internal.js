@@ -1,3 +1,4 @@
+var Buffer = require('safe-buffer').Buffer
 var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
@@ -170,7 +171,7 @@ test('`announce_peer` query with bad token', function (t) {
   var infoHash = common.randomId()
 
   dht1.listen(function () {
-    var token = new Buffer('bad token')
+    var token = Buffer.from('bad token')
     dht2._rpc.query({
       host: '127.0.0.1',
       port: dht1.address().port

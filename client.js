@@ -1,14 +1,15 @@
 module.exports = DHT
 
-var inherits = require('inherits')
-var EventEmitter = require('events').EventEmitter
-var krpc = require('k-rpc')
-var KBucket = require('k-bucket')
-var crypto = require('crypto')
 var bencode = require('bencode')
-var equals = require('buffer-equals')
-var LRU = require('lru')
+var Buffer = require('safe-buffer').Buffer
+var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
+var equals = require('buffer-equals')
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+var KBucket = require('k-bucket')
+var krpc = require('k-rpc')
+var LRU = require('lru')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
@@ -166,7 +167,7 @@ DHT.prototype._put = function (opts, cb) {
   if (!cb) cb = noop
 
   var isMutable = !!opts.k
-  var v = typeof opts.v === 'string' ? new Buffer(opts.v) : opts.v
+  var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
   var key = isMutable
     ? sha1(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
     : sha1(bencode.encode(v))
@@ -571,7 +572,7 @@ DHT.prototype._validateToken = function (host, token) {
 
 DHT.prototype._generateToken = function (host, secret) {
   if (!secret) secret = this._secrets[0]
-  return crypto.createHash('sha1').update(new Buffer(host, 'utf8')).update(secret).digest()
+  return crypto.createHash('sha1').update(Buffer.from(host)).update(secret).digest()
 }
 
 DHT.prototype._rotateSecrets = function () {
@@ -601,7 +602,7 @@ function createGetResponse (id, token, value) {
 }
 
 function encodePeer (host, port) {
-  var buf = new Buffer(6)
+  var buf = Buffer.allocUnsafe(6)
   var ip = host.split('.')
   for (var i = 0; i < 4; i++) buf[i] = parseInt(ip[i] || 0, 10)
   buf.writeUInt16BE(port, 4)
@@ -711,6 +712,6 @@ function pick (values, n) {
 
 function toBuffer (str) {
   if (Buffer.isBuffer(str)) return str
-  if (typeof str === 'string') return new Buffer(str, 'hex')
+  if (typeof str === 'string') return Buffer.from(str, 'hex')
   throw new Error('Pass a buffer or a string')
 }
