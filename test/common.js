@@ -1,3 +1,4 @@
+var Buffer = require('safe-buffer').Buffer
 var crypto = require('crypto')
 var ed = require('ed25519-supercop')
 var ip = require('ip')
@@ -41,7 +42,7 @@ exports.addRandomPeers = function (dht, num) {
 
 exports.fill = function (n, s) {
   var bs = Buffer(s)
-  var b = new Buffer(n)
+  var b = Buffer.allocUnsafe(n)
   for (var i = 0; i < n; i++) {
     b[i] = bs[i % bs.length]
   }

@@ -11,13 +11,14 @@
     "url": "https://github.com/feross/bittorrent-dht/issues"
   },
   "dependencies": {
-    "bencode": "^0.9.0",
+    "bencode": "^0.10.0",
     "buffer-equals": "^1.0.3",
     "debug": "^2.2.0",
     "inherits": "^2.0.1",
     "k-bucket": "^3.0.1",
     "k-rpc": "^4.0.0",
-    "lru": "^2.0.0"
+    "lru": "^2.0.0",
+    "safe-buffer": "^5.0.1"
   },
   "devDependencies": {
     "ed25519-supercop": "^1.0.0",
