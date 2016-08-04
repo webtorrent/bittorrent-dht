@@ -173,6 +173,7 @@ DHT.prototype._put = function (opts, cb) {
     : sha1(bencode.encode(v))
 
   var table = this._tables.get(key.toString('hex'))
+  if (!table && opts.backoff) return this._backoff(key, opts, cb)
   if (!table) return this._preput(key, opts, cb)
 
   var message = {
@@ -198,6 +199,28 @@ DHT.prototype._put = function (opts, cb) {
     if (err) return cb(err, key, n)
     cb(null, key, n)
   })
+
+  return key
+}
+
+DHT.prototype._backoff = function (key, opts, cb) {
+  var self = this
+
+  this._closest(key, {
+    q: 'get',
+    a: {
+      id: this._rpc.id,
+      target: key
+    }
+  }, onreply, function (err, n) {
+    if (err) return cb(err)
+    // check if value isn't greater than 8
+    self.put(opts, cb)
+  })
+
+  function onreply (message) {
+    console.log(message)
+  }
 
   return key
 }
