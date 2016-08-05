@@ -173,7 +173,6 @@ DHT.prototype._put = function (opts, cb) {
     : sha1(bencode.encode(v))
 
   var table = this._tables.get(key.toString('hex'))
-  if (!table && opts.backoff) return this._backoff(key, opts, cb)
   if (!table) return this._preput(key, opts, cb)
 
   var message = {
@@ -203,30 +202,13 @@ DHT.prototype._put = function (opts, cb) {
   return key
 }
 
-DHT.prototype._backoff = function (key, opts, cb) {
-  var self = this
-
-  this._closest(key, {
-    q: 'get',
-    a: {
-      id: this._rpc.id,
-      target: key
-    }
-  }, onreply, function (err, n) {
-    if (err) return cb(err)
-    // check if value isn't greater than 8
-    self.put(opts, cb)
-  })
-
-  function onreply (message) {
-    console.log(message)
-  }
-
-  return key
-}
-
 DHT.prototype._preput = function (key, opts, cb) {
   var self = this
+  var verify = opts.verify || this._verify
+
+  var MAX_COPIES = 8
+  var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
+  var values = {}
 
   this._closest(key, {
     q: 'get',
@@ -234,10 +216,39 @@ DHT.prototype._preput = function (key, opts, cb) {
       id: this._rpc.id,
       target: key
     }
-  }, null, function (err, n) {
+  }, opts.backoff ? onreply : null, done)
+
+  function done(err, n) {
     if (err) return cb(err)
+    if (opts.backoff && values[v] > MAX_COPIES) {
+      self._debug('found %s copies', values[v])
+      return cb(null, key, 0)
+    }
     self.put(opts, cb)
-  })
+  }
+
+  function onreply (message) {
+    var r = message.r
+    if (!r || !r.v) return true
+
+    var isMutable = r.k || r.sig
+
+    if (isMutable) {
+      if (!verify || !r.sig || !r.k) return true
+      if (!verify(r.sig, encodeSigData(r), r.k)) return true
+      if (equals(sha1(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
+        values[r.v] = values[r.v] ? values[r.v] + 1 : 1
+        return true
+      }
+    } else {
+      if (equals(sha1(bencode.encode(r.v)), key)) {
+        values[r.v] = values[r.v] ? values[r.v] + 1 : 1
+        return true
+      }
+    }
+
+    return true
+  }
 
   return key
 }
