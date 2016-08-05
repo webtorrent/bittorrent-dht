@@ -218,10 +218,10 @@ DHT.prototype._preput = function (key, opts, cb) {
     }
   }, opts.backoff ? onreply : null, done)
 
-  function done(err, n) {
+  function done (err, n) {
     if (err) return cb(err)
     if (opts.backoff && values[v] > MAX_COPIES) {
-      self._debug('found %s copies', values[v])
+      self._debug('backing off, found %s copies', values[v])
       return cb(null, key, 0)
     }
     self.put(opts, cb)

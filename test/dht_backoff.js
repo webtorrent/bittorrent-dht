@@ -2,7 +2,6 @@ var common = require('./common')
 var DHT = require('../')
 var ed = require('ed25519-supercop')
 var test = require('tape')
-var crypto = require('crypto')
 
 test('local return number of nodes with item', function (t) {
   t.plan(2)
@@ -60,11 +59,10 @@ test('local return number of nodes with item', function (t) {
 
     dht1.put(opts, function (err, hash) {
       t.error(err)
-      opts.seq++;
+      opts.seq++
       dht2.put(opts, function (err, hash) {
         t.error(err)
       })
-
     })
   }
 })
