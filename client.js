@@ -206,9 +206,9 @@ DHT.prototype._preput = function (key, opts, cb) {
   var self = this
   var verify = opts.verify || this._verify
 
-  var MAX_COPIES = 8
+  var MAX_COPIES = 0
   var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
-  var values = {}
+  var responses = []
 
   this._closest(key, {
     q: 'get',
@@ -220,9 +220,22 @@ DHT.prototype._preput = function (key, opts, cb) {
 
   function done (err, n) {
     if (err) return cb(err)
-    if (opts.backoff && values[v] > MAX_COPIES) {
-      self._debug('backing off, found %s copies', values[v])
-      return cb(null, key, 0)
+    // For mutable items only nodes holding values with the most
+    // recent known sequence number count towards meeting these conditions
+    var max = responses.map(function (r) {
+      return r.seq || 0
+    }).reduce(function (p, v) {
+      return p > v ? p : v
+    }, 0)
+    responses = responses.filter(function (r) {
+      return r.seq !== undefined && r.seq === max
+    })
+    if (opts.backoff &&
+      responses.length > MAX_COPIES && // They find more than 8 copies of the value
+      responses.length === n           // The set of the closest nodes to the target key all have stored the data
+    ) {
+      self._debug('backing off, found %s copies with seq=%s, and visited %s nodes', responses.length, max, n)
+      return cb(null, key, n)
     }
     self.put(opts, cb)
   }
@@ -230,6 +243,7 @@ DHT.prototype._preput = function (key, opts, cb) {
   function onreply (message) {
     var r = message.r
     if (!r || !r.v) return true
+    if (!r.v.equals(v)) return true
 
     var isMutable = r.k || r.sig
 
@@ -237,12 +251,12 @@ DHT.prototype._preput = function (key, opts, cb) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
       if (equals(sha1(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
-        values[r.v] = values[r.v] ? values[r.v] + 1 : 1
+        responses.push(r)
         return true
       }
     } else {
       if (equals(sha1(bencode.encode(r.v)), key)) {
-        values[r.v] = values[r.v] ? values[r.v] + 1 : 1
+        responses.push(r)
         return true
       }
     }
