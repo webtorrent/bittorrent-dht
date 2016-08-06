@@ -220,22 +220,21 @@ DHT.prototype._preput = function (key, opts, cb) {
 
   function done (err, n) {
     if (err) return cb(err)
-    // For mutable items only nodes holding values with the most
-    // recent known sequence number count towards meeting these conditions
-    var max = responses.map(function (r) {
-      return r.seq || 0
-    }).reduce(function (p, v) {
-      return p > v ? p : v
-    }, 0)
-    responses = responses.filter(function (r) {
-      return r.seq !== undefined && r.seq === max
-    })
-    if (opts.backoff &&
-      responses.length > MAX_COPIES && // They find more than 8 copies of the value
-      responses.length === n           // The set of the closest nodes to the target key all have stored the data
-    ) {
-      self._debug('backing off, found %s copies with seq=%s, and visited %s nodes', responses.length, max, n)
-      return cb(null, key, n)
+    if (opts.backoff) {
+      // For mutable items only nodes holding values with the most
+      // recent known sequence number count towards meeting these conditions
+      var max = responses.map(function (r) {
+        return r.seq || 0
+      }).reduce(function (p, v) {
+        return p > v ? p : v
+      }, 0)
+      responses = responses.filter(function (r) {
+        return r.seq !== undefined && r.seq === max
+      })
+      if (responses.length > MAX_COPIES) { // They find more than 8 copies of the value
+        self._debug('backing off, found %s copies with seq=%s, and visited %s nodes', responses.length, max, n)
+        return cb(null, key, n)
+      }
     }
     self.put(opts, cb)
   }
