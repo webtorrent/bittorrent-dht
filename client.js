@@ -206,7 +206,7 @@ DHT.prototype._preput = function (key, opts, cb) {
   var self = this
   var verify = opts.verify || this._verify
 
-  var MAX_COPIES = 0
+  var MAX_COPIES = 8
   var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
   var responses = []
 
