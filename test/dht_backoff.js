@@ -3,66 +3,63 @@ var DHT = require('../')
 var ed = require('ed25519-supercop')
 var test = require('tape')
 
-test('local return number of nodes with item', function (t) {
+test('backoff algorithm', function (t) {
   t.plan(2)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var nodes = 9
+  var dhts = []
+  var pending = 0
 
-  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
-  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
-  var dht3 = new DHT({ bootstrap: false, verify: ed.verify })
-  var dht4 = new DHT({ bootstrap: false, verify: ed.verify })
-
-  t.once('end', function () {
-    dht1.destroy()
-    dht2.destroy()
-    dht3.destroy()
-    dht4.destroy()
-  })
-
-  common.failOnWarningOrError(t, dht1)
-  common.failOnWarningOrError(t, dht2)
-  common.failOnWarningOrError(t, dht3)
-  common.failOnWarningOrError(t, dht4)
-
-  var pending = 4
-  dht1.listen(function () {
-    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
-    dht2.once('node', ready)
-  })
-
-  dht2.listen(function () {
-    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
-    dht1.once('node', ready)
-  })
-
-  dht3.listen(function () {
-    dht4.addNode({ host: '127.0.0.1', port: dht3.address().port })
-    dht4.once('node', ready)
-  })
-
-  dht4.listen(function () {
-    dht3.addNode({ host: '127.0.0.1', port: dht4.address().port })
-    dht3.once('node', ready)
-  })
-
-  function ready () {
-    if (--pending !== 0) return
-    var value = common.fill(500, 'abc')
-    var opts = {
-      k: keypair.publicKey,
-      seq: 0,
-      sign: common.sign(keypair),
-      v: value,
-      backoff: true
+  var dht = new DHT({ bootstrap: false, verify: ed.verify })
+  common.failOnWarningOrError(t, dht)
+  dht.listen(function () {
+    for (var i = 0; i < nodes; i++) {
+      (function (i) {
+        var d = new DHT({ bootstrap: false, verify: ed.verify })
+        dhts.push(d)
+        common.failOnWarningOrError(t, d)
+        pending++
+        d.listen(function () {
+          if (--pending === 0) addNodes()
+        })
+      })(i)
     }
+  })
 
-    dht1.put(opts, function (err, hash) {
-      t.error(err)
-      opts.seq++
-      dht2.put(opts, function (err, hash) {
-        t.error(err)
+  function addNodes() {
+    var pending = dhts.length
+    dhts.forEach(function (d) {
+      d.addNode({ host: '127.0.0.1', port: dht.address().port })
+      d.once('node', function () {
+        if (--pending === 0) ready()
       })
     })
   }
+  t.once('end', function () {
+    dht.destroy()
+    for (var i = 0; i < dhts.length; i++) {
+      dhts[i].destroy()
+    }
+  })
+
+  function ready() {
+    var keypair = ed.createKeyPair(ed.createSeed())
+    var value = common.fill(500, 'abc')
+    var opts = {
+      k: keypair.publicKey,
+      sign: common.sign(keypair),
+      seq: 0,
+      v: value,
+      backoff: true
+    }
+    dht.put(opts, function (err, hash) {
+      t.error(err)
+      opts.seq++
+      dht.put(opts, function (err, hash) {
+        t.error(err)
+      })
+    })
+
+  }
+
 })
