@@ -174,6 +174,7 @@ DHT.prototype._put = function (opts, cb) {
 
   var table = this._tables.get(key.toString('hex'))
   if (!table) return this._preput(key, opts, cb)
+  if (opts.backoff && this._backoff(opts, table)) return cb(null, key)
 
   var message = {
     q: 'put',
@@ -202,13 +203,39 @@ DHT.prototype._put = function (opts, cb) {
   return key
 }
 
-DHT.prototype._preput = function (key, opts, cb) {
+DHT.prototype._backoff = function (opts, table) {
   var self = this
-  var verify = opts.verify || this._verify
+  var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
 
   var MAX_COPIES = 8
-  var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
-  var responses = []
+
+  // For mutable items only nodes holding values with the most
+  // recent known sequence number count towards meeting these conditions
+  var copies = table.toArray()
+    .filter(function (r) {
+      return r.v && r.v.equals(v) // only if it equals input
+    })
+
+  var max = copies.map(function (r) {
+    return r.seq || 0
+  }).reduce(function (p, c) {
+    return p > c ? p : c
+  }, 0)
+
+  copies = copies.filter(function (r) {
+    return r.seq !== undefined && r.seq === max
+  })
+
+  if (copies.length > MAX_COPIES) { // They find more than 8 copies of the value
+    self._debug('backing off, found %s copies with seq=%s', copies.length, max)
+    return true
+  }
+
+  return false
+}
+
+DHT.prototype._preput = function (key, opts, cb) {
+  var self = this
 
   this._closest(key, {
     q: 'get',
@@ -216,52 +243,10 @@ DHT.prototype._preput = function (key, opts, cb) {
       id: this._rpc.id,
       target: key
     }
-  }, opts.backoff ? onreply : null, done)
-
-  function done (err, n) {
+  }, null, function (err, n) {
     if (err) return cb(err)
-    if (opts.backoff) {
-      // For mutable items only nodes holding values with the most
-      // recent known sequence number count towards meeting these conditions
-      var max = responses.map(function (r) {
-        return r.seq || 0
-      }).reduce(function (p, v) {
-        return p > v ? p : v
-      }, 0)
-      responses = responses.filter(function (r) {
-        return r.seq !== undefined && r.seq === max
-      })
-      if (responses.length > MAX_COPIES) { // They find more than 8 copies of the value
-        self._debug('backing off, found %s copies with seq=%s, and visited %s nodes', responses.length, max, n)
-        return cb(null, key, n)
-      }
-    }
     self.put(opts, cb)
-  }
-
-  function onreply (message) {
-    var r = message.r
-    if (!r || !r.v) return true
-    if (!r.v.equals(v)) return true
-
-    var isMutable = r.k || r.sig
-
-    if (isMutable) {
-      if (!verify || !r.sig || !r.k) return true
-      if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(sha1(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
-        responses.push(r)
-        return true
-      }
-    } else {
-      if (equals(sha1(bencode.encode(r.v)), key)) {
-        responses.push(r)
-        return true
-      }
-    }
-
-    return true
-  }
+  })
 
   return key
 }
@@ -588,12 +573,17 @@ DHT.prototype._closest = function (target, message, onmessage, cb) {
 
     if (message.r.token && message.r.id && Buffer.isBuffer(message.r.id) && message.r.id.length === 20) {
       self._debug('found node %s (target: %s)', message.r.id, target)
-      table.add({
+      var o = {
         id: message.r.id,
         host: node.host || node.address,
         port: node.port,
         token: message.r.token
-      })
+      }
+      if (message.r.v) {
+        o.v = message.r.v
+        o.seq = message.r.seq
+      }
+      table.add(o)
     }
 
     if (!onmessage) return true
