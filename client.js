@@ -230,7 +230,8 @@ DHT.prototype._backoff = function (opts, table) {
 
   var copies = table.toArray()
     .filter(function (r) {
-      return r.v && r.v.equals(v) // only if it equals input
+      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
+      return val && val.equals(v) // only if it equals input
     })
   copies = filterMaxSeq(copies)
 
@@ -238,7 +239,8 @@ DHT.prototype._backoff = function (opts, table) {
   // all have indicated they have the data, either by returning it or through the seq number.
   var closest = table.closest(key)
     .filter(function (r) {
-      return r.v && r.v.equals(v) // only if it equals input
+      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
+      return val && val.equals(v) // only if it equals input
     })
   closest = filterMaxSeq(closest)
 
