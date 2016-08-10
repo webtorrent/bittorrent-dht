@@ -225,23 +225,20 @@ DHT.prototype._backoff = function (opts, table) {
     arr = arr.filter(function (r) {
       return r.seq !== undefined && r.seq === max
     })
+    .filter(function (r) {
+      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
+      val = Buffer.isBuffer(val) ? val : bencode.encode(val)
+      return val && val.equals(v) // only if it equals input
+    })
     return arr
   }
 
   var copies = table.toArray()
-    .filter(function (r) {
-      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
-      return val && val.equals(v) // only if it equals input
-    })
   copies = filterMaxSeq(copies)
 
   // The 8 nodes closest to the target key which are eligible for a store
   // all have indicated they have the data, either by returning it or through the seq number.
   var closest = table.closest(key)
-    .filter(function (r) {
-      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
-      return val && val.equals(v) // only if it equals input
-    })
   closest = filterMaxSeq(closest)
 
   if (copies.length > MAX_COPIES && // They find more than 8 copies of the value
