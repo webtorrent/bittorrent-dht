@@ -205,29 +205,46 @@ DHT.prototype._put = function (opts, cb) {
 
 DHT.prototype._backoff = function (opts, table) {
   var self = this
+
   var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
+  var isMutable = !!opts.k
+  var key = isMutable
+    ? sha1(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
+    : sha1(bencode.encode(v))
 
   var MAX_COPIES = 8
 
   // For mutable items only nodes holding values with the most
   // recent known sequence number count towards meeting these conditions
+  function filterMaxSeq (arr) {
+    var max = arr.map(function (r) {
+      return r.seq || 0
+    }).reduce(function (p, c) {
+      return p > c ? p : c
+    }, 0)
+    arr = arr.filter(function (r) {
+      return r.seq !== undefined && r.seq === max
+    })
+    return arr
+  }
+
   var copies = table.toArray()
     .filter(function (r) {
       return r.v && r.v.equals(v) // only if it equals input
     })
+  copies = filterMaxSeq(copies)
 
-  var max = copies.map(function (r) {
-    return r.seq || 0
-  }).reduce(function (p, c) {
-    return p > c ? p : c
-  }, 0)
+  // The 8 nodes closest to the target key which are eligible for a store
+  // all have indicated they have the data, either by returning it or through the seq number.
+  var closest = table.closest(key)
+    .filter(function (r) {
+      return r.v && r.v.equals(v) // only if it equals input
+    })
+  closest = filterMaxSeq(closest)
 
-  copies = copies.filter(function (r) {
-    return r.seq !== undefined && r.seq === max
-  })
-
-  if (copies.length > MAX_COPIES) { // They find more than 8 copies of the value
-    self._debug('backing off, found %s copies with seq=%s', copies.length, max)
+  if (copies.length > MAX_COPIES && // They find more than 8 copies of the value
+    closest.length > MAX_COPIES) {
+    self._debug('backing off, found %s copies AND %s closest nodes holding data', copies.length, closest.length)
     return true
   }
 
