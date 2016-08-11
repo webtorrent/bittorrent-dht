@@ -227,8 +227,7 @@ DHT.prototype._backoff = function (opts, table) {
     })
     .filter(function (r) {
       var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
-      val = Buffer.isBuffer(val) ? val : bencode.encode(val)
-      return val && val.equals(v) // only if it equals input
+      return val && equals(v, val) // only if it equals input
     })
     return arr
   }
