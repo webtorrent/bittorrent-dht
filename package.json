@@ -15,7 +15,7 @@
     "buffer-equals": "^1.0.3",
     "debug": "^2.2.0",
     "inherits": "^2.0.1",
-    "k-bucket": "3.0.2",
+    "k-bucket": "^3.0.1",
     "k-rpc": "^4.0.0",
     "lru": "^3.1.0",
     "safe-buffer": "^5.0.1"
