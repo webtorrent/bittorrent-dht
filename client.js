@@ -463,6 +463,8 @@ DHT.prototype._onput = function (query, peer) {
   if (!a) return
   var v = query.a.v
   if (!v) return
+  var id = query.a.id
+  if (!id) return
 
   var token = a.token
   if (!token) return
@@ -492,9 +494,9 @@ DHT.prototype._onput = function (query, peer) {
     if (prev && typeof prev.seq === 'number' && !(a.seq > prev.seq)) {
       return this._rpc.error(peer, query, [302, 'sequence number less than current'])
     }
-    this._values.set(keyHex, {v: v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq})
+    this._values.set(keyHex, {v: v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id: id})
   } else {
-    this._values.set(keyHex, {v: v})
+    this._values.set(keyHex, {v: v, id: id})
   }
 
   this._rpc.response(peer, query, {id: this._rpc.id})
