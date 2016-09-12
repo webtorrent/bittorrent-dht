@@ -46,39 +46,63 @@ test('dht.toJSON: re-use dht nodes by calling dht.addNode', function (t) {
 })
 
 test('dht.toJSON: BEP44 immutable value', function (t) {
-  t.plan(5)
+  t.plan(10)
 
-  var dht = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false })
+  var dht2 = new DHT({ bootstrap: false })
+
   t.once('end', function () {
-    dht.destroy()
+    dht1.destroy()
+    dht2.destroy()
   })
-  common.failOnWarningOrError(t, dht)
+  common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
 
-  dht.on('ready', function () {
-    var value = common.fill(500, 'abc')
-    dht.put({ v: value }, function (_, hash) {
-      var json = dht.toJSON()
-      t.equal(json.values[hash.toString('hex')].v, value.toString('hex'))
-      t.equal(json.values[hash.toString('hex')].id, dht.nodeId.toString('hex'))
-      t.equal(json.values[hash.toString('hex')].seq, undefined)
-      t.equal(json.values[hash.toString('hex')].sig, undefined)
-      t.equal(json.values[hash.toString('hex')].k, undefined)
-    })
+  dht1.listen(function () {
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.once('node', ready)
   })
+
+  function ready () {
+    var value = common.fill(500, 'abc')
+    dht1.put(value, function (_, hash) {
+      var json1 = dht1.toJSON()
+      t.equal(json1.values[hash.toString('hex')].v, value.toString('hex'))
+      t.equal(json1.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))
+      t.equal(json1.values[hash.toString('hex')].seq, undefined)
+      t.equal(json1.values[hash.toString('hex')].sig, undefined)
+      t.equal(json1.values[hash.toString('hex')].k, undefined)
+
+      var json2 = dht2.toJSON()
+      t.equal(json2.values[hash.toString('hex')].v, value.toString('hex'))
+      t.equal(json2.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))
+      t.equal(json2.values[hash.toString('hex')].seq, undefined)
+      t.equal(json2.values[hash.toString('hex')].sig, undefined)
+      t.equal(json2.values[hash.toString('hex')].k, undefined)
+    })
+  }
 })
 
 test('dht.toJSON: BEP44 mutable value', function (t) {
-  t.plan(5)
+  t.plan(10)
 
   var keypair = ed.createKeyPair(ed.createSeed())
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
-  var dht = new DHT({ bootstrap: false, verify: ed.verify })
   t.once('end', function () {
-    dht.destroy()
+    dht1.destroy()
+    dht2.destroy()
   })
-  common.failOnWarningOrError(t, dht)
+  common.failOnWarningOrError(t, dht1)
+  common.failOnWarningOrError(t, dht2)
 
-  dht.on('ready', function () {
+  dht1.listen(function () {
+    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.once('node', ready)
+  })
+
+  function ready () {
     var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
@@ -87,13 +111,20 @@ test('dht.toJSON: BEP44 mutable value', function (t) {
       v: value
     }
 
-    dht.put(opts, function (_, hash) {
-      var json = dht.toJSON()
-      t.equal(json.values[hash.toString('hex')].v, value.toString('hex'))
-      t.equal(json.values[hash.toString('hex')].id, dht.nodeId.toString('hex'))
-      t.equal(json.values[hash.toString('hex')].seq, 0)
-      t.equal(typeof json.values[hash.toString('hex')].sig, 'string')
-      t.equal(typeof json.values[hash.toString('hex')].k, 'string')
+    dht1.put(opts, function (_, hash) {
+      var json1 = dht1.toJSON()
+      t.equal(json1.values[hash.toString('hex')].v, value.toString('hex'))
+      t.equal(json1.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))
+      t.equal(json1.values[hash.toString('hex')].seq, 0)
+      t.equal(typeof json1.values[hash.toString('hex')].sig, 'string')
+      t.equal(typeof json1.values[hash.toString('hex')].k, 'string')
+
+      var json2 = dht2.toJSON()
+      t.equal(json2.values[hash.toString('hex')].v, value.toString('hex'))
+      t.equal(json2.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))
+      t.equal(json2.values[hash.toString('hex')].seq, 0)
+      t.equal(typeof json2.values[hash.toString('hex')].sig, 'string')
+      t.equal(typeof json2.values[hash.toString('hex')].k, 'string')
     })
-  })
+  }
 })
