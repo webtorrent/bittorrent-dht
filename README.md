@@ -53,12 +53,13 @@ dht.listen(20000, function () {
   console.log('now listening')
 })
 
-// find peers for the given torrent info hash
-dht.lookup(parsed.infoHash)
-
 dht.on('peer', function (peer, infoHash, from) {
   console.log('found potential peer ' + peer.host + ':' + peer.port + ' through ' + from.address + ':' + from.port)
 })
+
+// find peers for the given torrent info hash
+dht.lookup(parsed.infoHash)
+
 ```
 
 ### api
