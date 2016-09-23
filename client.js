@@ -24,6 +24,7 @@ function DHT (opts) {
   this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
   this._values = LRU(opts.maxValues || 1000)
   this._peers = new PeerStore(opts.maxPeers || 10000)
+  this.ipv6 = !!opts.ipv6
 
   this._secrets = null
   this._rpc = krpc(opts)
@@ -332,7 +333,7 @@ DHT.prototype.lookup = function (infoHash, cb) {
 
   function emit (values, from) {
     if (!values) values = self._peers.get(infoHash.toString('hex'))
-    var peers = decodePeers(values)
+    var peers = self._decodePeers(values)
     for (var i = 0; i < peers.length; i++) {
       self.emit('peer', peers[i], infoHash, from || null)
     }
@@ -344,6 +345,33 @@ DHT.prototype.lookup = function (infoHash, cb) {
   }
 
   return function abort () { aborted = true }
+}
+
+DHT.prototype._decodePeers = function (buf) {
+  var peers = []
+
+  // According to BEP-0032, we need to be able to handle 'hybrid' values
+  // lists (lists that contain both IPv4 and IPV6 addresses). However, since they're
+  // not supposed to be sent, we just ignore items of the wrong type
+  try {
+    for (var i = 0; i < buf.length; i++) {
+      var size = this.ipv6 ? 18 : 6
+      if (buf[i].length !== size) {
+        this._debug("Received invalid peer with length %s (presumably an %s peer) when we're using %s. Skipping", buf[i].length, this.ipv6 ? 'IPv4' : 'IPv6', this.ipv6 ? 'IPv6' : 'IPv4')
+        continue
+      }
+      var port = buf[i].readUInt16BE(this.ipv6 ? 16 : 4)
+      if (!port) continue
+      peers.push({
+        host: this._rpc._parseIP(buf[i], 0),
+        port: port
+      })
+    }
+  } catch (err) {
+    // do nothing
+  }
+
+  return peers
 }
 
 DHT.prototype.address = function () {
@@ -443,8 +471,16 @@ DHT.prototype._onannouncepeer = function (query, peer) {
 }
 
 DHT.prototype._addPeer = function (peer, infoHash, from) {
-  this._peers.add(infoHash.toString('hex'), encodePeer(peer.host, peer.port))
+  this._peers.add(infoHash.toString('hex'), this._encodePeer(peer.host, peer.port))
   this.emit('announce', peer, infoHash, from)
+}
+
+DHT.prototype._encodePeer = function (host, port) {
+  var buf = Buffer.alloc(this.ipv6 ? (16 + 2) : (4 + 2))
+
+  var offset = this._rpc._encodeIP(host, buf, 0, this.ipv6)
+  buf.writeUInt16BE(port, offset)
+  return buf
 }
 
 DHT.prototype._onget = function (query, peer) {
@@ -611,37 +647,6 @@ function createGetResponse (id, token, value) {
     if (typeof value.seq === 'number') r.seq = value.seq
   }
   return r
-}
-
-function encodePeer (host, port) {
-  var buf = Buffer.allocUnsafe(6)
-  var ip = host.split('.')
-  for (var i = 0; i < 4; i++) buf[i] = parseInt(ip[i] || 0, 10)
-  buf.writeUInt16BE(port, 4)
-  return buf
-}
-
-function decodePeers (buf) {
-  var peers = []
-
-  try {
-    for (var i = 0; i < buf.length; i++) {
-      var port = buf[i].readUInt16BE(4)
-      if (!port) continue
-      peers.push({
-        host: parseIp(buf[i], 0),
-        port: port
-      })
-    }
-  } catch (err) {
-    // do nothing
-  }
-
-  return peers
-}
-
-function parseIp (buf, offset) {
-  return buf[offset++] + '.' + buf[offset++] + '.' + buf[offset++] + '.' + buf[offset++]
 }
 
 function encodeSigData (msg) {

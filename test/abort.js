@@ -2,12 +2,13 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('explicitly set nodeId', function (t) {
+common.wrapTest(test, 'explicitly set nodeId', function genericTest (t, ipv6) {
   var nodeId = common.randomId()
 
   var dht = new DHT({
     nodeId: nodeId,
-    bootstrap: false
+    bootstrap: false,
+    ipv6: ipv6
   })
 
   common.failOnWarningOrError(t, dht)

@@ -3,13 +3,14 @@ var DHT = require('../')
 var test = require('tape')
 
 // https://github.com/feross/bittorrent-dht/pull/36
-test('bootstrap and listen to custom port', function (t) {
+common.wrapTest(test, 'bootstrap and listen to custom port', function (t, ipv6) {
   t.plan(4)
 
-  var dht = new DHT({ bootstrap: [ '1.2.3.4:1000' ] })
+  var dht = new DHT({ ipv6: ipv6, bootstrap: [ ipv6 ? '[::2]:1000' : '1.2.3.4:1000' ] })
   common.failOnWarningOrError(t, dht)
 
   var port = Math.floor(Math.random() * 60000) + 1024
+  self = this
 
   t.ok(!dht.listening)
   dht.listen(port)

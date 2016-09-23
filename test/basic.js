@@ -2,11 +2,12 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('explicitly set nodeId', function (t) {
+common.wrapTest(test, 'explicitly set nodeId', function (t, ipv6) {
   var nodeId = common.randomId()
 
   var dht = new DHT({
     nodeId: nodeId,
+    ipv6: ipv6,
     bootstrap: false
   })
 
@@ -17,29 +18,29 @@ test('explicitly set nodeId', function (t) {
   t.end()
 })
 
-test('call `addNode` with nodeId argument', function (t) {
+common.wrapTest(test, 'call `addNode` with nodeId argument', function (t, ipv6) {
   t.plan(3)
 
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   var nodeId = common.randomId()
 
   dht.on('node', function (node) {
-    t.equal(node.host, '127.0.0.1')
+    t.equal(node.host, common.localHost(ipv6))
     t.equal(node.port, 9999)
     t.deepEqual(node.id, nodeId)
     dht.destroy()
   })
 
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  dht.addNode({host: common.localHost(ipv6), port: 9999, id: nodeId})
 })
 
-test('call `addNode` without nodeId argument', function (t) {
+common.wrapTest(test, 'call `addNode` without nodeId argument', function (t, ipv6) {
   t.plan(3)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
@@ -48,10 +49,10 @@ test('call `addNode` without nodeId argument', function (t) {
     var port = dht1.address().port
 
     // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
-    dht2.addNode({host: '127.0.0.1', port: port})
+    dht2.addNode({host: common.localHost(ipv6), port: port})
 
     dht2.on('node', function (node) {
-      t.equal(node.host, '127.0.0.1')
+      t.equal(node.host, common.localHost(ipv6))
       t.equal(node.port, port)
       t.deepEqual(node.id, dht1.nodeId)
       dht1.destroy()
@@ -60,15 +61,15 @@ test('call `addNode` without nodeId argument', function (t) {
   })
 })
 
-test('call `addNode` without nodeId argument, and invalid addr', function (t) {
+common.wrapTest(test, 'call `addNode` without nodeId argument, and invalid addr', function (t, ipv6) {
   t.plan(1)
 
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
   // If the peer DOES NOT RESPOND, the will not be added to the routing table.
-  dht.addNode({host: '127.0.0.1', port: 9999})
+  dht.addNode({host: common.localHost(ipv6), port: 9999})
 
   dht.on('node', function () {
     // No 'node' event should be emitted if the added node does not respond to ping
@@ -81,10 +82,10 @@ test('call `addNode` without nodeId argument, and invalid addr', function (t) {
   }, 2000)
 })
 
-test('`addNode` only emits events for new nodes', function (t) {
+common.wrapTest(test, '`addNode` only emits events for new nodes', function (t, ipv6) {
   t.plan(1)
 
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   dht.on('node', function () {
@@ -92,9 +93,10 @@ test('`addNode` only emits events for new nodes', function (t) {
   })
 
   var nodeId = common.randomId()
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  var addr = common.localHost(ipv6)
+  dht.addNode({host: addr, port: 9999, id: nodeId})
+  dht.addNode({host: addr, port: 9999, id: nodeId})
+  dht.addNode({host: addr, port: 9999, id: nodeId})
 
   var togo = 1
   setTimeout(function () {
@@ -103,15 +105,15 @@ test('`addNode` only emits events for new nodes', function (t) {
   }, 100)
 })
 
-test('send message while binding (listen)', function (t) {
+common.wrapTest(test, 'send message while binding (listen)', function (t, ipv6) {
   t.plan(1)
 
-  var a = new DHT({ bootstrap: false })
+  var a = new DHT({ bootstrap: false, ipv6: ipv6 })
   a.listen(function () {
     var port = a.address().port
-    var b = new DHT({ bootstrap: false })
+    var b = new DHT({ bootstrap: false, ipv6: ipv6 })
     b.listen()
-    b._sendPing({host: '127.0.0.1', port: port}, function (err) {
+    b._sendPing({host: common.localHost(ipv6), port: port}, function (err) {
       t.error(err)
       a.destroy()
       b.destroy()

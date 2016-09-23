@@ -2,10 +2,10 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('local immutable put/get', function (t) {
+common.wrapTest(test, 'local immutable put/get', function (t, ipv6) {
   t.plan(3)
 
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   t.once('end', function () {
     dht.destroy()
   })
@@ -28,13 +28,13 @@ test('local immutable put/get', function (t) {
   })
 })
 
-test('delegated put', function (t) {
+common.wrapTest(test, 'delegated put', function (t, ipv6) {
   t.plan(5)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
-  var dht3 = new DHT({ bootstrap: false })
-  var dht4 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht3 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht4 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   t.once('end', function () {
     dht1.destroy()
@@ -48,24 +48,26 @@ test('delegated put', function (t) {
   common.failOnWarningOrError(t, dht3)
   common.failOnWarningOrError(t, dht4)
 
+  var host = common.localHost(ipv6)
+
   var pending = 4
   dht1.listen(function () {
-    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.addNode({ host: host, port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
+    dht1.addNode({ host: host, port: dht2.address().port })
     dht1.once('node', ready)
   })
 
   dht3.listen(function () {
-    dht4.addNode({ host: '127.0.0.1', port: dht3.address().port })
+    dht4.addNode({ host: host, port: dht3.address().port })
     dht4.once('node', ready)
   })
 
   dht4.listen(function () {
-    dht3.addNode({ host: '127.0.0.1', port: dht4.address().port })
+    dht3.addNode({ host: host, port: dht4.address().port })
     dht3.once('node', ready)
   })
 
@@ -95,11 +97,11 @@ test('delegated put', function (t) {
   }
 })
 
-test('multi-party immutable put/get', function (t) {
+common.wrapTest(test, 'multi-party immutable put/get', function (t, ipv6) {
   t.plan(4)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
   t.once('end', function () {
     dht1.destroy()
     dht2.destroy()
@@ -110,11 +112,11 @@ test('multi-party immutable put/get', function (t) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.addNode({ host: common.localHost(ipv6), port: dht1.address().port })
     dht2.once('node', ready)
   })
   dht2.listen(function () {
-    dht1.addNode({ host: '127.0.0.1', port: dht2.address().port })
+    dht1.addNode({ host: common.localHost(ipv6), port: dht2.address().port })
     dht1.once('node', ready)
   })
 
