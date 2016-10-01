@@ -400,6 +400,8 @@ DHT.prototype._onfindnode = function (query, peer) {
   var target = query.a.target
   if (!target) return this._rpc.error(peer, query, [203, '`find_node` missing required `a.target` field'])
 
+  this.emit('find_node', target)
+
   var nodes = this._rpc.nodes.closest(target)
   this._rpc.response(peer, query, {id: this._rpc.id}, nodes)
 }
@@ -408,6 +410,8 @@ DHT.prototype._ongetpeers = function (query, peer) {
   var host = peer.address || peer.host
   var infoHash = query.a.info_hash
   if (!infoHash) return this._rpc.error(peer, query, [203, '`get_peers` missing required `a.info_hash` field'])
+
+  this.emit('get_peers', infoHash)
 
   var r = {id: this._rpc.id, token: this._generateToken(host)}
   var peers = this._peers.get(infoHash.toString('hex'))
@@ -432,6 +436,8 @@ DHT.prototype._onannouncepeer = function (query, peer) {
     return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
   }
 
+  this.emit('announce_peer', infoHash, {host: host, port: peer.port})
+
   this._addPeer({host: host, port: port}, infoHash, {host: host, port: peer.port})
   this._rpc.response(peer, query, {id: this._rpc.id})
 }
@@ -447,6 +453,8 @@ DHT.prototype._onget = function (query, peer) {
   if (!target) return
   var token = this._generateToken(host)
   var value = this._values.get(target.toString('hex'))
+
+  this.emit('get', target, value)
 
   if (!value) {
     var nodes = this._rpc.nodes.closest(target)
@@ -483,6 +491,8 @@ DHT.prototype._onput = function (query, peer) {
     ? sha1(a.salt ? Buffer.concat([a.salt, a.k]) : a.k)
     : sha1(bencode.encode(v))
   var keyHex = key.toString('hex')
+
+  this.emit('put', key, v)
 
   if (isMutable) {
     if (!this._verify) return this._rpc.error(peer, query, [400, 'verification not supported'])
