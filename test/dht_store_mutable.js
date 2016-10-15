@@ -169,6 +169,91 @@ common.wrapTest(test, 'delegated put', function (t, ipv6) {
   }
 })*/
 
+test('mutable update mesh', function (t) {
+  t.plan(12)
+  /*
+   0 <-> 1 <-> 2
+   ^     ^
+   |     |
+   v     v
+   3 <-> 4 <-> 5
+   ^           ^
+   |           |
+   v           v
+   6 <-> 7 <-> 8
+
+   tests: 0 to 8, 4 to 6, 1 to 5
+   */
+  var edges = [
+    [0, 1], [1, 2], [1, 3], [2, 4], [3, 4], [3, 6],
+    [4, 5], [5, 8], [6, 7], [7, 8]
+  ]
+
+  var dht = []
+  var pending = 0
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      var d = new DHT({ bootstrap: false, verify: ed.verify })
+      dht.push(d)
+      common.failOnWarningOrError(t, d)
+      pending++
+      d.listen(function () {
+        if (--pending === 0) addEdges()
+      })
+    })(i)
+  }
+
+  function addEdges () {
+    var pending = edges.length
+    for (var i = 0; i < edges.length; i++) {
+      (function (e) {
+        dht[e[1]].addNode({ host: '127.0.0.1', port: dht[e[0]].address().port })
+        dht[e[1]].once('node', function () {
+          if (--pending === 0) ready()
+        })
+      })(edges[i])
+    }
+  }
+
+  t.once('end', function () {
+    for (var i = 0; i < dht.length; i++) {
+      dht[i].destroy()
+    }
+  })
+
+  function ready () {
+    send(0, 8, common.fill(100, 'abc'))
+    send(4, 6, common.fill(20, 'xyz'))
+    send(1, 5, common.fill(500, 'whatever'))
+  }
+
+  function send (srci, dsti, value) {
+    var src = dht[srci]
+    var dst = dht[dsti]
+    var keypair = ed.createKeyPair(ed.createSeed())
+    var opts = {
+      k: keypair.publicKey,
+      sign: common.sign(keypair),
+      seq: 0,
+      v: value
+    }
+
+    var xhash = crypto.createHash('sha1').update(opts.k).digest()
+    src.put(opts, function (err, hash) {
+      t.error(err)
+      t.equal(hash.toString('hex'), xhash.toString('hex'))
+
+      dst.get(xhash, function (err, res) {
+        t.ifError(err)
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
+                'from ' + srci + ' to ' + dsti
+        )
+      })
+    })
+  }
+})
+/*
+
 test('multiparty mutable put/get sequence', function (t) {
   t.plan(12)
 
@@ -408,89 +493,7 @@ test('transitive mutable update', function (t) {
   }
 })
 
-test('mutable update mesh', function (t) {
-  t.plan(12)
-  /*
-    0 <-> 1 <-> 2
-          ^     ^
-          |     |
-          v     v
-          3 <-> 4 <-> 5
-          ^           ^
-          |           |
-          v           v
-          6 <-> 7 <-> 8
 
-    tests: 0 to 8, 4 to 6, 1 to 5
-  */
-  var edges = [
-    [0, 1], [1, 2], [1, 3], [2, 4], [3, 4], [3, 6],
-    [4, 5], [5, 8], [6, 7], [7, 8]
-  ]
-
-  var dht = []
-  var pending = 0
-  for (var i = 0; i < 9; i++) {
-    (function (i) {
-      var d = new DHT({ bootstrap: false, verify: ed.verify })
-      dht.push(d)
-      common.failOnWarningOrError(t, d)
-      pending++
-      d.listen(function () {
-        if (--pending === 0) addEdges()
-      })
-    })(i)
-  }
-
-  function addEdges () {
-    var pending = edges.length
-    for (var i = 0; i < edges.length; i++) {
-      (function (e) {
-        dht[e[1]].addNode({ host: '127.0.0.1', port: dht[e[0]].address().port })
-        dht[e[1]].once('node', function () {
-          if (--pending === 0) ready()
-        })
-      })(edges[i])
-    }
-  }
-
-  t.once('end', function () {
-    for (var i = 0; i < dht.length; i++) {
-      dht[i].destroy()
-    }
-  })
-
-  function ready () {
-    send(0, 8, common.fill(100, 'abc'))
-    send(4, 6, common.fill(20, 'xyz'))
-    send(1, 5, common.fill(500, 'whatever'))
-  }
-
-  function send (srci, dsti, value) {
-    var src = dht[srci]
-    var dst = dht[dsti]
-    var keypair = ed.createKeyPair(ed.createSeed())
-    var opts = {
-      k: keypair.publicKey,
-      sign: common.sign(keypair),
-      seq: 0,
-      v: value
-    }
-
-    var xhash = crypto.createHash('sha1').update(opts.k).digest()
-    src.put(opts, function (err, hash) {
-      t.error(err)
-      t.equal(hash.toString('hex'), xhash.toString('hex'))
-
-      dst.get(xhash, function (err, res) {
-        t.ifError(err)
-        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
-          'from ' + srci + ' to ' + dsti
-        )
-      })
-    })
-  }
-})
 
 test('invalid sequence', function (t) {
   t.plan(5)
@@ -609,3 +612,4 @@ test('valid sequence', function (t) {
     }
   })
 })
+*/

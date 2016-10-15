@@ -2,22 +2,24 @@ var Buffer = require('safe-buffer').Buffer
 var crypto = require('crypto')
 var ed = require('ed25519-supercop')
 var ip = require('ip')
+var Address6 = require('ip-address').Address6;
 
 exports.failOnWarningOrError = function (t, dht) {
   dht.on('warning', function (err) { t.fail(err) })
   dht.on('error', function (err) { t.fail(err) })
 }
 
-exports.randomHost = function () {
-  return ip.toString(crypto.randomBytes(4))
+exports.randomHost = function (ipv6) {
+  // We only use 15 random bits for the IPv6 because of a bug with ip-addr
+  return ipv6 ? Address6.fromByteArray(crypto.randomBytes(15)).correctForm() : ip.toString(crypto.randomBytes(4))
 }
 
 exports.randomPort = function () {
   return crypto.randomBytes(2).readUInt16LE(0)
 }
 
-exports.randomAddr = function () {
-  return { host: exports.randomHost(), port: exports.randomPort() }
+exports.randomAddr = function (ipv6) {
+  return { host: exports.randomHost(ipv6), port: exports.randomPort() }
 }
 
 exports.randomId = function () {
@@ -34,9 +36,9 @@ exports.addRandomNodes = function (dht, num) {
   }
 }
 
-exports.addRandomPeers = function (dht, num) {
+exports.addRandomPeers = function (dht, num, ipv6) {
   for (var i = 0; i < num; i++) {
-    dht._addPeer(exports.randomAddr(), exports.randomId())
+    dht._addPeer(exports.randomAddr(ipv6), exports.randomId())
   }
 }
 

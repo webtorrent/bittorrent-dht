@@ -2,8 +2,8 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('`node` event fires for each added node (100x)', function (t) {
-  var dht = new DHT({ bootstrap: false })
+common.wrapTest(test, '`node` event fires for each added node (100x)', function (t, ipv6) {
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   var numNodes = 0
@@ -19,8 +19,8 @@ test('`node` event fires for each added node (100x)', function (t) {
   common.addRandomNodes(dht, 100)
 })
 
-test('`node` event fires for each added node (10000x)', function (t) {
-  var dht = new DHT({ bootstrap: false })
+common.wrapTest(test, '`node` event fires for each added node (10000x)', function (t, ipv6) {
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   var numNodes = 0
@@ -36,8 +36,8 @@ test('`node` event fires for each added node (10000x)', function (t) {
   common.addRandomNodes(dht, 10000)
 })
 
-test('`announce` event fires for each added peer (100x)', function (t) {
-  var dht = new DHT({ bootstrap: false })
+common.wrapTest(test, '`announce` event fires for each added peer (100x)', function (t, ipv6) {
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   var numPeers = 0
@@ -50,11 +50,11 @@ test('`announce` event fires for each added peer (100x)', function (t) {
     }
   })
 
-  common.addRandomPeers(dht, 100)
+  common.addRandomPeers(dht, 100, ipv6)
 })
 
-test('`announce` event fires for each added peer (10000x)', function (t) {
-  var dht = new DHT({ bootstrap: false })
+common.wrapTest(test, '`announce` event fires for each added peer (10000x)', function (t, ipv6) {
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht)
 
   var numPeers = 0
@@ -67,12 +67,12 @@ test('`announce` event fires for each added peer (10000x)', function (t) {
     }
   })
 
-  common.addRandomPeers(dht, 10000)
+  common.addRandomPeers(dht, 10000, ipv6)
 })
 
-test('`listening` event fires', function (t) {
+common.wrapTest(test, '`listening` event fires', function (t, ipv6) {
   t.plan(2)
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht)
 
@@ -85,9 +85,9 @@ test('`listening` event fires', function (t) {
   })
 })
 
-test('`ready` event fires when bootstrap === false', function (t) {
+common.wrapTest(test, '`ready` event fires when bootstrap === false', function (t, ipv6) {
   t.plan(2)
-  var dht = new DHT({ bootstrap: false })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht)
 
@@ -98,11 +98,11 @@ test('`ready` event fires when bootstrap === false', function (t) {
   })
 })
 
-test('`ready` event fires when there are K nodes', function (t) {
+common.wrapTest(test, '`ready` event fires when there are K nodes', function (t, ipv6) {
   t.plan(6)
 
   // dht1 will simulate an existing node (with a populated routing table)
-  var dht1 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht1)
 
   dht1.on('ready', function () {
@@ -117,7 +117,7 @@ test('`ready` event fires when there are K nodes', function (t) {
       t.pass('dht1 listening on port ' + port)
 
       // dht2 will get all 3 nodes from dht1 and should also emit a `ready` event
-      var dht2 = new DHT({ bootstrap: '127.0.0.1:' + port })
+      var dht2 = new DHT({ bootstrap: common.localHost(ipv6) + ':' +  port })
       common.failOnWarningOrError(t, dht2)
 
       dht2.on('ready', function () {

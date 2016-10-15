@@ -5,7 +5,7 @@ var crypto = require('crypto')
 var ed = require('ed25519-supercop')
 
 // test vectors from http://bittorrent.org/beps/bep_0044.html
-test('dht store test vectors', function (t) {
+common.wrapTest(test, 'dht store test vectors', function (t, ipv6) {
   t.plan(6)
 
   var pub = Buffer(
@@ -19,7 +19,7 @@ test('dht store test vectors', function (t) {
   )
   var value = 'Hello World!'
 
-  var dht = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6, verify: ed.verify })
   t.once('end', function () {
     dht.destroy()
   })

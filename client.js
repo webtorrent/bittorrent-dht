@@ -353,22 +353,18 @@ DHT.prototype._decodePeers = function (buf) {
   // According to BEP-0032, we need to be able to handle 'hybrid' values
   // lists (lists that contain both IPv4 and IPV6 addresses). However, since they're
   // not supposed to be sent, we just ignore items of the wrong type
-  try {
-    for (var i = 0; i < buf.length; i++) {
-      var size = this.ipv6 ? 18 : 6
-      if (buf[i].length !== size) {
-        this._debug("Received invalid peer with length %s (presumably an %s peer) when we're using %s. Skipping", buf[i].length, this.ipv6 ? 'IPv4' : 'IPv6', this.ipv6 ? 'IPv6' : 'IPv4')
-        continue
-      }
-      var port = buf[i].readUInt16BE(this.ipv6 ? 16 : 4)
-      if (!port) continue
-      peers.push({
-        host: this._rpc._parseIP(buf[i], 0),
-        port: port
-      })
+  for (var i = 0; i < buf.length; i++) {
+    var size = this.ipv6 ? 18 : 6
+    if (buf[i].length !== size) {
+      this._debug("Received invalid peer with length %s (presumably an %s peer) when we're using %s. Skipping", buf[i].length, this.ipv6 ? 'IPv4' : 'IPv6', this.ipv6 ? 'IPv6' : 'IPv4')
+      continue
     }
-  } catch (err) {
-    // do nothing
+    var port = buf[i].readUInt16BE(this.ipv6 ? 16 : 4)
+    if (!port) continue
+    peers.push({
+                 host: this._rpc._parseIP(buf[i], 0, this.ipv6),
+                 port: port
+               })
   }
 
   return peers
