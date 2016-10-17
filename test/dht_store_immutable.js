@@ -48,7 +48,7 @@ common.wrapTest(test, 'delegated put', function (t, ipv6) {
   common.failOnWarningOrError(t, dht3)
   common.failOnWarningOrError(t, dht4)
 
-  var host = common.localHost(ipv6)
+  var host = common.localHost(ipv6, true)
 
   var pending = 4
   dht1.listen(function () {
@@ -112,11 +112,11 @@ common.wrapTest(test, 'multi-party immutable put/get', function (t, ipv6) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode({ host: common.localHost(ipv6), port: dht1.address().port })
+    dht2.addNode({ host: common.localHost(ipv6, true), port: dht1.address().port })
     dht2.once('node', ready)
   })
   dht2.listen(function () {
-    dht1.addNode({ host: common.localHost(ipv6), port: dht2.address().port })
+    dht1.addNode({ host: common.localHost(ipv6, true), port: dht2.address().port })
     dht1.once('node', ready)
   })
 

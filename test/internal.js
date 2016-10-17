@@ -3,17 +3,17 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-test('`ping` query send and response', function (t) {
+common.wrapTest(test, '`ping` query send and response', function (t, ipv6) {
   t.plan(2)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
   dht1.listen(function () {
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'ping'
@@ -27,21 +27,21 @@ test('`ping` query send and response', function (t) {
   })
 })
 
-test('`find_node` query for exact match (with one in table)', function (t) {
+common.wrapTest(test, '`find_node` query for exact match (with one in table)', function (t, ipv6) {
   t.plan(3)
   var targetNodeId = common.randomId()
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '255.255.255.255', port: 6969, id: targetNodeId})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: targetNodeId})
 
   dht1.listen(function () {
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'find_node',
@@ -50,7 +50,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
       t.error(err)
 
       t.deepEqual(res.r.id, dht1.nodeId)
-      t.deepEqual(res.r.nodes.length, 2 * 26)
+      t.deepEqual(getNodes(res, ipv6).length, 2 * getNodeLength(ipv6))
 
       dht1.destroy()
       dht2.destroy()
@@ -58,22 +58,22 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   })
 })
 
-test('`find_node` query (with many in table)', function (t) {
+common.wrapTest(test, '`find_node` query (with many in table)', function (t, ipv6) {
   t.plan(3)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '1.1.1.1', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '10.10.10.10', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '255.255.255.255', port: 6969, id: common.randomId()})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: common.randomId()})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: common.randomId()})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: common.randomId()})
 
   dht1.listen(function () {
     var targetNodeId = common.randomId()
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'find_node',
@@ -82,7 +82,7 @@ test('`find_node` query (with many in table)', function (t) {
       t.error(err)
 
       t.deepEqual(res.r.id, dht1.nodeId)
-      t.deepEqual(res.r.nodes.length, 26 * 4)
+      t.deepEqual(getNodes(res, ipv6).length, getNodeLength(ipv6) * 4)
 
       dht1.destroy()
       dht2.destroy()
@@ -90,21 +90,21 @@ test('`find_node` query (with many in table)', function (t) {
   })
 })
 
-test('`get_peers` query to node with *no* peers in table', function (t) {
+common.wrapTest(test, '`get_peers` query to node with *no* peers in table', function (t, ipv6) {
   t.plan(4)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '1.1.1.1', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '2.2.2.2', port: 6969, id: common.randomId()})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: common.randomId()})
+  dht1.addNode({host: common.randomHost(ipv6), port: 6969, id: common.randomId()})
 
   dht1.listen(function () {
     var targetInfoHash = common.randomId()
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'get_peers',
@@ -115,7 +115,7 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
       t.error(err)
       t.deepEqual(res.r.id, dht1.nodeId)
       t.ok(Buffer.isBuffer(res.r.token))
-      t.deepEqual(res.r.nodes.length, 3 * 26)
+      t.deepEqual(getNodes(res, ipv6).length, 3 * getNodeLength(ipv6))
 
       dht1.destroy()
       dht2.destroy()
@@ -123,24 +123,24 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   })
 })
 
-test('`get_peers` query to node with peers in table', function (t) {
+common.wrapTest(test, '`get_peers` query to node with peers in table', function (t, ipv6) {
   t.plan(4)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
   var targetInfoHash = common.randomId()
 
-  dht1._addPeer({ host: '1.1.1.1', port: 6969 }, targetInfoHash)
-  dht1._addPeer({ host: '10.10.10.10', port: 6969 }, targetInfoHash)
-  dht1._addPeer({ host: '255.255.255.255', port: 6969 }, targetInfoHash)
+  dht1._addPeer({ host: common.randomHost(ipv6), port: 6969 }, targetInfoHash)
+  dht1._addPeer({ host: common.randomHost(ipv6), port: 6969 }, targetInfoHash)
+  dht1._addPeer({ host: common.randomHost(ipv6), port: 6969 }, targetInfoHash)
 
   dht1.listen(function () {
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'get_peers',
@@ -160,10 +160,10 @@ test('`get_peers` query to node with peers in table', function (t) {
   })
 })
 
-test('`announce_peer` query with bad token', function (t) {
+common.wrapTest(test, '`announce_peer` query with bad token', function (t, ipv6) {
   t.plan(2)
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
@@ -173,7 +173,7 @@ test('`announce_peer` query with bad token', function (t) {
   dht1.listen(function () {
     var token = Buffer.from('bad token')
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: dht1.address().port
     }, {
       q: 'announce_peer',
@@ -192,11 +192,11 @@ test('`announce_peer` query with bad token', function (t) {
   })
 })
 
-test('`announce_peer` query gets ack response', function (t) {
+common.wrapTest(test, '`announce_peer` query gets ack response', function (t, ipv6) {
   t.plan(5)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
@@ -206,7 +206,7 @@ test('`announce_peer` query gets ack response', function (t) {
   dht1.listen(function () {
     var port = dht1.address().port
     dht2._rpc.query({
-      host: '127.0.0.1',
+      host: common.localHost(ipv6, true),
       port: port
     }, {
       q: 'get_peers',
@@ -220,7 +220,7 @@ test('`announce_peer` query gets ack response', function (t) {
       t.ok(Buffer.isBuffer(res1.r.token))
 
       dht2._rpc.query({
-        host: '127.0.0.1',
+        host: common.localHost(ipv6, true),
         port: port
       }, {
         q: 'announce_peer',
@@ -239,3 +239,13 @@ test('`announce_peer` query gets ack response', function (t) {
     })
   })
 })
+
+function getNodes (res, ipv6) {
+  return ipv6 ? res.r.nodes6 : res.r.nodes
+}
+
+function getNodeLength (ipv6) {
+  // 20 byte node id + 2 byte port (22 bytes total)
+  // 16-byte IPv6 address, or 4-byte IPv4 address
+  return 22 + (ipv6 ? 16 : 4)
+}

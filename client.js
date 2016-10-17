@@ -84,7 +84,7 @@ DHT.prototype.addNode = function (node) {
   if (node.id) {
     node.id = toBuffer(node.id)
     var old = !!this._rpc.nodes.get(node.id)
-    this._rpc.nodes.add(node)
+    this._rpc.addNode(node)
     if (!old) this.emit('node', node)
     return
   }
@@ -362,9 +362,9 @@ DHT.prototype._decodePeers = function (buf) {
     var port = buf[i].readUInt16BE(this.ipv6 ? 16 : 4)
     if (!port) continue
     peers.push({
-                 host: this._rpc._parseIP(buf[i], 0, this.ipv6),
-                 port: port
-               })
+      host: this._rpc._parseIP(buf[i], 0, this.ipv6),
+      port: port
+    })
   }
 
   return peers

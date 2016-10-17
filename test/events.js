@@ -1,6 +1,11 @@
 var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
+/* var log = require('why-is-node-running')
+
+setInterval(function () {
+  log() // logs out active handles that are keeping node running
+}, 10000) */
 
 common.wrapTest(test, '`node` event fires for each added node (100x)', function (t, ipv6) {
   var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
@@ -16,7 +21,7 @@ common.wrapTest(test, '`node` event fires for each added node (100x)', function 
     }
   })
 
-  common.addRandomNodes(dht, 100)
+  common.addRandomNodes(dht, 100, ipv6)
 })
 
 common.wrapTest(test, '`node` event fires for each added node (10000x)', function (t, ipv6) {
@@ -33,7 +38,7 @@ common.wrapTest(test, '`node` event fires for each added node (10000x)', functio
     }
   })
 
-  common.addRandomNodes(dht, 10000)
+  common.addRandomNodes(dht, 10000, ipv6)
 })
 
 common.wrapTest(test, '`announce` event fires for each added peer (100x)', function (t, ipv6) {
@@ -98,6 +103,13 @@ common.wrapTest(test, '`ready` event fires when bootstrap === false', function (
   })
 })
 
+common.wrapTest(test, 'add node with opposite protocol address', function (t, ipv6) {
+  t.plan(1)
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
+  t.throws(function () { common.addRandomNodes(dht, 1, !ipv6) }, /Address protocol mismatch!/, 'should throw an error')
+  dht.destroy()
+})
+
 common.wrapTest(test, '`ready` event fires when there are K nodes', function (t, ipv6) {
   t.plan(6)
 
@@ -109,7 +121,7 @@ common.wrapTest(test, '`ready` event fires when there are K nodes', function (t,
     t.pass('dht1 `ready` event fires because { bootstrap: false }')
     t.equal(dht1.ready, true)
 
-    common.addRandomNodes(dht1, 3)
+    common.addRandomNodes(dht1, 3, ipv6)
     t.equal(dht1.nodes.count(), 3, 'dht1 has 3 nodes')
 
     dht1.listen(function () {
@@ -117,7 +129,7 @@ common.wrapTest(test, '`ready` event fires when there are K nodes', function (t,
       t.pass('dht1 listening on port ' + port)
 
       // dht2 will get all 3 nodes from dht1 and should also emit a `ready` event
-      var dht2 = new DHT({ bootstrap: common.localHost(ipv6) + ':' +  port })
+      var dht2 = new DHT({ ipv6: ipv6, bootstrap: common.localHost(ipv6, false) + ':' + port })
       common.failOnWarningOrError(t, dht2)
 
       dht2.on('ready', function () {
@@ -131,3 +143,4 @@ common.wrapTest(test, '`ready` event fires when there are K nodes', function (t,
     })
   })
 })
+

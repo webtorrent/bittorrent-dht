@@ -12,9 +12,9 @@ for (var i = from; i <= to; i++) {
 }
 
 function runAnnounceLookupTest (numInstances) {
-  test('horde: announce+lookup with ' + numInstances + ' DHTs', function (t) {
+  common.wrapTest(test, 'horde: announce+lookup with ' + numInstances + ' DHTs', function (t, ipv6) {
     var numRunning = numInstances
-    findPeers(numInstances, t, function (err, dhts) {
+    findPeers(numInstances, t, ipv6, function (err, dhts) {
       if (err) throw err
 
       dhts.forEach(function (dht) {
@@ -40,7 +40,7 @@ function runAnnounceLookupTest (numInstances) {
  *  Initialize [numInstances] dhts, have one announce an infoHash, and another perform a
  *  lookup. Times out after a while.
  */
-function findPeers (numInstances, t, cb) {
+function findPeers (numInstances, t, ipv6, cb) {
   cb = once(cb)
   var dhts = []
   var timeoutId = setTimeout(function () {
@@ -50,7 +50,7 @@ function findPeers (numInstances, t, cb) {
   var infoHash = common.randomId().toString('hex')
 
   for (var i = 0; i < numInstances; i++) {
-    var dht = new DHT({ bootstrap: false })
+    var dht = new DHT({ bootstrap: false, ipv6: ipv6 })
 
     dhts.push(dht)
     common.failOnWarningOrError(t, dht)
@@ -65,7 +65,7 @@ function findPeers (numInstances, t, cb) {
 
   parallel(tasks, function () {
     // add each other to routing tables
-    makeFriends(dhts)
+    makeFriends(dhts, ipv6)
 
     // lookup from other DHTs
     dhts[0].announce(infoHash, 9998, function () {
@@ -85,10 +85,10 @@ function findPeers (numInstances, t, cb) {
  * Add every dht address to the dht "before" it.
  * This should guarantee that any dht can be located (with enough queries).
  */
-function makeFriends (dhts) {
+function makeFriends (dhts, ipv6) {
   var len = dhts.length
   for (var i = 0; i < len; i++) {
     var next = dhts[(i + 1) % len]
-    dhts[i].addNode({host: '127.0.0.1', port: next.address().port, id: next.nodeId})
+    dhts[i].addNode({host: common.localHost(ipv6, true), port: next.address().port, id: next.nodeId})
   }
 }

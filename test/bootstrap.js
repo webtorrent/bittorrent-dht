@@ -10,7 +10,6 @@ common.wrapTest(test, 'bootstrap and listen to custom port', function (t, ipv6) 
   common.failOnWarningOrError(t, dht)
 
   var port = Math.floor(Math.random() * 60000) + 1024
-  self = this
 
   t.ok(!dht.listening)
   dht.listen(port)

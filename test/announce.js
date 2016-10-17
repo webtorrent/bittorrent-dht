@@ -21,7 +21,7 @@ common.wrapTest(test, '`announce` with {host: false}', function (t, ipv6) {
 common.wrapTest(test, '`announce` with {host: "127.0.0.1"}', function (t, ipv6) {
   t.plan(3)
 
-  var dht = new DHT({ bootstrap: false, ipv6: ipv6, host: common.localHost(ipv6) })
+  var dht = new DHT({ bootstrap: false, ipv6: ipv6, host: common.localHost(ipv6, true) })
   common.failOnWarningOrError(t, dht)
 
   var infoHash = common.randomId()
@@ -33,7 +33,7 @@ common.wrapTest(test, '`announce` with {host: "127.0.0.1"}', function (t, ipv6) 
     })
 
     dht.on('peer', function (peer) {
-      t.deepEqual(peer, { host: common.localHost(ipv6), port: 6969 })
+      t.deepEqual(peer, { host: common.localHost(ipv6, true), port: 6969 })
     })
   })
 })
@@ -47,12 +47,12 @@ common.wrapTest(test, 'announce with implied port', function (t, ipv6) {
     var dht2 = new DHT({ipv6: ipv6, bootstrap: (ipv6 ? '[::1]:' : '127.0.0.1:') + dht1.address().port}) // Test parsing port
 
     dht1.on('announce', function (peer) {
-      t.deepEqual(peer, {host: common.localHost(ipv6), port: dht2.address().port})
+      t.deepEqual(peer, {host: common.localHost(ipv6, true), port: dht2.address().port})
     })
 
     dht2.announce(infoHash, function () {
       dht2.once('peer', function (peer) {
-        t.deepEqual(peer, {host: common.localHost(ipv6), port: dht2.address().port})
+        t.deepEqual(peer, {host: common.localHost(ipv6, true), port: dht2.address().port})
         dht1.destroy()
         dht2.destroy()
       })

@@ -4,7 +4,7 @@ var ed = require('ed25519-supercop')
 var test = require('tape')
 var crypto = require('crypto')
 
-/*common.wrapTest(test, 'local mutable put/get', function (t, ipv6) {
+common.wrapTest(test, 'local mutable put/get', function (t, ipv6) {
   t.plan(4)
 
   var keypair = ed.createKeyPair(ed.createSeed())
@@ -60,12 +60,12 @@ common.wrapTest(test, 'multiparty mutable put/get', function (t, ipv6) {
 
   var pending = 2
   dht1.listen(function () {
-    dht2.addNode({ host: common.localHost(ipv6), port: dht1.address().port })
+    dht2.addNode({ host: common.localHost(ipv6, true), port: dht1.address().port })
     dht2.once('node', ready)
   })
 
   dht2.listen(function () {
-    dht1.addNode({ host: common.localHost(ipv6), port: dht2.address().port })
+    dht1.addNode({ host: common.localHost(ipv6, true), port: dht2.address().port })
     dht1.once('node', ready)
   })
 
@@ -118,7 +118,7 @@ common.wrapTest(test, 'delegated put', function (t, ipv6) {
   common.failOnWarningOrError(t, dht4)
 
   var pending = 4
-  var host = common.localHost(ipv6);
+  var host = common.localHost(ipv6, true)
 
   dht1.listen(function () {
     dht2.addNode({ host: host, port: dht1.address().port })
@@ -167,7 +167,7 @@ common.wrapTest(test, 'delegated put', function (t, ipv6) {
       })
     })
   }
-})*/
+})
 
 test('mutable update mesh', function (t) {
   t.plan(12)
@@ -252,7 +252,6 @@ test('mutable update mesh', function (t) {
     })
   }
 })
-/*
 
 test('multiparty mutable put/get sequence', function (t) {
   t.plan(12)
@@ -493,8 +492,6 @@ test('transitive mutable update', function (t) {
   }
 })
 
-
-
 test('invalid sequence', function (t) {
   t.plan(5)
 
@@ -612,4 +609,3 @@ test('valid sequence', function (t) {
     }
   })
 })
-*/

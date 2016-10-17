@@ -3,10 +3,10 @@ var DHT = require('../')
 var ed = require('ed25519-supercop')
 var test = require('tape')
 
-test('dht.toJSON: re-use dht nodes with `bootstrap` option', function (t) {
+common.wrapTest(test, 'dht.toJSON: re-use dht nodes with `bootstrap` option', function (t, ipv6) {
   t.plan(1)
 
-  var dht1 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht1)
 
   common.addRandomNodes(dht1, DHT.K)
@@ -22,10 +22,10 @@ test('dht.toJSON: re-use dht nodes with `bootstrap` option', function (t) {
   })
 })
 
-test('dht.toJSON: re-use dht nodes by calling dht.addNode', function (t) {
+common.wrapTest(test, 'dht.toJSON: re-use dht nodes by calling dht.addNode', function (t, ipv6) {
   t.plan(1)
 
-  var dht1 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
   common.failOnWarningOrError(t, dht1)
 
   common.addRandomNodes(dht1, DHT.K)
@@ -45,11 +45,11 @@ test('dht.toJSON: re-use dht nodes by calling dht.addNode', function (t) {
   })
 })
 
-test('dht.toJSON: BEP44 immutable value', function (t) {
+common.wrapTest(test, 'dht.toJSON: BEP44 immutable value', function (t, ipv6) {
   t.plan(10)
 
-  var dht1 = new DHT({ bootstrap: false })
-  var dht2 = new DHT({ bootstrap: false })
+  var dht1 = new DHT({ bootstrap: false, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, ipv6: ipv6 })
 
   t.once('end', function () {
     dht1.destroy()
@@ -59,7 +59,7 @@ test('dht.toJSON: BEP44 immutable value', function (t) {
   common.failOnWarningOrError(t, dht2)
 
   dht1.listen(function () {
-    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.addNode({ host: common.localHost(ipv6, true), port: dht1.address().port })
     dht2.once('node', ready)
   })
 
@@ -83,12 +83,12 @@ test('dht.toJSON: BEP44 immutable value', function (t) {
   }
 })
 
-test('dht.toJSON: BEP44 mutable value', function (t) {
+common.wrapTest(test, 'dht.toJSON: BEP44 mutable value', function (t, ipv6) {
   t.plan(10)
 
   var keypair = ed.createKeyPair(ed.createSeed())
-  var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
-  var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
+  var dht1 = new DHT({ bootstrap: false, verify: ed.verify, ipv6: ipv6 })
+  var dht2 = new DHT({ bootstrap: false, verify: ed.verify, ipv6: ipv6 })
 
   t.once('end', function () {
     dht1.destroy()
@@ -98,7 +98,7 @@ test('dht.toJSON: BEP44 mutable value', function (t) {
   common.failOnWarningOrError(t, dht2)
 
   dht1.listen(function () {
-    dht2.addNode({ host: '127.0.0.1', port: dht1.address().port })
+    dht2.addNode({ host: common.localHost(ipv6, true), port: dht1.address().port })
     dht2.once('node', ready)
   })
 
