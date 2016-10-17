@@ -10,8 +10,7 @@ exports.failOnWarningOrError = function (t, dht) {
 }
 
 exports.randomHost = function (ipv6) {
-  // We only use 15 random bits for the IPv6 because of a bug with ip-addr
-  return ipv6 ? Address6.fromByteArray(crypto.randomBytes(15)).correctForm() : ip.toString(crypto.randomBytes(4))
+  return ipv6 ? Address6.fromByteArray(crypto.randomBytes(16)).correctForm() : ip.toString(crypto.randomBytes(4))
 }
 
 exports.randomPort = function () {
