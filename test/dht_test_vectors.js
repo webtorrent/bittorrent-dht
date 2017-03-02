@@ -1,3 +1,4 @@
+var Buffer = require('safe-buffer').Buffer
 var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
@@ -8,11 +9,11 @@ var ed = require('ed25519-supercop')
 test('dht store test vectors', function (t) {
   t.plan(6)
 
-  var pub = Buffer(
+  var pub = Buffer.from(
     '77ff84905a91936367c01360803104f92432fcd904a43511876df5cdf3e7e548',
     'hex'
   )
-  var priv = Buffer(
+  var priv = Buffer.from(
     'e06d3183d14159228433ed599221b80bd0a5ce8352e4bdf0262f76786ef1c74d' +
     'b7e7a9fea2c0eb269d61e3b38e450a22e754941ac78479d6c54e1faf6037881d',
     'hex'

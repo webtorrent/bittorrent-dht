@@ -1,3 +1,4 @@
+var Buffer = require('safe-buffer').Buffer
 var common = require('./common')
 var DHT = require('../')
 var ed = require('ed25519-supercop')
@@ -286,7 +287,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     var fopts = {
       k: keypair.publicKey,
       seq: 0,
-      salt: Buffer('first'),
+      salt: Buffer.from('first'),
       sign: common.sign(keypair),
       v: fvalue
     }
@@ -294,7 +295,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     var sopts = {
       k: fopts.k,
       seq: 0,
-      salt: Buffer('second'),
+      salt: Buffer.from('second'),
       sign: common.sign(keypair),
       v: svalue
     }
