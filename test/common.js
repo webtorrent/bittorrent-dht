@@ -41,7 +41,7 @@ exports.addRandomPeers = function (dht, num) {
 }
 
 exports.fill = function (n, s) {
-  var bs = Buffer(s)
+  var bs = Buffer.from(s)
   var b = Buffer.allocUnsafe(n)
   for (var i = 0; i < n; i++) {
     b[i] = bs[i % bs.length]

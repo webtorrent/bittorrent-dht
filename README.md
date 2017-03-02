@@ -220,7 +220,7 @@ Here is a simple example of creating some immutable content on the dht:
 ``` js
 var DHT = require('bittorrent-dht')
 var dht = new DHT()
-var value = new Buffer(200).fill('abc')
+var value = Buffer.alloc(200).fill('abc')
 
 dht.put({ v: value }, function (err, hash) {
   console.error('error=', err)
@@ -252,7 +252,7 @@ values precisely according to the specification, like so:
 var ed = require('ed25519-supercop')
 var keypair = ed.createKeyPair(ed.createSeed())
 
-var value = new Buffer(200).fill('whatever') // the payload you want to send
+var value = Buffer.alloc(200).fill('whatever') // the payload you want to send
 var opts = {
   k: keypair.publicKey,
   seq: 0,
