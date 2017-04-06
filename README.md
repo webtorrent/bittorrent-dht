@@ -78,6 +78,7 @@ If `opts` is specified, then the default options (shown below) will be overridde
   bootstrap: [], // bootstrap servers (default: router.bittorrent.com:6881, router.utorrent.com:6881, dht.transmissionbt.com:6881)
   host: false,    // host of local peer, if specified then announces get added to local table (String, disabled by default)
   concurrency: 16 // k-rpc option to specify maximum concurrent UDP requests allowed (Number, 16 by default)
+  fingerprint:    // function used to make fingerprints (Function, sha1 by default)
 }
 ```
 
