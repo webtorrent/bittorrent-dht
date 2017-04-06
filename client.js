@@ -36,6 +36,7 @@ function DHT (opts) {
   this._verify = opts.verify || null
   this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
+  this._hash = opts.hash || sha1
 
   this.listening = false
   this.destroyed = false
@@ -169,8 +170,8 @@ DHT.prototype._put = function (opts, cb) {
   var isMutable = !!opts.k
   var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
   var key = isMutable
-    ? sha1(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
-    : sha1(bencode.encode(v))
+    ? this._hash(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
+    : this._hash(bencode.encode(v))
 
   var table = this._tables.get(key.toString('hex'))
   if (!table) return this._preput(key, opts, cb)
@@ -248,6 +249,7 @@ DHT.prototype.get = function (key, opts, cb) {
     cb(null, value)
   }
 
+  var _hash = this._hash
   function onreply (message) {
     var r = message.r
     if (!r || !r.v) return true
@@ -257,12 +259,12 @@ DHT.prototype.get = function (key, opts, cb) {
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(sha1(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
+      if (equals(_hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
         value = r
         return false
       }
     } else {
-      if (equals(sha1(bencode.encode(r.v)), key)) {
+      if (equals(_hash(bencode.encode(r.v)), key)) {
         value = r
         return false
       }
@@ -488,8 +490,8 @@ DHT.prototype._onput = function (query, peer) {
   if (isMutable && !a.k && !a.sig) return
 
   var key = isMutable
-    ? sha1(a.salt ? Buffer.concat([a.salt, a.k]) : a.k)
-    : sha1(bencode.encode(v))
+    ? this._hash(a.salt ? Buffer.concat([a.salt, a.k]) : a.k)
+    : this._hash(bencode.encode(v))
   var keyHex = key.toString('hex')
 
   this.emit('put', key, v)
