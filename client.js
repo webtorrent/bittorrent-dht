@@ -249,7 +249,6 @@ DHT.prototype.get = function (key, opts, cb) {
     cb(null, value)
   }
 
-  var _hash = this._hash
   function onreply (message) {
     var r = message.r
     if (!r || !r.v) return true
@@ -259,12 +258,12 @@ DHT.prototype.get = function (key, opts, cb) {
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(_hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
+      if (equals(this._hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
         value = r
         return false
       }
     } else {
-      if (equals(_hash(bencode.encode(r.v)), key)) {
+      if (equals(this._hash(bencode.encode(r.v)), key)) {
         value = r
         return false
       }

@@ -74,11 +74,11 @@ If `opts` is specified, then the default options (shown below) will be overridde
 
 ``` js
 {
-  nodeId: '',    // 160-bit DHT node ID (Buffer or hex string, default: randomly generated)
-  bootstrap: [], // bootstrap servers (default: router.bittorrent.com:6881, router.utorrent.com:6881, dht.transmissionbt.com:6881)
+  nodeId: '',     // 160-bit DHT node ID (Buffer or hex string, default: randomly generated)
+  bootstrap: [],  // bootstrap servers (default: router.bittorrent.com:6881, router.utorrent.com:6881, dht.transmissionbt.com:6881)
   host: false,    // host of local peer, if specified then announces get added to local table (String, disabled by default)
   concurrency: 16 // k-rpc option to specify maximum concurrent UDP requests allowed (Number, 16 by default)
-  hash:           // function used to make fingerprints (Function, sha1 by default)
+  hash: Function  // custom hash function to use (Function, SHA1 by default)
 }
 ```
 
