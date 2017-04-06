@@ -7,6 +7,7 @@ BEGIN {
 }
 while (<>) {
   next if $seen{$_};
+  next if /anx /;
   next if /(support\@greenkeeper.io)/;
   next if /(yoann\@atacma.agency)/;
   next if /(yciabaud\@users.noreply.github.com)/;
