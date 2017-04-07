@@ -273,9 +273,6 @@ DHT.prototype.put = function (opts, cb) {
   if (isMutable && opts.cas !== undefined && typeof opts.cas !== 'number') {
     throw new Error('opts.cas must be an integer if provided')
   }
-  if (isMutable && !opts.k) {
-    throw new Error('opts.k ed25519 public key required for mutable put')
-  }
   if (isMutable && opts.k.length !== 32) {
     throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
