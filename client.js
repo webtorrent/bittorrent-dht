@@ -323,9 +323,10 @@ DHT.prototype._put = function (opts, cb) {
     message.a.seq = opts.seq
     if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
     else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
+  } else {
+    this._values.set(key.toString('hex'), message.a)
   }
 
-  this._values.set(key.toString('hex'), message.a)
   this._rpc.queryAll(table.closest(key), message, null, function (err, n) {
     if (err) return cb(err, key, n)
     cb(null, key, n)
