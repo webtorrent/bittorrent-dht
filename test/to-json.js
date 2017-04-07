@@ -84,7 +84,7 @@ test('dht.toJSON: BEP44 immutable value', function (t) {
 })
 
 test('dht.toJSON: BEP44 mutable value', function (t) {
-  t.plan(10)
+  t.plan(5)
 
   var keypair = ed.createKeyPair(ed.createSeed())
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -112,13 +112,6 @@ test('dht.toJSON: BEP44 mutable value', function (t) {
     }
 
     dht1.put(opts, function (_, hash) {
-      var json1 = dht1.toJSON()
-      t.equal(json1.values[hash.toString('hex')].v, value.toString('hex'))
-      t.equal(json1.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))
-      t.equal(json1.values[hash.toString('hex')].seq, 0)
-      t.equal(typeof json1.values[hash.toString('hex')].sig, 'string')
-      t.equal(typeof json1.values[hash.toString('hex')].k, 'string')
-
       var json2 = dht2.toJSON()
       t.equal(json2.values[hash.toString('hex')].v, value.toString('hex'))
       t.equal(json2.values[hash.toString('hex')].id, dht1.nodeId.toString('hex'))

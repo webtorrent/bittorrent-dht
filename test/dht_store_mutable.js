@@ -16,7 +16,12 @@ test('local mutable put/get', function (t) {
   })
   common.failOnWarningOrError(t, dht)
 
-  dht.on('ready', function () {
+  dht.listen(function () {
+    dht.addNode({ host: '127.0.0.1', port: dht.address().port })
+    dht.once('node', ready)
+  })
+
+  function ready () {
     var value = common.fill(500, 'abc')
     var opts = {
       k: keypair.publicKey,
@@ -41,7 +46,7 @@ test('local mutable put/get', function (t) {
         t.equal(res.seq, 0)
       })
     })
-  })
+  }
 })
 
 test('multiparty mutable put/get', function (t) {
