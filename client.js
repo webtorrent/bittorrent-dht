@@ -229,6 +229,7 @@ DHT.prototype.get = function (key, opts, cb) {
 
   if (!opts) opts = {}
   var verify = opts.verify || this._verify
+  var hash = this._hash
   var value = this._values.get(key.toString('hex')) || null
 
   if (value) {
@@ -258,12 +259,12 @@ DHT.prototype.get = function (key, opts, cb) {
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(this._hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
+      if (equals(hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
         value = r
         return false
       }
     } else {
-      if (equals(this._hash(bencode.encode(r.v)), key)) {
+      if (equals(hash(bencode.encode(r.v)), key)) {
         value = r
         return false
       }
