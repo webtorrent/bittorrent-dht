@@ -260,7 +260,7 @@ DHT.prototype.get = function (key, opts, cb) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
       if (equals(hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
-        value = r
+        if(!value || r.seq > value.seq) value = r
         return false
       }
     } else {
