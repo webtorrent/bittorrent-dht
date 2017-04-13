@@ -170,7 +170,7 @@ DHT.prototype._put = function (opts, cb) {
   var isMutable = !!opts.k
   var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
   var key = isMutable
-    ? this._hash(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
+    ? this._hash(opts.salt ? Buffer.concat([opts.k, opts.salt]) : opts.k)
     : this._hash(bencode.encode(v))
 
   var table = this._tables.get(key.toString('hex'))
@@ -259,7 +259,7 @@ DHT.prototype.get = function (key, opts, cb) {
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(hash(r.salt ? Buffer.concat([r.salt, r.k]) : r.k), key)) {
+      if (equals(hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k), key)) {
         if (!value || r.seq > value.seq) value = r
         return false
       }
@@ -490,7 +490,7 @@ DHT.prototype._onput = function (query, peer) {
   if (isMutable && !a.k && !a.sig) return
 
   var key = isMutable
-    ? this._hash(a.salt ? Buffer.concat([a.salt, a.k]) : a.k)
+    ? this._hash(a.salt ? Buffer.concat([a.k, a.salt]) : a.k)
     : this._hash(bencode.encode(v))
   var keyHex = key.toString('hex')
 

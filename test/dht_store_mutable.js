@@ -300,8 +300,8 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
       v: svalue
     }
 
-    var first = crypto.createHash('sha1').update('first').update(fopts.k).digest()
-    var second = crypto.createHash('sha1').update('second').update(sopts.k).digest()
+    var first = crypto.createHash('sha1').update(fopts.k).update('first').digest()
+    var second = crypto.createHash('sha1').update(sopts.k).update('second').digest()
 
     dht1.put(fopts, function (err, hash) {
       t.error(err)
