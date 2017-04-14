@@ -1,7 +1,7 @@
 # bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
 
-[travis-image]: https://img.shields.io/travis/feross/bittorrent-dht/master.svg
-[travis-url]: https://travis-ci.org/feross/bittorrent-dht
+[travis-image]: https://img.shields.io/travis/webtorrent/bittorrent-dht/master.svg
+[travis-url]: https://travis-ci.org/webtorrent/bittorrent-dht
 [npm-image]: https://img.shields.io/npm/v/bittorrent-dht.svg
 [npm-url]: https://npmjs.org/package/bittorrent-dht
 [downloads-image]: https://img.shields.io/npm/dm/bittorrent-dht.svg
@@ -22,11 +22,11 @@ This module is used by [WebTorrent](http://webtorrent.io).
 - supports [BEP44](http://bittorrent.org/beps/bep_0044.html) for storing arbitrary data in the DHT
 - robust and well-tested
   - Comprehensive, fully-offline test suite
-  - Used by [WebTorrent](http://webtorrent.io), [peerflix](https://github.com/mafintosh/peerflix), and [Playback](https://mafintosh.github.io/playback/)
+  - Used by [WebTorrent](http://webtorrent.io), [peerflix](https://www.npmjs.com/package/peerflix), and [Playback](https://mafintosh.github.io/playback/)
 - efficient recursive lookup algorithm minimizes UDP traffic
 - supports multiple, concurrent lookups using the same routing table
 
-Also see [bittorrent-tracker](https://github.com/feross/bittorrent-tracker).
+Also see [bittorrent-tracker](https://www.npmjs.com/package/bittorrent-tracker).
 
 ### install
 
@@ -371,4 +371,4 @@ informational.
 
 ### license
 
-MIT. Copyright (c) [Feross Aboukhadijeh](http://feross.org).
+MIT. Copyright (c) [Feross Aboukhadijeh](https://feross.org), Mathias Buus, and [WebTorrent, LLC](https://webtorrent.io).
