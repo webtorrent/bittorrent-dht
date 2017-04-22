@@ -261,7 +261,7 @@ DHT.prototype.get = function (key, opts, cb) {
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
       if (equals(hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k), key)) {
         if (!value || r.seq > value.seq) value = r
-        return false
+        return true
       }
     } else {
       if (equals(hash(bencode.encode(r.v)), key)) {
