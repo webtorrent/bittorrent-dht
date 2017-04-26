@@ -2,7 +2,7 @@ var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
 
-// https://github.com/feross/bittorrent-dht/pull/36
+// https://github.com/webtorrent/bittorrent-dht/pull/36
 test('bootstrap and listen to custom port', function (t) {
   t.plan(4)
 
