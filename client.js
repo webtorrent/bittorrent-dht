@@ -26,7 +26,7 @@ function DHT (opts) {
   this._peers = new PeerStore(opts.maxPeers || 10000)
 
   this._secrets = null
-  this._rpc = krpc(opts)
+  this._rpc = opts.krpc || krpc(opts)
   this._rpc.on('query', onquery)
   this._rpc.on('node', onnode)
   this._rpc.on('warning', onwarning)
