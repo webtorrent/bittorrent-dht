@@ -352,9 +352,9 @@ DHT.prototype.address = function () {
   return this._rpc.address()
 }
 
-DHT.prototype.listen = function (port, cb) {
-  if (typeof port === 'function') return this.listen(0, port)
-  this._rpc.bind(port, cb)
+// listen([port], [address], [onlistening])
+DHT.prototype.listen = function () {
+  this._rpc.bind.apply(this._rpc, arguments)
 }
 
 DHT.prototype.destroy = function (cb) {
