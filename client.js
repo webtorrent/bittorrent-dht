@@ -587,7 +587,7 @@ DHT.prototype._validateToken = function (host, token) {
 
 DHT.prototype._generateToken = function (host, secret) {
   if (!secret) secret = this._secrets[0]
-  return sha1(Buffer.concat([Buffer.from(host), secret]))
+  return this._hash(Buffer.concat([Buffer.from(host), secret]))
 }
 
 DHT.prototype._rotateSecrets = function () {
