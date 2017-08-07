@@ -81,13 +81,20 @@ function DHT (opts) {
   }
 }
 
+DHT.prototype.updateBucketTimestamp = function () {
+  this._rpc.nodes.lastChange = Date.now()
+}
+
 DHT.prototype.addNode = function (node) {
   var self = this
   if (node.id) {
     node.id = toBuffer(node.id)
     var old = !!this._rpc.nodes.get(node.id)
     this._rpc.nodes.add(node)
-    if (!old) this.emit('node', node)
+    if (!old) {
+      this.emit('node', node)
+      this.updateBucketTimestamp()
+    }
     return
   }
   this._sendPing(node, function (_, node) {
@@ -106,6 +113,7 @@ DHT.prototype._sendPing = function (node, cb) {
     if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== self._hashLength) {
       return cb(new Error('Bad reply'))
     }
+    self.updateBucketTimestamp()
     cb(null, {
       id: pong.r.id,
       host: node.host || node.address,
