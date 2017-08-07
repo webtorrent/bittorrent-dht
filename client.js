@@ -45,6 +45,10 @@ function DHT (opts) {
   this.nodeId = this._rpc.id
   this.nodes = this._rpc.nodes
 
+  this.nodes.on('ping', function (nodes) {
+    self._checkNodes(nodes)
+  })
+
   process.nextTick(bootstrap)
 
   EventEmitter.call(this)
@@ -83,6 +87,46 @@ function DHT (opts) {
 
 DHT.prototype.updateBucketTimestamp = function () {
   this._rpc.nodes.lastChange = Date.now()
+}
+
+DHT.prototype._checkAndRemoveNodes = function (nodes, cb) {
+  var self = this
+
+  this._checkNodes(nodes, function (_, node) {
+    if (node) self.removeNode(node.id)
+    cb(null)
+  })
+}
+
+DHT.prototype._checkNodes = function (nodes, cb) {
+  var self = this
+
+  function test (acc) {
+    if (!acc.length) {
+      return cb(null)
+    }
+
+    var current = acc.pop()
+
+    self._sendPing(current, function (err) {
+      if (!err) {
+        self.updateBucketTimestamp()
+        return test(acc)
+      }
+
+      // retry
+      self._sendPing(current, function (er) {
+        if (err) {
+          return cb(null, current)
+        }
+
+        self.updateBucketTimestamp()
+        return test(acc)
+      })
+    })
+  }
+
+  test(nodes)
 }
 
 DHT.prototype.addNode = function (node) {
