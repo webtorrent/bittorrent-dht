@@ -13,6 +13,7 @@ var randombytes = require('randombytes')
 var simpleSha1 = require('simple-sha1')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
+var BUCKET_OUTDATED_TIMESPAN = 15 * 60 * 1000 // check nodes in bucket in 15 minutes old buckets
 
 inherits(DHT, EventEmitter)
 
@@ -39,6 +40,8 @@ function DHT (opts) {
   this._verify = opts.verify || null
   this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
+  this._hash = opts.hash || sha1
+  this._bucketCheckInterval = null
 
   this.listening = false
   this.destroyed = false
@@ -83,6 +86,29 @@ function DHT (opts) {
   function onnode (node) {
     self.emit('node', node)
   }
+}
+
+DHT.prototype._setBucketCheckInterval = function () {
+  var self = this
+  var interval = 1 * 60 * 1000 // check age of bucket every minute
+
+  this._bucketCheckInterval = setInterval(function () {
+    const diff = Date.now() - self._rpc.nodes.lastChange
+
+    if (diff >= BUCKET_OUTDATED_TIMESPAN) {
+      self._checkAndRemoveNodes(self.nodes.toArray(), function () {
+        if (self.nodes.toArray().length < 1) {
+          // node is currently isolated,
+          // retry with initial bootstrap nodes
+          self._bootstrap(true)
+        }
+      })
+    }
+  }, interval)
+}
+
+DHT.prototype.removeBucketCheckInterval = function () {
+  clearInterval(this._bucketCheckInterval)
 }
 
 DHT.prototype.updateBucketTimestamp = function () {
@@ -410,6 +436,9 @@ DHT.prototype.address = function () {
 // listen([port], [address], [onlistening])
 DHT.prototype.listen = function () {
   this._rpc.bind.apply(this._rpc, arguments)
+
+  this.updateBucketTimestamp()
+  this._setBucketCheckInterval()
 }
 
 DHT.prototype.destroy = function (cb) {
@@ -420,6 +449,7 @@ DHT.prototype.destroy = function (cb) {
   this.destroyed = true
   var self = this
   clearInterval(this._interval)
+  clearInterval(this._bucketCheckInterval)
   this._debug('destroying')
   this._rpc.destroy(function () {
     self.emit('close')
@@ -582,6 +612,8 @@ DHT.prototype._bootstrap = function (populate) {
   }, ready)
 
   function ready () {
+    if (self.ready) return
+
     self._debug('emit ready')
     self.ready = true
     self.emit('ready')
