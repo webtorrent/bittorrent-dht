@@ -42,6 +42,7 @@ function DHT (opts) {
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
   this._hash = opts.hash || sha1
   this._bucketCheckInterval = null
+  this._bucketOutdatedTimeSpan = opts.timeBucketOutdated || BUCKET_OUTDATED_TIMESPAN
 
   this.listening = false
   this.destroyed = false
@@ -95,7 +96,7 @@ DHT.prototype._setBucketCheckInterval = function () {
   this._bucketCheckInterval = setInterval(function () {
     const diff = Date.now() - self._rpc.nodes.lastChange
 
-    if (diff >= BUCKET_OUTDATED_TIMESPAN) {
+    if (diff >= self._bucketOutdatedTimeSpan) {
       self._checkAndRemoveNodes(self.nodes.toArray(), function () {
         if (self.nodes.toArray().length < 1) {
           // node is currently isolated,
