@@ -8,13 +8,13 @@ test('adding a node updates the lastChange property', function (t) {
   var now = Date.now()
   var dht = new DHT({ bootstrap: false })
 
-  t.notOk(dht._rpc.nodes.lastChange, 'lastChanged not set')
+  t.notOk(dht._rpc.nodes.metadata.lastChange, 'lastChanged not set')
 
   setTimeout(function () {
     dht.addNode({host: '127.0.0.1', port: 9999, id: common.randomId()})
-    t.equal(typeof dht._rpc.nodes.lastChange, 'number')
+    t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
     t.ok(
-      dht._rpc.nodes.lastChange > now,
+      dht._rpc.nodes.metadata.lastChange > now,
       'lastChange timestamp is older'
     )
     dht.destroy()
@@ -26,19 +26,19 @@ test('same node doesn´t change the lastChange property', function (t) {
 
   var dht = new DHT({ bootstrap: false })
 
-  t.notOk(dht._rpc.nodes.lastChange, 'lastChanged not set')
+  t.notOk(dht._rpc.nodes.metadata.lastChange, 'lastChanged not set')
 
   var nodeId = common.randomId()
   var lastChanged
   setTimeout(function () {
     dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
 
-    t.equal(typeof dht._rpc.nodes.lastChange, 'number')
-    lastChanged = dht._rpc.nodes.lastChange
+    t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
+    lastChanged = dht._rpc.nodes.metadata.lastChange
 
     setTimeout(function () {
       dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-      t.equal(dht._rpc.nodes.lastChange, lastChanged)
+      t.equal(dht._rpc.nodes.metadata.lastChange, lastChanged)
       dht.destroy()
     }, 1)
   }, 1)
@@ -49,19 +49,19 @@ test('same node doesn´t change the lastChange property', function (t) {
 
   var dht = new DHT({ bootstrap: false })
 
-  t.notOk(dht._rpc.nodes.lastChange, 'lastChanged not set')
+  t.notOk(dht._rpc.nodes.metadata.lastChange, 'lastChanged not set')
 
   var nodeId = common.randomId()
   var lastChanged
   setTimeout(function () {
     dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
 
-    t.equal(typeof dht._rpc.nodes.lastChange, 'number')
-    lastChanged = dht._rpc.nodes.lastChange
+    t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
+    lastChanged = dht._rpc.nodes.metadata.lastChange
 
     setTimeout(function () {
       dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-      t.equal(dht._rpc.nodes.lastChange, lastChanged)
+      t.equal(dht._rpc.nodes.metadata.lastChange, lastChanged)
       dht.destroy()
     }, 1)
   }, 1)

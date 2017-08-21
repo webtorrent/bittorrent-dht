@@ -94,7 +94,7 @@ DHT.prototype._setBucketCheckInterval = function () {
   var interval = 1 * 60 * 1000 // check age of bucket every minute
 
   this._bucketCheckInterval = setInterval(function () {
-    const diff = Date.now() - self._rpc.nodes.lastChange
+    const diff = Date.now() - self._rpc.nodes.metadata.lastChange
 
     if (diff >= self._bucketOutdatedTimeSpan) {
       self._checkAndRemoveNodes(self.nodes.toArray(), function () {
@@ -113,7 +113,7 @@ DHT.prototype.removeBucketCheckInterval = function () {
 }
 
 DHT.prototype.updateBucketTimestamp = function () {
-  this._rpc.nodes.lastChange = Date.now()
+  this._rpc.nodes.metadata.lastChange = Date.now()
 }
 
 DHT.prototype._checkAndRemoveNodes = function (nodes, cb) {
