@@ -1,6 +1,4 @@
-# bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
-
-[![Greenkeeper badge](https://badges.greenkeeper.io/webtorrent/bittorrent-dht.svg)](https://greenkeeper.io/)
+# bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url] [![Greenkeeper badge][greenkeeper-image]][greenkeeper-url]
 
 [travis-image]: https://img.shields.io/travis/webtorrent/bittorrent-dht/master.svg
 [travis-url]: https://travis-ci.org/webtorrent/bittorrent-dht
@@ -10,6 +8,8 @@
 [downloads-url]: https://npmjs.org/package/bittorrent-dht
 [standard-image]: https://img.shields.io/badge/code_style-standard-brightgreen.svg
 [standard-url]: https://standardjs.com
+[greenkeeper-image]: https://badges.greenkeeper.io/webtorrent/bittorrent-dht.svg
+[greenkeeper-url]: https://greenkeeper.io/
 
 ### Simple, robust, BitTorrent DHT implementation
 
