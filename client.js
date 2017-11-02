@@ -232,7 +232,7 @@ DHT.prototype.get = function (key, opts, cb) {
   var hash = this._hash
   var value = this._values.get(key.toString('hex')) || null
 
-  if (value) {
+  if (value && !opts.nocache) {
     value = createGetResponse(this._rpc.id, null, value)
     return process.nextTick(done)
   }
