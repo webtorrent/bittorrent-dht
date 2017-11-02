@@ -610,7 +610,6 @@ function createGetResponse (id, token, value) {
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k
-    if (value.salt) r.salt = value.salt
     if (typeof value.seq === 'number') r.seq = value.seq
   }
   return r
