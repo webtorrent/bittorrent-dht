@@ -253,6 +253,7 @@ DHT.prototype.get = function (key, opts, cb) {
   function onreply (message) {
     var r = message.r
     if (!r || !r.v) return true
+    if (!r.salt && opts.salt) r.salt = Buffer(opts.salt)
 
     var isMutable = r.k || r.sig
 
