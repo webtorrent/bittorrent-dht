@@ -298,13 +298,19 @@ dht.get(key, function (err, res) {
 })
 ```
 
-#### `dht.get(hash, callback)`
+#### `dht.get(hash, opts, callback)`
 
 Read a data record (created with `.put()`) from the DHT.
 ([BEP 44](http://bittorrent.org/beps/bep_0044.html))
 
 Given `hash`, a hex string or buffer, lookup data content from the DHT, sending the
 result in `callback(err, res)`.
+
+These options are available:
+
+* `opts.salt` - the salt (if any) that was used during the `put()` request.
+* `opts.verify` - override the default ed25519 verification function supplied during DHT instantiation.
+* `opts.nocache` - always perform DHT lookup rather than using locally cached value.
 
 `res` objects are similar to the options objects written to the DHT with
 `.put()`:
@@ -314,7 +320,8 @@ result in `callback(err, res)`.
 * `res.k` - the public key (only present for mutable data)
 * `res.sig` - the signature (only present for mutable data)
 * `res.seq` - the sequence (optional, only present for mutable data)
-* `res.salt` - the salt (optional, only present for mutable data)
+
+Note that `res.salt` will not be returned by BEP44 compliant nodes, but this value should be known as it is required to compute the `hash`.
 
 ### events
 
