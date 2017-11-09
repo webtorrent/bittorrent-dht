@@ -27,7 +27,9 @@ function DHT (opts) {
   this._peers = new PeerStore(opts.maxPeers || 10000)
 
   this._secrets = null
-  this._rpc = opts.krpc || krpc(opts)
+  this._hash = opts.hash || sha1
+  this._hashLength = this._hash(Buffer.from('')).length
+  this._rpc = opts.krpc || krpc(Object.assign({idLength: this._hashLength}, opts))
   this._rpc.on('query', onquery)
   this._rpc.on('node', onnode)
   this._rpc.on('warning', onwarning)
@@ -37,7 +39,6 @@ function DHT (opts) {
   this._verify = opts.verify || null
   this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
-  this._hash = opts.hash || sha1
 
   this.listening = false
   this.destroyed = false
@@ -99,9 +100,10 @@ DHT.prototype.removeNode = function (id) {
 }
 
 DHT.prototype._sendPing = function (node, cb) {
+  var self = this
   this._rpc.query(node, {q: 'ping'}, function (err, pong, node) {
     if (err) return cb(err)
-    if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== 20) {
+    if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== self._hashLength) {
       return cb(new Error('Bad reply'))
     }
     cb(null, {
@@ -554,7 +556,7 @@ DHT.prototype._closest = function (target, message, onmessage, cb) {
   function onreply (message, node) {
     if (!message.r) return true
 
-    if (message.r.token && message.r.id && Buffer.isBuffer(message.r.id) && message.r.id.length === 20) {
+    if (message.r.token && message.r.id && Buffer.isBuffer(message.r.id) && message.r.id.length === self._hashLength) {
       self._debug('found node %s (target: %s)', message.r.id, target)
       table.add({
         id: message.r.id,
@@ -592,10 +594,10 @@ DHT.prototype._generateToken = function (host, secret) {
 
 DHT.prototype._rotateSecrets = function () {
   if (!this._secrets) {
-    this._secrets = [randombytes(20), randombytes(20)]
+    this._secrets = [randombytes(this._hashLength), randombytes(this._hashLength)]
   } else {
     this._secrets[1] = this._secrets[0]
-    this._secrets[0] = randombytes(20)
+    this._secrets[0] = randombytes(this._hashLength)
   }
 }
 
