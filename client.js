@@ -6,11 +6,11 @@ var debug = require('debug')('bittorrent-dht')
 var equals = require('buffer-equals')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
-var JSSHA = require('jssha/src/sha1')
 var KBucket = require('k-bucket')
 var krpc = require('k-rpc')
 var LRU = require('lru')
 var randombytes = require('randombytes')
+var simpleSha1 = require('simple-sha1')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
@@ -602,9 +602,7 @@ DHT.prototype._rotateSecrets = function () {
 function noop () {}
 
 function sha1 (buf) {
-  var shaObj = new JSSHA('SHA-1', 'ARRAYBUFFER')
-  shaObj.update(buf)
-  return Buffer.from(shaObj.getHash('ARRAYBUFFER'))
+  return Buffer.from(simpleSha1.sync(buf), 'hex')
 }
 
 function createGetResponse (id, token, value) {
