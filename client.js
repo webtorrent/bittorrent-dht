@@ -2,7 +2,6 @@ module.exports = DHT
 
 var bencode = require('bencode')
 var Buffer = require('safe-buffer').Buffer
-var crypto = require('crypto')
 var debug = require('debug')('bittorrent-dht')
 var equals = require('buffer-equals')
 var EventEmitter = require('events').EventEmitter
@@ -10,6 +9,8 @@ var inherits = require('inherits')
 var KBucket = require('k-bucket')
 var krpc = require('k-rpc')
 var LRU = require('lru')
+var randombytes = require('randombytes')
+var simpleSha1 = require('simple-sha1')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 
@@ -586,22 +587,22 @@ DHT.prototype._validateToken = function (host, token) {
 
 DHT.prototype._generateToken = function (host, secret) {
   if (!secret) secret = this._secrets[0]
-  return crypto.createHash('sha1').update(Buffer.from(host)).update(secret).digest()
+  return this._hash(Buffer.concat([Buffer.from(host), secret]))
 }
 
 DHT.prototype._rotateSecrets = function () {
   if (!this._secrets) {
-    this._secrets = [crypto.randomBytes(20), crypto.randomBytes(20)]
+    this._secrets = [randombytes(20), randombytes(20)]
   } else {
     this._secrets[1] = this._secrets[0]
-    this._secrets[0] = crypto.randomBytes(20)
+    this._secrets[0] = randombytes(20)
   }
 }
 
 function noop () {}
 
 function sha1 (buf) {
-  return crypto.createHash('sha1').update(buf).digest()
+  return Buffer.from(simpleSha1.sync(buf), 'hex')
 }
 
 function createGetResponse (id, token, value) {
