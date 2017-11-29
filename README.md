@@ -1,4 +1,4 @@
-# bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
+# bittorrent-dht [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url] [![Greenkeeper badge][greenkeeper-image]][greenkeeper-url]
 
 [travis-image]: https://img.shields.io/travis/webtorrent/bittorrent-dht/master.svg
 [travis-url]: https://travis-ci.org/webtorrent/bittorrent-dht
@@ -8,6 +8,8 @@
 [downloads-url]: https://npmjs.org/package/bittorrent-dht
 [standard-image]: https://img.shields.io/badge/code_style-standard-brightgreen.svg
 [standard-url]: https://standardjs.com
+[greenkeeper-image]: https://badges.greenkeeper.io/webtorrent/bittorrent-dht.svg
+[greenkeeper-url]: https://greenkeeper.io/
 
 ### Simple, robust, BitTorrent DHT implementation
 
@@ -74,11 +76,12 @@ If `opts` is specified, then the default options (shown below) will be overridde
 
 ``` js
 {
-  nodeId: '',     // 160-bit DHT node ID (Buffer or hex string, default: randomly generated)
-  bootstrap: [],  // bootstrap servers (default: router.bittorrent.com:6881, router.utorrent.com:6881, dht.transmissionbt.com:6881)
-  host: false,    // host of local peer, if specified then announces get added to local table (String, disabled by default)
-  concurrency: 16 // k-rpc option to specify maximum concurrent UDP requests allowed (Number, 16 by default)
-  hash: Function  // custom hash function to use (Function, SHA1 by default)
+  nodeId: '',      // 160-bit DHT node ID (Buffer or hex string, default: randomly generated)
+  bootstrap: [],   // bootstrap servers (default: router.bittorrent.com:6881, router.utorrent.com:6881, dht.transmissionbt.com:6881)
+  host: false,     // host of local peer, if specified then announces get added to local table (String, disabled by default)
+  concurrency: 16, // k-rpc option to specify maximum concurrent UDP requests allowed (Number, 16 by default)
+  hash: Function,  // custom hash function to use (Function, SHA1 by default),
+  krpc: krpc()     // optional k-rpc instance
 }
 ```
 
