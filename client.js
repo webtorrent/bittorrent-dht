@@ -49,8 +49,16 @@ function DHT (opts) {
   this.nodeId = this._rpc.id
   this.nodes = this._rpc.nodes
 
-  this.nodes.on('ping', function (nodes) {
-    self._checkNodes(nodes)
+  this.nodes.on('ping', function (nodes, contact) {
+    self._debug('received ping', nodes, contact)
+    self._checkAndRemoveNodes(nodes, function (_, removed) {
+      if (removed) {
+        self._debug('added new node:', contact)
+        self.addNode(contact)
+      }
+
+      self._debug('no node added, all other nodes ok')
+    })
   })
 
   process.nextTick(bootstrap)
@@ -121,7 +129,7 @@ DHT.prototype._checkAndRemoveNodes = function (nodes, cb) {
 
   this._checkNodes(nodes, function (_, node) {
     if (node) self.removeNode(node.id)
-    cb(null)
+    cb(null, node)
   })
 }
 
