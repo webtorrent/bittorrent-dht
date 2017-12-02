@@ -59,9 +59,11 @@ test('testing clones', function (t) {
       t.same(dht3.nodes.toArray().length, 2, 'has two nodes')
       t.same(dht1.nodes.toArray().length, 2, 'have two nodes')
       dht1._pingAll(function () {
-        t.same(dht3.nodes.toArray().length, 1, 'dht 3 should remove all nodes')
-        t.same(dht1.nodes.toArray().length, 1, 'dht 1 should remove all nodes')
-        done()
+        dht3._pingAll(function () {
+          t.same(dht3.nodes.toArray().length, 1, 'dht 3 should remove all nodes')
+          t.same(dht1.nodes.toArray().length, 1, 'dht 1 should remove all nodes')
+          done()
+        })
       })
     }
 
