@@ -41,7 +41,8 @@ function DHT (opts) {
   this._host = opts.host || null
   this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
   this._hash = opts.hash || sha1
-  this._bucketCheckInterval = null
+  this._runningBucketCheck = false
+  this._bucketCheckTimeout = null
   this._bucketOutdatedTimeSpan = opts.timeBucketOutdated || BUCKET_OUTDATED_TIMESPAN
 
   this.listening = false
@@ -101,6 +102,7 @@ DHT.prototype._setBucketCheckInterval = function () {
   var self = this
   var interval = 1 * 60 * 1000 // check age of bucket every minute
 
+  this._runningBucketCheck = true
   queueNext()
 
   function checkBucket () {
@@ -108,7 +110,9 @@ DHT.prototype._setBucketCheckInterval = function () {
 
     if (diff < self._bucketOutdatedTimeSpan) return queueNext()
 
-    self._checkAndRemoveNodes(self.nodes.toArray(), function () {
+    self._pingAll(function () {
+      if (self.destroyed) return
+
       if (self.nodes.toArray().length < 1) {
         // node is currently isolated,
         // retry with initial bootstrap nodes
@@ -120,13 +124,19 @@ DHT.prototype._setBucketCheckInterval = function () {
   }
 
   function queueNext () {
-    if (self.destroyed) return
-    self._bucketCheckInterval = setTimeout(checkBucket, Math.floor(Math.random() * interval) + interval / 2)
+    if (!self._runningBucketCheck || self.destroyed) return
+    var nextTimeout = Math.floor(Math.random() * interval + interval / 2)
+    self._bucketCheckTimeout = setTimeout(checkBucket, nextTimeout)
   }
 }
 
+DHT.prototype._pingAll = function (cb) {
+  this._checkAndRemoveNodes(this.nodes.toArray(), cb)
+}
+
 DHT.prototype.removeBucketCheckInterval = function () {
-  clearTimeout(this._bucketCheckInterval)
+  this._runningBucketCheck = false
+  clearTimeout(this._bucketCheckTimeout)
 }
 
 DHT.prototype.updateBucketTimestamp = function () {
