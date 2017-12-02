@@ -187,12 +187,13 @@ DHT.prototype.removeNode = function (id) {
 
 DHT.prototype._sendPing = function (node, cb) {
   var self = this
+  var expectedId = node.id
   this._rpc.query(node, {q: 'ping'}, function (err, pong, node) {
     if (err) return cb(err)
     if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== self._hashLength) {
       return cb(new Error('Bad reply'))
     }
-    if (Buffer.isBuffer(node.id) && !node.id.equals(pong.r.id)) {
+    if (Buffer.isBuffer(expectedId) && !expectedId.equals(pong.r.id)) {
       return cb(new Error('Unexpected node id'))
     }
 
