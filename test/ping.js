@@ -18,6 +18,7 @@ test('testing', function (t) {
     dht2.listen(20000)
 
     function ping () {
+      t.same(dht1.nodes.toArray().length, 2, 'have two nodes')
       dht1._pingAll(function () {
         t.same(dht1.nodes.toArray().length, 1, 'should remove all nodes')
         done()
