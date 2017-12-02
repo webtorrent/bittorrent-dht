@@ -44,6 +44,7 @@ test('testing clones', function (t) {
 
     dht2.on('ready', function () {
       dht2.destroy(function () {
+        //console.log("----")
         dht3 = dht({bootstrap: ['127.0.0.1:10000']})
         dht3.on('ready', ping)
         dht3.listen(20000)
@@ -53,11 +54,13 @@ test('testing clones', function (t) {
     dht2.listen(20000)
 
     function ping () {
+      console.log(dht3.nodes.toArray())
+      console.log(dht1.nodes.toArray())
       t.same(dht3.nodes.toArray().length, 2, 'has two nodes')
       t.same(dht1.nodes.toArray().length, 2, 'have two nodes')
       dht1._pingAll(function () {
-        t.same(dht3.nodes.toArray().length, 1, 'should remove all nodes')
-        t.same(dht1.nodes.toArray().length, 1, 'should remove all nodes')
+        t.same(dht3.nodes.toArray().length, 1, 'dht 3 should remove all nodes')
+        t.same(dht1.nodes.toArray().length, 1, 'dht 1 should remove all nodes')
         done()
       })
     }
