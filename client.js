@@ -126,7 +126,7 @@ DHT.prototype._setBucketCheckInterval = function () {
 }
 
 DHT.prototype.removeBucketCheckInterval = function () {
-  clearInterval(this._bucketCheckInterval)
+  clearTimeout(this._bucketCheckInterval)
 }
 
 DHT.prototype.updateBucketTimestamp = function () {
@@ -467,7 +467,7 @@ DHT.prototype.destroy = function (cb) {
   this.destroyed = true
   var self = this
   clearInterval(this._interval)
-  clearInterval(this._bucketCheckInterval)
+  this.removeBucketCheckInterval()
   this._debug('destroying')
   this._rpc.destroy(function () {
     self.emit('close')
