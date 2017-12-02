@@ -192,6 +192,10 @@ DHT.prototype._sendPing = function (node, cb) {
     if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== self._hashLength) {
       return cb(new Error('Bad reply'))
     }
+    if (Buffer.isBuffer(node.id) && !node.id.equals(pong.r.id)) {
+      return cb(new Error('Unexpected node id'))
+    }
+
     self.updateBucketTimestamp()
     cb(null, {
       id: pong.r.id,
