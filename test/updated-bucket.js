@@ -18,7 +18,7 @@ test('adding a node updates the lastChange property', function (t) {
       'lastChange timestamp is older'
     )
     dht.destroy()
-  }, 1)
+  }, 50)
 })
 
 test('same node doesn´t change the lastChange property', function (t) {
