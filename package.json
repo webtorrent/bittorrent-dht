@@ -1,7 +1,7 @@
 {
   "name": "bittorrent-dht",
   "description": "Simple, robust, BitTorrent DHT implementation",
-  "version": "7.7.0",
+  "version": "7.8.1",
   "author": {
     "name": "WebTorrent, LLC",
     "email": "feross@webtorrent.io",
@@ -15,8 +15,8 @@
     "buffer-equals": "^1.0.3",
     "debug": "^3.1.0",
     "inherits": "^2.0.1",
-    "k-bucket": "^3.0.1",
-    "k-rpc": "^4.1.0",
+    "k-bucket": "^3.3.0",
+    "k-rpc": "^4.2.1",
     "lru": "^3.1.0",
     "randombytes": "^2.0.5",
     "safe-buffer": "^5.0.1",
