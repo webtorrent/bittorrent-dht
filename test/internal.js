@@ -192,6 +192,22 @@ test('`announce_peer` query with bad token', function (t) {
   })
 })
 
+test('`announce_peer` with bad port', function (t) {
+  t.plan(1)
+
+  var dht1 = new DHT({ bootstrap: false })
+  dht1.listen(function () {
+    var dht2 = new DHT({ bootstrap: '127.0.0.1:' + dht1.address().port, timeout: 100 })
+    var infoHash = common.randomId()
+
+    dht2.announce(infoHash, 99999, function (err) {
+      dht1.destroy()
+      dht2.destroy()
+      t.ok(err, 'had error')
+    })
+  })
+})
+
 test('`announce_peer` query gets ack response', function (t) {
   t.plan(5)
 
