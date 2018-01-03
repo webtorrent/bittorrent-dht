@@ -43,6 +43,7 @@ function DHT (opts) {
   this._runningBucketCheck = false
   this._bucketCheckTimeout = null
   this._bucketOutdatedTimeSpan = opts.timeBucketOutdated || BUCKET_OUTDATED_TIMESPAN
+  this._methodHandlers = {}
 
   this.listening = false
   this.destroyed = false
@@ -201,6 +202,33 @@ DHT.prototype.addNode = function (node) {
 
 DHT.prototype.removeNode = function (id) {
   this._rpc.nodes.remove(toBuffer(id))
+}
+
+DHT.prototype.register = function (name, fn) {
+  this._methodHandlers[name] = fn
+  return this
+}
+
+DHT.prototype.query = function (name, key, message, onreply, cb) {
+  if (!cb) cb = noop
+  var table = this._tables.get(key.toString('hex'))
+  if (!table) return this._prequery(name, key, message, onreply, cb)
+  this._rpc.queryAll(table.closest(key), message, onreply, cb)
+}
+
+DHT.prototype._prequery = function (name, key, message, onreply, cb) {
+  var self = this
+
+  this._closest(key, {
+    q: 'find_node',
+    a: {
+      id: this._rpc.id,
+      target: key
+    }
+  }, null, function (err) {
+    if (err) return cb(err)
+    self.query(name, key, message, onreply, cb)
+  })
 }
 
 DHT.prototype._sendPing = function (node, cb) {
@@ -513,6 +541,9 @@ DHT.prototype._onquery = function (query, peer) {
     case 'put':
       return this._onput(query, peer)
   }
+
+  var fn = this._methodHandlers.hasOwnProperty(q) && this._methodHandlers[q]
+  if (fn) fn.call(this, query, peer)
 }
 
 DHT.prototype._onfindnode = function (query, peer) {
