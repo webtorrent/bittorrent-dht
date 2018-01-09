@@ -154,6 +154,10 @@ module.**
 a single parameter that is an `Error` or null.
 
 
+#### `dht.unannounce(infoHash, [port], [callback])`
+
+Similar to `dht.announce` except it will unannounce you as a peer sharing an infoHash.
+
 #### `arr = dht.toJSON()`
 
 Returns the current state of the DHT, including DHT nodes and BEP44 values.
