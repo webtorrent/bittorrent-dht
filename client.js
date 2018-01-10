@@ -25,7 +25,10 @@ function DHT (opts) {
 
   this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
   this._values = LRU(opts.maxValues || 1000)
-  this._peers = new PeerStore(opts.maxPeers || 10000)
+  this._peers = new PeerStore({
+    maxAge: opts.maxAge || Infinity,
+    max: opts.maxPeers || 10000
+  })
 
   this._secrets = null
   this._hash = opts.hash || sha1
@@ -820,10 +823,11 @@ function toNode (node) {
   }
 }
 
-function PeerStore (max) {
-  this.max = max || 10000
+function PeerStore (opts) {
+  this.max = opts.max || 10000
+  this.maxAge = opts.maxAge || Infinity
   this.used = 0
-  this.peers = LRU(Infinity)
+  this.peers = LRU({max: Infinity, maxAge: this.maxAge})
 }
 
 PeerStore.prototype.add = function (key, peer) {
@@ -832,7 +836,7 @@ PeerStore.prototype.add = function (key, peer) {
   if (!peers) {
     peers = {
       values: [],
-      map: LRU(Infinity)
+      map: LRU({max: Infinity, maxAge: this.maxAge})
     }
     this.peers.set(key, peers)
   }
