@@ -78,7 +78,6 @@ test('`announce` with {host: "127.0.0.1"} and no cache timeout', function (t) {
       t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
 
       dht1.lookup(infoHash, (er, count) => {
-
         setTimeout(function () {
           dht1.lookup(infoHash, (er, c) => {
             t.equal(cnt, 2, 'finds peers two times')
@@ -110,7 +109,6 @@ test('`announce` with {host: "127.0.0.1"} and cache timeout', function (t) {
       t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
 
       dht1.lookup(infoHash, (er, count) => {
-
         setTimeout(function () {
           dht1.lookup(infoHash, (er, c) => {
             t.equal(cnt, 1, 'just found a peer one time')
