@@ -83,6 +83,7 @@ If `opts` is specified, then the default options (shown below) will be overridde
   hash: Function,  // custom hash function to use (Function, SHA1 by default),
   krpc: krpc()     // optional k-rpc instance
   timeBucketOutdated: 900000 // check buckets every 15min
+  maxAge: Infinity  // optional setting for announced peers to time out
 }
 ```
 
