@@ -81,7 +81,9 @@ If `opts` is specified, then the default options (shown below) will be overridde
   host: false,     // host of local peer, if specified then announces get added to local table (String, disabled by default)
   concurrency: 16, // k-rpc option to specify maximum concurrent UDP requests allowed (Number, 16 by default)
   hash: Function,  // custom hash function to use (Function, SHA1 by default),
-  krpc: krpc()     // optional k-rpc instance
+  krpc: krpc(),     // optional k-rpc instance
+  timeBucketOutdated: 900000, // check buckets every 15min
+  maxAge: Infinity  // optional setting for announced peers to time out
 }
 ```
 
