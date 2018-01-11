@@ -25,7 +25,10 @@ function DHT (opts) {
 
   this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
   this._values = LRU(opts.maxValues || 1000)
-  this._peers = new PeerStore(opts.maxPeers || 10000)
+  this._peers = new PeerStore({
+    maxAge: opts.maxAge || Infinity,
+    max: opts.maxPeers || 10000
+  })
 
   this._secrets = null
   this._hash = opts.hash || sha1
@@ -545,7 +548,7 @@ DHT.prototype._ongetpeers = function (query, peer) {
 DHT.prototype._onannouncepeer = function (query, peer) {
   var host = peer.address || peer.host
   var port = query.a.implied_port ? peer.port : query.a.port
-  if (!port || typeof port !== 'number') return
+  if (!port || typeof port !== 'number' || port <= 0 || port > 65535) return
   var infoHash = query.a.info_hash
   var token = query.a.token
   if (!infoHash || !token) return
@@ -777,8 +780,10 @@ function toNode (node) {
   }
 }
 
-function PeerStore (max) {
-  this.max = max || 10000
+function PeerStore (opts) {
+  if (!opts) opts = {}
+  this.max = opts.max || 10000
+  this.maxAge = opts.maxAge || Infinity
   this.used = 0
   this.peers = LRU(Infinity)
 }
@@ -795,9 +800,13 @@ PeerStore.prototype.add = function (key, peer) {
   }
 
   var id = peer.toString('hex')
-  if (peers.map.get(id)) return
+  var node = peers.map.get(id)
+  if (node) {
+    node.modified = Date.now()
+    return
+  }
 
-  var node = {index: peers.values.length, peer: peer}
+  node = {index: peers.values.length, peer: peer, modified: Date.now()}
   peers.map.set(id, node)
   peers.values.push(node)
   if (++this.used > this.max) this._evict()
@@ -816,7 +825,10 @@ PeerStore.prototype._evict = function () {
 PeerStore.prototype.get = function (key) {
   var node = this.peers.get(key)
   if (!node) return []
-  return pick(node.values, 100)
+  var picked = pick(this, node.values, 100)
+  if (picked.length) return picked
+  this.peers.remove(key)
+  return []
 }
 
 function swap (list, a, b) {
@@ -828,15 +840,23 @@ function swap (list, a, b) {
   list[b].index = b
 }
 
-function pick (values, n) {
-  var len = Math.min(values.length, n)
+function pick (self, values, n) {
   var ptr = 0
-  var res = new Array(len)
+  var res = []
+  var now = Date.now()
 
-  for (var i = 0; i < len; i++) {
+  while (values.length && res.length < n && ptr < values.length) {
     var next = ptr + (Math.random() * (values.length - ptr)) | 0
-    res[ptr] = values[next].peer
-    swap(values, ptr++, next)
+    var val = values[next]
+
+    if (now - val.modified < self.maxAge) {
+      res.push(val.peer)
+      swap(values, ptr++, next)
+    } else {
+      swap(values, values.length - 1, next)
+      values.pop()
+      self.used--
+    }
   }
 
   return res
