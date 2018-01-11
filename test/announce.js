@@ -61,7 +61,7 @@ test('announce with implied port', function (t) {
   })
 })
 
-test('`announce` with {host: "127.0.0.1"} and no cache timeout', function (t) {
+test('`announce` and no cache timeout', function (t) {
   t.plan(2)
   var dht1 = new DHT({ bootstrap: false, maxAge: Infinity })
   var infoHash = common.randomId()
@@ -77,9 +77,9 @@ test('`announce` with {host: "127.0.0.1"} and no cache timeout', function (t) {
     dht1.once('announce', function (peer) {
       t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
 
-      dht1.lookup(infoHash, (er, count) => {
+      dht1.lookup(infoHash, function () {
         setTimeout(function () {
-          dht1.lookup(infoHash, (er, c) => {
+          dht1.lookup(infoHash, function () {
             t.equal(cnt, 2, 'finds peers two times')
             dht1.destroy()
             dht2.destroy()
@@ -92,7 +92,7 @@ test('`announce` with {host: "127.0.0.1"} and no cache timeout', function (t) {
   })
 })
 
-test('`announce` with {host: "127.0.0.1"} and cache timeout', function (t) {
+test('`announce` and cache timeout', function (t) {
   t.plan(2)
   var dht1 = new DHT({ bootstrap: false, maxAge: 50 })
   var infoHash = common.randomId()
@@ -108,9 +108,9 @@ test('`announce` with {host: "127.0.0.1"} and cache timeout', function (t) {
     dht1.once('announce', function (peer) {
       t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
 
-      dht1.lookup(infoHash, (er, count) => {
+      dht1.lookup(infoHash, function () {
         setTimeout(function () {
-          dht1.lookup(infoHash, (er, c) => {
+          dht1.lookup(infoHash, function () {
             t.equal(cnt, 1, 'just found a peer one time')
             dht1.destroy()
             dht2.destroy()
@@ -120,5 +120,41 @@ test('`announce` with {host: "127.0.0.1"} and cache timeout', function (t) {
     })
 
     dht2.announce(infoHash, 1337)
+  })
+})
+
+test('`announce` twice and cache timeout for one announce', function (t) {
+  var dht1 = new DHT({ bootstrap: false, maxAge: 50 })
+  var infoHash = common.randomId()
+
+  dht1.listen(function () {
+    var dht2 = new DHT({ bootstrap: '127.0.0.1:' + dht1.address().port, maxAge: 50 })
+
+    dht2.announce(infoHash, 1337, function () {
+      dht2.announce(infoHash, 1338, function () {
+        var found = {}
+        var interval = setInterval(function () {
+          dht2.announce(infoHash, 1338)
+        }, 10)
+
+        dht2.on('peer', function (peer) {
+          found[peer.host + ':' + peer.port] = true
+        })
+
+        dht2.lookup(infoHash, function () {
+          t.same(found, {'127.0.0.1:1337': true, '127.0.0.1:1338': true}, 'found two peers')
+          found = {}
+          setTimeout(function () {
+            dht2.lookup(infoHash, function () {
+              t.same(found, {'127.0.0.1:1338': true}, 'found one peer')
+              clearInterval(interval)
+              dht1.destroy()
+              dht2.destroy()
+              t.end()
+            })
+          }, 100)
+        })
+      })
+    })
   })
 })
