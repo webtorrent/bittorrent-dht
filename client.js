@@ -782,10 +782,11 @@ function toNode (node) {
 }
 
 function PeerStore (opts) {
+  if (!opts) opts = {}
   this.max = opts.max || 10000
   this.maxAge = opts.maxAge || Infinity
   this.used = 0
-  this.peers = LRU({max: Infinity, maxAge: this.maxAge})
+  this.peers = LRU(Infinity)
 }
 
 PeerStore.prototype.add = function (key, peer) {
@@ -794,15 +795,19 @@ PeerStore.prototype.add = function (key, peer) {
   if (!peers) {
     peers = {
       values: [],
-      map: LRU({max: Infinity, maxAge: this.maxAge})
+      map: LRU(Infinity)
     }
     this.peers.set(key, peers)
   }
 
   var id = peer.toString('hex')
-  if (peers.map.get(id)) return
+  var node = peers.map.get(id)
+  if (node) {
+    node.modified = Date.now()
+    return
+  }
 
-  var node = {index: peers.values.length, peer: peer}
+  node = {index: peers.values.length, peer: peer, modified: Date.now()}
   peers.map.set(id, node)
   peers.values.push(node)
   if (++this.used > this.max) this._evict()
@@ -821,7 +826,10 @@ PeerStore.prototype._evict = function () {
 PeerStore.prototype.get = function (key) {
   var node = this.peers.get(key)
   if (!node) return []
-  return pick(node.values, 100)
+  var picked = pick(this, node.values, 100)
+  if (picked.length) return picked
+  this.peers.remove(key)
+  return []
 }
 
 function swap (list, a, b) {
@@ -833,15 +841,23 @@ function swap (list, a, b) {
   list[b].index = b
 }
 
-function pick (values, n) {
-  var len = Math.min(values.length, n)
+function pick (self, values, n) {
   var ptr = 0
-  var res = new Array(len)
+  var res = []
+  var now = Date.now()
 
-  for (var i = 0; i < len; i++) {
+  while (values.length && res.length < n && ptr < values.length) {
     var next = ptr + (Math.random() * (values.length - ptr)) | 0
-    res[ptr] = values[next].peer
-    swap(values, ptr++, next)
+    var val = values[next]
+
+    if (now - val.modified < self.maxAge) {
+      res.push(val.peer)
+      swap(values, ptr++, next)
+    } else {
+      swap(values, values.length - 1, next)
+      values.pop()
+      self.used--
+    }
   }
 
   return res
