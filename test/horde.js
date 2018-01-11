@@ -8,13 +8,14 @@ var from = 2
 var to = 20
 
 for (var i = from; i <= to; i++) {
-  runAnnounceLookupTest(i)
+  runAnnounceLookupTest(i, false)
+  runAnnounceLookupTest(i, true)
 }
 
-function runAnnounceLookupTest (numInstances) {
-  test('horde: announce+lookup with ' + numInstances + ' DHTs', function (t) {
+function runAnnounceLookupTest (numInstances, unannounce) {
+  test('horde: announce+lookup' + (unannounce ? '+unannounce' : '') + ' with ' + numInstances + ' DHTs', function (t) {
     var numRunning = numInstances
-    findPeers(numInstances, t, function (err, dhts) {
+    findPeers(numInstances, t, unannounce, function (err, dhts) {
       if (err) throw err
 
       dhts.forEach(function (dht) {
@@ -40,7 +41,7 @@ function runAnnounceLookupTest (numInstances) {
  *  Initialize [numInstances] dhts, have one announce an infoHash, and another perform a
  *  lookup. Times out after a while.
  */
-function findPeers (numInstances, t, cb) {
+function findPeers (numInstances, t, unannounce, cb) {
   cb = once(cb)
   var dhts = []
   var timeoutId = setTimeout(function () {
@@ -69,16 +70,33 @@ function findPeers (numInstances, t, cb) {
 
     // lookup from other DHTs
     dhts[0].announce(infoHash, 9998, function () {
-      dhts[1].lookup(infoHash)
+      dhts[1].lookup(infoHash, function () {
+        if (unannounce) runUnannounce()
+      })
     })
   })
 
   dhts[1].on('peer', function (peer, hash) {
     t.equal(hash.toString('hex'), infoHash)
     t.equal(peer.port, 9998)
+    if (unannounce) return
     clearTimeout(timeoutId)
     cb(null, dhts)
   })
+
+  function runUnannounce () {
+    dhts[0].unannounce(infoHash, 9998, function (err) {
+      t.error(err)
+      dhts[1].on('peer', function () {
+        t.fail('peer should be unannounced')
+      })
+      dhts[1].lookup(infoHash, function (err) {
+        t.error(err)
+        clearTimeout(timeoutId)
+        cb(null, dhts)
+      })
+    })
+  }
 }
 
 /**

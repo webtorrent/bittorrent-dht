@@ -18,27 +18,41 @@ test('`announce` with {host: false}', function (t) {
   })
 })
 
-test('`announce` with {host: "127.0.0.1"}', function (t) {
-  t.plan(3)
+test('`announce` and `unannounce` with {host: "127.0.0.1"}', function (t) {
+  t.plan(6)
   var dht = new DHT({ bootstrap: false, host: '127.0.0.1' })
   common.failOnWarningOrError(t, dht)
 
   var infoHash = common.randomId()
+  var unannounced = false
+
   dht.announce(infoHash, 6969, function (err) {
     t.pass(err instanceof Error, 'announce should fail')
     dht.lookup(infoHash, function (err) {
       t.error(err)
-      dht.destroy()
+      dht.unannounce(infoHash, 6969, function (err) {
+        t.pass(err instanceof Error, 'unannounce should fail')
+        unannounced = true
+        dht.lookup(infoHash, function (err) {
+          t.error(err)
+          dht.destroy()
+        })
+      })
+    })
+
+    dht.on('unannounce', function () {
+      t.pass('should unannounce')
     })
 
     dht.on('peer', function (peer) {
+      if (unannounced) t.fail('peer should be unannounced')
       t.deepEqual(peer, { host: '127.0.0.1', port: 6969 })
     })
   })
 })
 
-test('announce with implied port', function (t) {
-  t.plan(2)
+test('announce and unannounce with implied port', function (t) {
+  t.plan(4)
   var dht1 = new DHT({ bootstrap: false })
   var infoHash = common.randomId()
 
@@ -52,8 +66,17 @@ test('announce with implied port', function (t) {
     dht2.announce(infoHash, function () {
       dht2.once('peer', function (peer) {
         t.deepEqual(peer, {host: '127.0.0.1', port: dht2.address().port})
-        dht1.destroy()
-        dht2.destroy()
+        dht2.unannounce(infoHash, function (err) {
+          t.error(err)
+          dht2.on('peer', function (peer) {
+            t.fail('should be no peers')
+          })
+          dht2.lookup(infoHash, function (err) {
+            t.error(err)
+            dht1.destroy()
+            dht2.destroy()
+          })
+        })
       })
 
       dht2.lookup(infoHash)

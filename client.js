@@ -394,21 +394,30 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   if (typeof port === 'function') return this.announce(infoHash, 0, port)
   infoHash = toBuffer(infoHash)
   if (!cb) cb = noop
+  this._updatePeer(true, infoHash, port, cb)
+}
 
+DHT.prototype.unannounce = function (infoHash, port, cb) {
+  if (typeof port === 'function') return this.unannounce(infoHash, 0, port)
+  infoHash = toBuffer(infoHash)
+  if (!cb) cb = noop
+  this._updatePeer(false, infoHash, port, cb)
+}
+
+DHT.prototype._updatePeer = function (announcing, infoHash, port, cb) {
   var table = this._tables.get(infoHash.toString('hex'))
-  if (!table) return this._preannounce(infoHash, port, cb)
+  if (!table) return this._preUpdatePeer(announcing, infoHash, port, cb)
 
   if (this._host) {
     var dhtPort = this.listening ? this.address().port : 0
-    this._addPeer(
-      {host: this._host, port: port || dhtPort},
-      infoHash,
-      {host: this._host, port: dhtPort}
-    )
+    var peer = {host: this._host, port: port || dhtPort}
+    var from = {host: this._host, port: dhtPort}
+    if (announcing) this._addPeer(peer, infoHash, from)
+    else this._removePeer(peer, infoHash, from)
   }
 
   var message = {
-    q: 'announce_peer',
+    q: announcing ? 'announce_peer' : 'unannounce_peer',
     a: {
       id: this._rpc.id,
       token: null, // queryAll sets this
@@ -418,17 +427,17 @@ DHT.prototype.announce = function (infoHash, port, cb) {
     }
   }
 
-  this._debug('announce %s %d', infoHash, port)
+  this._debug(announcing ? 'announce %s %d' : 'unannounce %s %d', infoHash, port)
   this._rpc.queryAll(table.closest(infoHash), message, null, cb)
 }
 
-DHT.prototype._preannounce = function (infoHash, port, cb) {
+DHT.prototype._preUpdatePeer = function (announcing, infoHash, port, cb) {
   var self = this
 
   this.lookup(infoHash, function (err) {
     if (self.destroyed) return cb(new Error('dht is destroyed'))
     if (err) return cb(err)
-    self.announce(infoHash, port, cb)
+    self._updatePeer(announcing, infoHash, port, cb)
   })
 }
 
@@ -510,6 +519,9 @@ DHT.prototype._onquery = function (query, peer) {
     case 'announce_peer':
       return this._onannouncepeer(query, peer)
 
+    case 'unannounce_peer':
+      return this._onunannouncepeer(query, peer)
+
     case 'get':
       return this._onget(query, peer)
 
@@ -547,6 +559,36 @@ DHT.prototype._ongetpeers = function (query, peer) {
 }
 
 DHT.prototype._onannouncepeer = function (query, peer) {
+  var req = this._validatePeerUpdate(query, peer)
+
+  if (!req) {
+    return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
+  }
+
+  var from = {host: req.host, port: peer.port}
+  var infoHash = query.a.info_hash
+
+  this.emit('announce_peer', infoHash, from)
+  this._addPeer(req, infoHash, from)
+  this._rpc.response(peer, query, {id: this._rpc.id})
+}
+
+DHT.prototype._onunannouncepeer = function (query, peer) {
+  var req = this._validatePeerUpdate(query, peer)
+
+  if (!req) {
+    return this._rpc.error(peer, query, [203, 'cannot `unannounce_peer` with bad token'])
+  }
+
+  var from = {host: req.host, port: peer.port}
+  var infoHash = query.a.info_hash
+
+  this.emit('unannounce_peer', infoHash, from)
+  this._removePeer(req, infoHash, from)
+  this._rpc.response(peer, query, {id: this._rpc.id})
+}
+
+DHT.prototype._validatePeerUpdate = function (query, peer) {
   var host = peer.address || peer.host
   var port = query.a.implied_port ? peer.port : query.a.port
   if (!port || typeof port !== 'number' || port <= 0 || port > 65535) return
@@ -554,14 +596,14 @@ DHT.prototype._onannouncepeer = function (query, peer) {
   var token = query.a.token
   if (!infoHash || !token) return
 
-  if (!this._validateToken(host, token)) {
-    return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
-  }
+  if (!this._validateToken(host, token)) return null
 
-  this.emit('announce_peer', infoHash, {host: host, port: peer.port})
+  return {host: host, port: port}
+}
 
-  this._addPeer({host: host, port: port}, infoHash, {host: host, port: peer.port})
-  this._rpc.response(peer, query, {id: this._rpc.id})
+DHT.prototype._removePeer = function (peer, infoHash, from) {
+  this._peers.remove(infoHash.toString('hex'), encodePeer(peer.host, peer.port))
+  this.emit('unannounce', peer, infoHash, from)
 }
 
 DHT.prototype._addPeer = function (peer, infoHash, from) {
@@ -811,6 +853,18 @@ PeerStore.prototype.add = function (key, peer) {
   peers.map.set(id, node)
   peers.values.push(node)
   if (++this.used > this.max) this._evict()
+}
+
+PeerStore.prototype.remove = function (key, peer) {
+  var peers = this.peers.peek(key)
+  if (!peers) return false
+  var removed = peers.map.remove(peer.toString('hex'))
+  if (!removed) return false
+  this.used--
+  swap(peers.values, peers.values.length - 1, removed.index)
+  peers.values.pop()
+  if (!peers.values.length) this.peers.remove(key)
+  return true
 }
 
 PeerStore.prototype._evict = function () {
