@@ -11,7 +11,7 @@ var krpc = require('k-rpc')
 var LRU = require('lru')
 var randombytes = require('randombytes')
 var simpleSha1 = require('simple-sha1')
-var PeerStore = require('./peer-store')
+var records = require('record-cache')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var BUCKET_OUTDATED_TIMESPAN = 15 * 60 * 1000 // check nodes in bucket in 15 minutes old buckets
@@ -26,9 +26,9 @@ function DHT (opts) {
 
   this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
   this._values = LRU(opts.maxValues || 1000)
-  this._peers = new PeerStore({
-    maxAge: opts.maxAge || Infinity,
-    max: opts.maxPeers || 10000
+  this._peers = records({
+    maxAge: opts.maxAge || 0,
+    maxSize: opts.maxPeers || 10000
   })
 
   this._secrets = null
@@ -450,7 +450,7 @@ DHT.prototype.lookup = function (infoHash, cb) {
   }, onreply, cb)
 
   function emit (values, from) {
-    if (!values) values = self._peers.get(infoHash.toString('hex'))
+    if (!values) values = self._peers.get(infoHash.toString('hex'), 100)
     var peers = decodePeers(values)
     for (var i = 0; i < peers.length; i++) {
       self.emit('peer', peers[i], infoHash, from || null)
@@ -486,6 +486,7 @@ DHT.prototype.destroy = function (cb) {
   var self = this
   clearInterval(this._interval)
   this.removeBucketCheckInterval()
+  this._peers.destroy()
   this._debug('destroying')
   this._rpc.destroy(function () {
     self.emit('close')
