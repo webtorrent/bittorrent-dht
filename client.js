@@ -12,6 +12,7 @@ var LRU = require('lru')
 var randombytes = require('randombytes')
 var simpleSha1 = require('simple-sha1')
 var records = require('record-cache')
+var low = require('last-one-wins')
 
 var ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 var BUCKET_OUTDATED_TIMESPAN = 15 * 60 * 1000 // check nodes in bucket in 15 minutes old buckets
@@ -53,22 +54,35 @@ function DHT (opts) {
   this.nodeId = this._rpc.id
   this.nodes = this._rpc.nodes
 
-  this.nodes.on('ping', function (nodes, contact) {
-    self._debug('received ping', nodes, contact)
-    self._checkAndRemoveNodes(nodes, function (_, removed) {
-      if (removed) {
-        self._debug('added new node:', contact)
-        self.addNode(contact)
-      }
+  // ensure only *one* ping it running at the time to avoid infinite async
+  // ping recursion, and make the latest one is always ran, but inbetween ones
+  // are disregarded
+  var onping = low(ping)
 
-      self._debug('no node added, all other nodes ok')
-    })
+  this.nodes.on('ping', function (older, newer) {
+    onping({older: older, newer: newer})
   })
 
   process.nextTick(bootstrap)
 
   EventEmitter.call(this)
   this._debug('new DHT %s', this.nodeId)
+
+  function ping (opts, cb) {
+    var older = opts.older
+    var newer = opts.newer
+
+    self._debug('received ping', older, newer)
+    self._checkAndRemoveNodes(older, function (_, removed) {
+      if (removed) {
+        self._debug('added new node:', newer)
+        self.addNode(newer)
+      }
+
+      self._debug('no node added, all other nodes ok')
+      cb()
+    })
+  }
 
   function onlistening () {
     self.listening = true
