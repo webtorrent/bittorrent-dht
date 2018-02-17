@@ -363,7 +363,7 @@ DHT.prototype.get = function (key, opts, cb) {
   var hash = this._hash
   var value = this._values.get(key.toString('hex')) || null
 
-  if (value) {
+  if (value && !opts.nocache) {
     value = createGetResponse(this._rpc.id, null, value)
     return process.nextTick(done)
   }
@@ -384,6 +384,7 @@ DHT.prototype.get = function (key, opts, cb) {
   function onreply (message) {
     var r = message.r
     if (!r || !r.v) return true
+    if (!r.salt && opts.salt) r.salt = Buffer(opts.salt)
 
     var isMutable = r.k || r.sig
 
@@ -746,7 +747,6 @@ function createGetResponse (id, token, value) {
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k
-    if (value.salt) r.salt = value.salt
     if (typeof value.seq === 'number') r.seq = value.seq
   }
   return r
