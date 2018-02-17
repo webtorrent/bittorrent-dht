@@ -299,13 +299,17 @@ dht.get(key, function (err, res) {
 })
 ```
 
-#### `dht.get(hash, callback)`
+#### `dht.get(hash, opts, callback)`
 
 Read a data record (created with `.put()`) from the DHT.
 ([BEP 44](http://bittorrent.org/beps/bep_0044.html))
 
 Given `hash`, a hex string or buffer, lookup data content from the DHT, sending the
 result in `callback(err, res)`.
+
+These options are available:
+
+* `opts.verify` - override the default ed25519 verification function supplied during DHT instantiation.
 
 `res` objects are similar to the options objects written to the DHT with
 `.put()`:
