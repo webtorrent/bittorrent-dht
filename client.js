@@ -387,6 +387,8 @@ DHT.prototype.get = function (key, opts, cb) {
 
     var isMutable = r.k || r.sig
 
+    if (opts.salt) r.salt = Buffer.from(opts.salt)
+
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
