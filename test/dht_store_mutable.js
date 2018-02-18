@@ -219,7 +219,7 @@ test('multiparty mutable put/get sequence', function (t) {
     })
 
     function putSomethingElse () {
-      opts.seq ++
+      opts.seq++
       opts.v = common.fill(32, 'whatever')
 
       dht1.put(opts, function (err, hash) {
@@ -237,7 +237,7 @@ test('multiparty mutable put/get sequence', function (t) {
     }
 
     function yetStillMore () {
-      opts.seq ++
+      opts.seq++
       opts.v = common.fill(999, 'cool')
 
       dht1.put(opts, function (err, hash) {
@@ -332,7 +332,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     }
 
     function yetStillMore () {
-      fopts.seq ++
+      fopts.seq++
       fopts.v = common.fill(999, 'cool')
 
       dht1.put(fopts, function (err, hash) {
