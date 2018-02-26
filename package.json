@@ -11,7 +11,7 @@
     "url": "https://github.com/webtorrent/bittorrent-dht/issues"
   },
   "dependencies": {
-    "bencode": "^1.0.0",
+    "bencode": "^2.0.0",
     "buffer-equals": "^1.0.3",
     "debug": "^3.1.0",
     "inherits": "^2.0.1",
