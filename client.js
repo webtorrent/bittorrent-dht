@@ -187,7 +187,7 @@ DHT.prototype._checkNodes = function (nodes, cb) {
 
       // retry
       self._sendPing(current, function (er) {
-        if (err) {
+        if (er) {
           return cb(null, current)
         }
 
