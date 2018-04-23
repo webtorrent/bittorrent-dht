@@ -59,8 +59,8 @@ function DHT (opts) {
   // are disregarded
   var onping = low(ping)
 
-  this.nodes.on('ping', function (older, newer) {
-    onping({older: older, newer: newer})
+  this._rpc.on('ping', function (older, swap) {
+    onping({older: older, swap: swap})
   })
 
   process.nextTick(bootstrap)
@@ -70,13 +70,14 @@ function DHT (opts) {
 
   function ping (opts, cb) {
     var older = opts.older
-    var newer = opts.newer
+    var swap = opts.swap
 
-    self._debug('received ping', older, newer)
-    self._checkAndRemoveNodes(older, function (_, removed) {
-      if (removed) {
-        self._debug('added new node:', newer)
-        self.addNode(newer)
+    self._debug('received ping', older)
+    self._checkNodes(older, false, function (_, deadNode) {
+      if (deadNode) {
+        self._debug('swaping dead node with newer', deadNode)
+        swap(deadNode)
+        return cb()
       }
 
       self._debug('no node added, all other nodes ok')
@@ -87,6 +88,8 @@ function DHT (opts) {
   function onlistening () {
     self.listening = true
     self._debug('listening %d', self.address().port)
+    self.updateBucketTimestamp()
+    self._setBucketCheckInterval()
     self.emit('listening')
   }
 
@@ -163,41 +166,37 @@ DHT.prototype.updateBucketTimestamp = function () {
 DHT.prototype._checkAndRemoveNodes = function (nodes, cb) {
   var self = this
 
-  this._checkNodes(nodes, function (_, node) {
+  this._checkNodes(nodes, true, function (_, node) {
     if (node) self.removeNode(node.id)
     cb(null, node)
   })
 }
 
-DHT.prototype._checkNodes = function (nodes, cb) {
+DHT.prototype._checkNodes = function (nodes, force, cb) {
   var self = this
 
+  test(nodes)
+
   function test (acc) {
-    if (!acc.length) {
-      return cb(null)
+    var current = null
+
+    while (acc.length) {
+      current = acc.pop()
+      if (!current.id || force) break
+      if (Date.now() - (current.seen || 0) > 10000) break // not pinged within 10s
+      current = null
     }
 
-    var current = acc.pop()
+    if (!current) return cb(null)
 
     self._sendPing(current, function (err) {
       if (!err) {
         self.updateBucketTimestamp()
         return test(acc)
       }
-
-      // retry
-      self._sendPing(current, function (er) {
-        if (er) {
-          return cb(null, current)
-        }
-
-        self.updateBucketTimestamp()
-        return test(acc)
-      })
+      cb(null, current)
     })
   }
-
-  test(nodes)
 }
 
 DHT.prototype.addNode = function (node) {
@@ -485,9 +484,6 @@ DHT.prototype.address = function () {
 // listen([port], [address], [onlistening])
 DHT.prototype.listen = function () {
   this._rpc.bind.apply(this._rpc, arguments)
-
-  this.updateBucketTimestamp()
-  this._setBucketCheckInterval()
 }
 
 DHT.prototype.destroy = function (cb) {
