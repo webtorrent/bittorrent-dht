@@ -16,11 +16,11 @@
     "debug": "^3.1.0",
     "inherits": "^2.0.1",
     "k-bucket": "^4.0.0",
-    "k-rpc": "^4.2.1",
+    "k-rpc": "^5.0.0",
     "last-one-wins": "^1.0.4",
     "lru": "^3.1.0",
     "randombytes": "^2.0.5",
-    "record-cache": "^1.0.1",
+    "record-cache": "^1.0.2",
     "safe-buffer": "^5.0.1",
     "simple-sha1": "^2.1.0"
   },

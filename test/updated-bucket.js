@@ -87,7 +87,7 @@ test('_checkNodes: skips good nodes', function (t) {
       dht2.on('ready', function () {
         var nodes = dht1.nodes.toArray()
 
-        dht1._checkNodes(nodes, function (err, data) {
+        dht1._checkNodes(nodes, true, function (err, data) {
           t.notOk(err, 'no error')
           t.notOk(data, 'no broken nodes')
           dht1.destroy()
@@ -124,7 +124,7 @@ test('_checkNodes: returns the bad one', function (t) {
         var goodNode = goodNodes[0]
         var nodes = [goodNode, goodNode, badNode, goodNode]
 
-        dht1._checkNodes(nodes, function (err, data) {
+        dht1._checkNodes(nodes, true, function (err, data) {
           t.notOk(err, 'no error')
           t.equal(data.id, badNode.id)
           dht1.destroy()
