@@ -384,6 +384,8 @@ DHT.prototype.get = function (key, opts, cb) {
 
     var isMutable = r.k || r.sig
 
+    if (opts.salt) r.salt = Buffer.from(opts.salt)
+
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
@@ -740,7 +742,6 @@ function createGetResponse (id, token, value) {
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k
-    if (value.salt) r.salt = value.salt
     if (typeof value.seq === 'number') r.seq = value.seq
   }
   return r

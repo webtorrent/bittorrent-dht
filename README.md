@@ -310,6 +310,7 @@ result in `callback(err, res)`.
 These options are available:
 
 * `opts.verify` - override the default ed25519 verification function supplied during DHT instantiation.
+* `opts.salt` - optional salt buffer (if any) that was used to calculate the hash. Must be specified if included in the hash.
 * `opts.cache` - use locally cached response value when available instead of performing a network lookup (defaults to true).
 
 `res` objects are similar to the options objects written to the DHT with
@@ -320,7 +321,6 @@ These options are available:
 * `res.k` - the public key (only present for mutable data)
 * `res.sig` - the signature (only present for mutable data)
 * `res.seq` - the sequence (optional, only present for mutable data)
-* `res.salt` - the salt (optional, only present for mutable data)
 
 ### events
 
