@@ -59,8 +59,8 @@ function DHT (opts) {
   // are disregarded
   var onping = low(ping)
 
-  this.nodes.on('ping', function (older, newer) {
-    onping({older: older, newer: newer})
+  this._rpc.on('ping', function (older, swap) {
+    onping({older: older, swap: swap})
   })
 
   process.nextTick(bootstrap)
@@ -70,13 +70,14 @@ function DHT (opts) {
 
   function ping (opts, cb) {
     var older = opts.older
-    var newer = opts.newer
+    var swap = opts.swap
 
-    self._debug('received ping', older, newer)
-    self._checkAndRemoveNodes(older, function (_, removed) {
-      if (removed) {
-        self._debug('added new node:', newer)
-        self.addNode(newer)
+    self._debug('received ping', older)
+    self._checkNodes(older, false, function (_, deadNode) {
+      if (deadNode) {
+        self._debug('swaping dead node with newer', deadNode)
+        swap(deadNode)
+        return cb()
       }
 
       self._debug('no node added, all other nodes ok')
@@ -87,6 +88,8 @@ function DHT (opts) {
   function onlistening () {
     self.listening = true
     self._debug('listening %d', self.address().port)
+    self.updateBucketTimestamp()
+    self._setBucketCheckInterval()
     self.emit('listening')
   }
 
@@ -163,41 +166,37 @@ DHT.prototype.updateBucketTimestamp = function () {
 DHT.prototype._checkAndRemoveNodes = function (nodes, cb) {
   var self = this
 
-  this._checkNodes(nodes, function (_, node) {
+  this._checkNodes(nodes, true, function (_, node) {
     if (node) self.removeNode(node.id)
     cb(null, node)
   })
 }
 
-DHT.prototype._checkNodes = function (nodes, cb) {
+DHT.prototype._checkNodes = function (nodes, force, cb) {
   var self = this
 
+  test(nodes)
+
   function test (acc) {
-    if (!acc.length) {
-      return cb(null)
+    var current = null
+
+    while (acc.length) {
+      current = acc.pop()
+      if (!current.id || force) break
+      if (Date.now() - (current.seen || 0) > 10000) break // not pinged within 10s
+      current = null
     }
 
-    var current = acc.pop()
+    if (!current) return cb(null)
 
     self._sendPing(current, function (err) {
       if (!err) {
         self.updateBucketTimestamp()
         return test(acc)
       }
-
-      // retry
-      self._sendPing(current, function (er) {
-        if (err) {
-          return cb(null, current)
-        }
-
-        self.updateBucketTimestamp()
-        return test(acc)
-      })
+      cb(null, current)
     })
   }
-
-  test(nodes)
 }
 
 DHT.prototype.addNode = function (node) {
@@ -273,9 +272,6 @@ DHT.prototype.put = function (opts, cb) {
   if (isMutable && opts.cas !== undefined && typeof opts.cas !== 'number') {
     throw new Error('opts.cas must be an integer if provided')
   }
-  if (isMutable && !opts.k) {
-    throw new Error('opts.k ed25519 public key required for mutable put')
-  }
   if (isMutable && opts.k.length !== 32) {
     throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
@@ -323,9 +319,10 @@ DHT.prototype._put = function (opts, cb) {
     message.a.seq = opts.seq
     if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
     else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
+  } else {
+    this._values.set(key.toString('hex'), message.a)
   }
 
-  this._values.set(key.toString('hex'), message.a)
   this._rpc.queryAll(table.closest(key), message, null, function (err, n) {
     if (err) return cb(err, key, n)
     cb(null, key, n)
@@ -363,7 +360,7 @@ DHT.prototype.get = function (key, opts, cb) {
   var hash = this._hash
   var value = this._values.get(key.toString('hex')) || null
 
-  if (value) {
+  if (value && (opts.cache !== false)) {
     value = createGetResponse(this._rpc.id, null, value)
     return process.nextTick(done)
   }
@@ -487,9 +484,6 @@ DHT.prototype.address = function () {
 // listen([port], [address], [onlistening])
 DHT.prototype.listen = function () {
   this._rpc.bind.apply(this._rpc, arguments)
-
-  this.updateBucketTimestamp()
-  this._setBucketCheckInterval()
 }
 
 DHT.prototype.destroy = function (cb) {
@@ -799,6 +793,7 @@ function toNode (node) {
 
 function toBuffer (str) {
   if (Buffer.isBuffer(str)) return str
+  if (ArrayBuffer.isView(str)) return Buffer.from(str.buffer, str.byteOffset, str.byteLength)
   if (typeof str === 'string') return Buffer.from(str, 'hex')
   throw new Error('Pass a buffer or a string')
 }

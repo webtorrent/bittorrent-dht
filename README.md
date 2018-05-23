@@ -311,6 +311,7 @@ These options are available:
 
 * `opts.verify` - override the default ed25519 verification function supplied during DHT instantiation.
 * `opts.salt` - optional salt buffer (if any) that was used to calculate the hash. Must be specified if included in the hash.
+* `opts.cache` - use locally cached response value when available instead of performing a network lookup (defaults to true).
 
 `res` objects are similar to the options objects written to the DHT with
 `.put()`:
