@@ -49,7 +49,7 @@
     "url": "git://github.com/webtorrent/bittorrent-dht.git"
   },
   "scripts": {
-    "update-authors": "./bin/update-authors.sh",
+    "update-authors": "./tools/update-authors.sh",
     "test": "standard && tape test/*.js",
     "test-live": "tape test/live/*.js"
   }
