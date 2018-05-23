@@ -26,7 +26,12 @@ test('dht store test vectors', function (t) {
   })
   common.failOnWarningOrError(t, dht)
 
-  dht.on('ready', function () {
+  dht.listen(function () {
+    dht.addNode({ host: '127.0.0.1', port: dht.address().port })
+    dht.once('node', ready)
+  })
+
+  function ready () {
     var opts = {
       k: pub,
       seq: 1,
@@ -60,5 +65,5 @@ test('dht store test vectors', function (t) {
         t.equal(res.seq, 1)
       })
     })
-  })
+  }
 })

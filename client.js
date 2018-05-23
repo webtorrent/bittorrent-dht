@@ -272,9 +272,6 @@ DHT.prototype.put = function (opts, cb) {
   if (isMutable && opts.cas !== undefined && typeof opts.cas !== 'number') {
     throw new Error('opts.cas must be an integer if provided')
   }
-  if (isMutable && !opts.k) {
-    throw new Error('opts.k ed25519 public key required for mutable put')
-  }
   if (isMutable && opts.k.length !== 32) {
     throw new Error('opts.k ed25519 public key must be 32 bytes')
   }
@@ -322,9 +319,10 @@ DHT.prototype._put = function (opts, cb) {
     message.a.seq = opts.seq
     if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
     else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
+  } else {
+    this._values.set(key.toString('hex'), message.a)
   }
 
-  this._values.set(key.toString('hex'), message.a)
   this._rpc.queryAll(table.closest(key), message, null, function (err, n) {
     if (err) return cb(err, key, n)
     cb(null, key, n)
