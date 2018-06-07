@@ -88,19 +88,25 @@ test('dht store test vectors - test 2 (mutable with salt)', function (t) {
   })
   common.failOnWarningOrError(t, dht)
 
-  dht.on('ready', function () {
+  dht.listen(function () {
+    dht.addNode({ host: '127.0.0.1', port: dht.address().port })
+    dht.once('node', ready)
+  })
+
+  function ready() {
     var opts = {
       k: pub,
       seq: 1,
-      v: value,
+      v: Buffer.from(value),
       salt: Buffer.from('foobar'),
       sign: function (buf) {
-        t.equal(buf.toString(), '4:salt6:foobar3:seqi1e1:v12:Hello World!')
+        t.equal(buf.toString(), '4:salt6:foobar3:seqi1e1:v12:Hello World!', 'encodings match')
         var sig = ed.sign(buf, pub, priv)
         t.equal(
           sig.toString('hex'),
           '6834284b6b24c3204eb2fea824d82f88883a3d95e8b4a21b8c0ded553d17d17d' +
-          'df9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08'
+          'df9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08',
+          'signatures match'
         )
         return sig
       }
@@ -109,10 +115,11 @@ test('dht store test vectors - test 2 (mutable with salt)', function (t) {
     dht.put(opts, function (_, hash) {
       t.equal(
         hash.toString('hex'),
-        '411eba73b6f087ca51a3795d9c8c938d365e32c1'
+        '411eba73b6f087ca51a3795d9c8c938d365e32c1',
+        'hashes match'
       )
 
-      dht.get(hash, function (err, res) {
+      dht.get(hash, {"salt": opts.salt}, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
@@ -120,5 +127,5 @@ test('dht store test vectors - test 2 (mutable with salt)', function (t) {
         t.equal(res.seq, 1)
       })
     })
-  })
+  }
 })
