@@ -93,7 +93,7 @@ test('dht store test vectors - test 2 (mutable with salt)', function (t) {
     dht.once('node', ready)
   })
 
-  function ready() {
+  function ready () {
     var opts = {
       k: pub,
       seq: 1,
@@ -119,7 +119,7 @@ test('dht store test vectors - test 2 (mutable with salt)', function (t) {
         'hashes match'
       )
 
-      dht.get(hash, {"salt": opts.salt}, function (err, res) {
+      dht.get(hash, function (err, res) {
         t.ifError(err)
         t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
           'got back what we put in'
