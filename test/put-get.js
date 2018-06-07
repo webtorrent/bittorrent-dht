@@ -25,13 +25,13 @@ test('dht store with salt', function (t) {
 
     var opts = {
       seq: 1,
-      v: 'hello world'
+      v: Buffer.from('hello world'),
+      salt: Buffer.from('mysalt')
     }
 
     opts.k = publicKey
 
-    var toEncode = { seq: opts.seq, v: opts.v }
-    toEncode.salt = 'mysalt'
+    var toEncode = { salt: opts.salt, seq: opts.seq, v: opts.v }
 
     var encoded = bencode
       .encode(toEncode)
