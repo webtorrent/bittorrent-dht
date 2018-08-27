@@ -25,7 +25,7 @@ function DHT (opts) {
 
   var self = this
 
-  this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
+  this._tables = LRU({maxAge: opts.rotateInterval || ROTATE_INTERVAL, max: opts.maxTables || 1000})
   this._values = LRU(opts.maxValues || 1000)
   this._peers = records({
     maxAge: opts.maxAge || 0,
@@ -44,7 +44,7 @@ function DHT (opts) {
   this._rotateSecrets()
   this._verify = opts.verify || null
   this._host = opts.host || null
-  this._interval = setInterval(rotateSecrets, ROTATE_INTERVAL)
+  this._interval = setInterval(rotateSecrets, opts.rotateInterval || ROTATE_INTERVAL)
   this._runningBucketCheck = false
   this._bucketCheckTimeout = null
   this._bucketOutdatedTimeSpan = opts.timeBucketOutdated || BUCKET_OUTDATED_TIMESPAN
