@@ -6,7 +6,7 @@ test('Set and get before ready is emitted', function (t) {
   var dht1 = new DHT()
   var dht2 = new DHT()
 
-  dht1.put({v: 'myvalue'}, function (err, hash, n) {
+  dht1.put({ v: 'myvalue' }, function (err, hash, n) {
     t.error(err)
     t.ok(hash)
     dht2.get(hash, function (err, value) {
@@ -21,7 +21,7 @@ test('Set and get before ready is emitted', function (t) {
 
 test('put mutable', function (t) {
   var dht1 = new DHT()
-  var dht2 = new DHT({verify: ed.verify})
+  var dht2 = new DHT({ verify: ed.verify })
   var k = kp()
 
   dht1.put({
@@ -48,7 +48,7 @@ test('put mutable', function (t) {
 
 test('put mutable (salted)', function (t) {
   var dht1 = new DHT()
-  var dht2 = new DHT({verify: ed.verify})
+  var dht2 = new DHT({ verify: ed.verify })
   var k = kp()
   var salt = ed.createSeed().slice(0, 20)
 
@@ -63,7 +63,7 @@ test('put mutable (salted)', function (t) {
     t.ok(hash)
     dht2.get(hash, function (_, value) {
       t.ok(!value, 'salt required')
-      dht2.get(hash, {salt: salt}, function (err, value) {
+      dht2.get(hash, { salt: salt }, function (err, value) {
         t.error(err)
         t.same(value.v.toString(), 'myvalue')
         dht1.destroy()

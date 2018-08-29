@@ -2,14 +2,14 @@ var test = require('tape')
 var dht = require('../')
 
 test('ping should clear clones', function (t) {
-  var dht1 = dht({bootstrap: false})
+  var dht1 = dht({ bootstrap: false })
 
   dht1.listen(10000, function () {
-    var dht2 = dht({bootstrap: ['127.0.0.1:10000']})
+    var dht2 = dht({ bootstrap: ['127.0.0.1:10000'] })
 
     dht2.on('ready', function () {
       dht2.destroy(function () {
-        dht2 = dht({bootstrap: ['127.0.0.1:10000']})
+        dht2 = dht({ bootstrap: ['127.0.0.1:10000'] })
         dht2.on('ready', ping)
         dht2.listen(20000)
       })
@@ -36,15 +36,15 @@ test('ping should clear clones', function (t) {
 })
 
 test('ping should clear with three nodes', function (t) {
-  var dht1 = dht({bootstrap: false})
+  var dht1 = dht({ bootstrap: false })
   var dht3
 
   dht1.listen(10000, function () {
-    var dht2 = dht({bootstrap: ['127.0.0.1:10000']})
+    var dht2 = dht({ bootstrap: ['127.0.0.1:10000'] })
 
     dht2.on('ready', function () {
       dht2.destroy(function () {
-        dht3 = dht({bootstrap: ['127.0.0.1:10000']})
+        dht3 = dht({ bootstrap: ['127.0.0.1:10000'] })
         dht3.on('ready', ping)
         dht3.listen(20000)
       })

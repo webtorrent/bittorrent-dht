@@ -32,7 +32,7 @@ test('call `addNode` with nodeId argument', function (t) {
     dht.destroy()
   })
 
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
 })
 
 test('call `addNode` without nodeId argument', function (t) {
@@ -48,7 +48,7 @@ test('call `addNode` without nodeId argument', function (t) {
     var port = dht1.address().port
 
     // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
-    dht2.addNode({host: '127.0.0.1', port: port})
+    dht2.addNode({ host: '127.0.0.1', port: port })
 
     dht2.on('node', function (node) {
       t.equal(node.host, '127.0.0.1')
@@ -68,7 +68,7 @@ test('call `addNode` without nodeId argument, and invalid addr', function (t) {
 
   // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
   // If the peer DOES NOT RESPOND, the will not be added to the routing table.
-  dht.addNode({host: '127.0.0.1', port: 9999})
+  dht.addNode({ host: '127.0.0.1', port: 9999 })
 
   dht.on('node', function () {
     // No 'node' event should be emitted if the added node does not respond to ping
@@ -92,9 +92,9 @@ test('`addNode` only emits events for new nodes', function (t) {
   })
 
   var nodeId = common.randomId()
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
-  dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+  dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
+  dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
+  dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
 
   var togo = 1
   setTimeout(function () {
@@ -111,7 +111,7 @@ test('send message while binding (listen)', function (t) {
     var port = a.address().port
     var b = new DHT({ bootstrap: false })
     b.listen()
-    b._sendPing({host: '127.0.0.1', port: port}, function (err) {
+    b._sendPing({ host: '127.0.0.1', port: port }, function (err) {
       t.error(err)
       a.destroy()
       b.destroy()

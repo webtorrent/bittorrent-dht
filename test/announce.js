@@ -43,15 +43,15 @@ test('announce with implied port', function (t) {
   var infoHash = common.randomId()
 
   dht1.listen(function () {
-    var dht2 = new DHT({bootstrap: '127.0.0.1:' + dht1.address().port})
+    var dht2 = new DHT({ bootstrap: '127.0.0.1:' + dht1.address().port })
 
     dht1.on('announce', function (peer) {
-      t.deepEqual(peer, {host: '127.0.0.1', port: dht2.address().port})
+      t.deepEqual(peer, { host: '127.0.0.1', port: dht2.address().port })
     })
 
     dht2.announce(infoHash, function () {
       dht2.once('peer', function (peer) {
-        t.deepEqual(peer, {host: '127.0.0.1', port: dht2.address().port})
+        t.deepEqual(peer, { host: '127.0.0.1', port: dht2.address().port })
         dht1.destroy()
         dht2.destroy()
       })
@@ -75,7 +75,7 @@ test('`announce` and no cache timeout', function (t) {
     })
 
     dht1.once('announce', function (peer) {
-      t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
+      t.deepEqual(peer, { host: '127.0.0.1', port: 1337 })
 
       dht1.lookup(infoHash, function () {
         setTimeout(function () {
@@ -106,7 +106,7 @@ test('`announce` and cache timeout', function (t) {
     })
 
     dht1.once('announce', function (peer) {
-      t.deepEqual(peer, {host: '127.0.0.1', port: 1337})
+      t.deepEqual(peer, { host: '127.0.0.1', port: 1337 })
 
       dht1.lookup(infoHash, function () {
         setTimeout(function () {
@@ -142,11 +142,11 @@ test('`announce` twice and cache timeout for one announce', function (t) {
         })
 
         dht2.lookup(infoHash, function () {
-          t.same(found, {'127.0.0.1:1337': true, '127.0.0.1:1338': true}, 'found two peers')
+          t.same(found, { '127.0.0.1:1337': true, '127.0.0.1:1338': true }, 'found two peers')
           found = {}
           setTimeout(function () {
             dht2.lookup(infoHash, function () {
-              t.same(found, {'127.0.0.1:1338': true}, 'found one peer')
+              t.same(found, { '127.0.0.1:1338': true }, 'found one peer')
               clearInterval(interval)
               dht1.destroy()
               dht2.destroy()
