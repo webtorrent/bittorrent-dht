@@ -37,7 +37,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '255.255.255.255', port: 6969, id: targetNodeId})
+  dht1.addNode({ host: '255.255.255.255', port: 6969, id: targetNodeId })
 
   dht1.listen(function () {
     dht2._rpc.query({
@@ -45,7 +45,7 @@ test('`find_node` query for exact match (with one in table)', function (t) {
       port: dht1.address().port
     }, {
       q: 'find_node',
-      a: {target: targetNodeId}
+      a: { target: targetNodeId }
     }, function (err, res) {
       t.error(err)
 
@@ -66,9 +66,9 @@ test('`find_node` query (with many in table)', function (t) {
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '1.1.1.1', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '10.10.10.10', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '255.255.255.255', port: 6969, id: common.randomId()})
+  dht1.addNode({ host: '1.1.1.1', port: 6969, id: common.randomId() })
+  dht1.addNode({ host: '10.10.10.10', port: 6969, id: common.randomId() })
+  dht1.addNode({ host: '255.255.255.255', port: 6969, id: common.randomId() })
 
   dht1.listen(function () {
     var targetNodeId = common.randomId()
@@ -77,7 +77,7 @@ test('`find_node` query (with many in table)', function (t) {
       port: dht1.address().port
     }, {
       q: 'find_node',
-      a: {target: targetNodeId}
+      a: { target: targetNodeId }
     }, function (err, res) {
       t.error(err)
 
@@ -98,8 +98,8 @@ test('`get_peers` query to node with *no* peers in table', function (t) {
   common.failOnWarningOrError(t, dht1)
   common.failOnWarningOrError(t, dht2)
 
-  dht1.addNode({host: '1.1.1.1', port: 6969, id: common.randomId()})
-  dht1.addNode({host: '2.2.2.2', port: 6969, id: common.randomId()})
+  dht1.addNode({ host: '1.1.1.1', port: 6969, id: common.randomId() })
+  dht1.addNode({ host: '2.2.2.2', port: 6969, id: common.randomId() })
 
   dht1.listen(function () {
     var targetInfoHash = common.randomId()

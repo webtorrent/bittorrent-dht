@@ -25,7 +25,7 @@ function DHT (opts) {
 
   var self = this
 
-  this._tables = LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
+  this._tables = LRU({ maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000 })
   this._values = LRU(opts.maxValues || 1000)
   this._peers = records({
     maxAge: opts.maxAge || 0,
@@ -35,7 +35,7 @@ function DHT (opts) {
   this._secrets = null
   this._hash = opts.hash || sha1
   this._hashLength = this._hash(Buffer.from('')).length
-  this._rpc = opts.krpc || krpc(Object.assign({idLength: this._hashLength}, opts))
+  this._rpc = opts.krpc || krpc(Object.assign({ idLength: this._hashLength }, opts))
   this._rpc.on('query', onquery)
   this._rpc.on('node', onnode)
   this._rpc.on('warning', onwarning)
@@ -60,7 +60,7 @@ function DHT (opts) {
   var onping = low(ping)
 
   this._rpc.on('ping', function (older, swap) {
-    onping({older: older, swap: swap})
+    onping({ older: older, swap: swap })
   })
 
   process.nextTick(bootstrap)
@@ -223,7 +223,7 @@ DHT.prototype.removeNode = function (id) {
 DHT.prototype._sendPing = function (node, cb) {
   var self = this
   var expectedId = node.id
-  this._rpc.query(node, {q: 'ping'}, function (err, pong, node) {
+  this._rpc.query(node, { q: 'ping' }, function (err, pong, node) {
     if (err) return cb(err)
     if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== self._hashLength) {
       return cb(new Error('Bad reply'))
@@ -261,7 +261,7 @@ DHT.prototype.toJSON = function () {
 }
 
 DHT.prototype.put = function (opts, cb) {
-  if (Buffer.isBuffer(opts) || typeof opts === 'string') opts = {v: opts}
+  if (Buffer.isBuffer(opts) || typeof opts === 'string') opts = { v: opts }
   var isMutable = !!opts.k
   if (opts.v === undefined) {
     throw new Error('opts.v not given')
@@ -414,9 +414,9 @@ DHT.prototype.announce = function (infoHash, port, cb) {
   if (this._host) {
     var dhtPort = this.listening ? this.address().port : 0
     this._addPeer(
-      {host: this._host, port: port || dhtPort},
+      { host: this._host, port: port || dhtPort },
       infoHash,
-      {host: this._host, port: dhtPort}
+      { host: this._host, port: dhtPort }
     )
   }
 
@@ -510,7 +510,7 @@ DHT.prototype._onquery = function (query, peer) {
 
   switch (q) {
     case 'ping':
-      return this._rpc.response(peer, query, {id: this._rpc.id})
+      return this._rpc.response(peer, query, { id: this._rpc.id })
 
     case 'find_node':
       return this._onfindnode(query, peer)
@@ -536,7 +536,7 @@ DHT.prototype._onfindnode = function (query, peer) {
   this.emit('find_node', target)
 
   var nodes = this._rpc.nodes.closest(target)
-  this._rpc.response(peer, query, {id: this._rpc.id}, nodes)
+  this._rpc.response(peer, query, { id: this._rpc.id }, nodes)
 }
 
 DHT.prototype._ongetpeers = function (query, peer) {
@@ -546,7 +546,7 @@ DHT.prototype._ongetpeers = function (query, peer) {
 
   this.emit('get_peers', infoHash)
 
-  var r = {id: this._rpc.id, token: this._generateToken(host)}
+  var r = { id: this._rpc.id, token: this._generateToken(host) }
   var peers = this._peers.get(infoHash.toString('hex'))
 
   if (peers.length) {
@@ -569,10 +569,10 @@ DHT.prototype._onannouncepeer = function (query, peer) {
     return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
   }
 
-  this.emit('announce_peer', infoHash, {host: host, port: peer.port})
+  this.emit('announce_peer', infoHash, { host: host, port: peer.port })
 
-  this._addPeer({host: host, port: port}, infoHash, {host: host, port: peer.port})
-  this._rpc.response(peer, query, {id: this._rpc.id})
+  this._addPeer({ host: host, port: port }, infoHash, { host: host, port: peer.port })
+  this._rpc.response(peer, query, { id: this._rpc.id })
 }
 
 DHT.prototype._addPeer = function (peer, infoHash, from) {
@@ -591,7 +591,7 @@ DHT.prototype._onget = function (query, peer) {
 
   if (!value) {
     var nodes = this._rpc.nodes.closest(target)
-    this._rpc.response(peer, query, {id: this._rpc.id, token: token}, nodes)
+    this._rpc.response(peer, query, { id: this._rpc.id, token: token }, nodes)
   } else {
     this._rpc.response(peer, query, createGetResponse(this._rpc.id, token, value))
   }
@@ -637,12 +637,12 @@ DHT.prototype._onput = function (query, peer) {
     if (prev && typeof prev.seq === 'number' && !(a.seq > prev.seq)) {
       return this._rpc.error(peer, query, [302, 'sequence number less than current'])
     }
-    this._values.set(keyHex, {v: v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id: id})
+    this._values.set(keyHex, { v: v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id: id })
   } else {
-    this._values.set(keyHex, {v: v, id: id})
+    this._values.set(keyHex, { v: v, id: id })
   }
 
-  this._rpc.response(peer, query, {id: this._rpc.id})
+  this._rpc.response(peer, query, { id: this._rpc.id })
 }
 
 DHT.prototype._bootstrap = function (populate) {
@@ -738,7 +738,7 @@ function sha1 (buf) {
 }
 
 function createGetResponse (id, token, value) {
-  var r = {id: id, token: token, v: value.v}
+  var r = { id: id, token: token, v: value.v }
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k

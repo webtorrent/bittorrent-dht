@@ -89,6 +89,6 @@ function makeFriends (dhts) {
   var len = dhts.length
   for (var i = 0; i < len; i++) {
     var next = dhts[(i + 1) % len]
-    dhts[i].addNode({host: '127.0.0.1', port: next.address().port, id: next.nodeId})
+    dhts[i].addNode({ host: '127.0.0.1', port: next.address().port, id: next.nodeId })
   }
 }

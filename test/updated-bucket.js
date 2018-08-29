@@ -11,7 +11,7 @@ test('adding a node updates the lastChange property', function (t) {
   t.notOk(dht._rpc.nodes.metadata.lastChange, 'lastChanged not set')
 
   setTimeout(function () {
-    dht.addNode({host: '127.0.0.1', port: 9999, id: common.randomId()})
+    dht.addNode({ host: '127.0.0.1', port: 9999, id: common.randomId() })
     t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
     t.ok(
       dht._rpc.nodes.metadata.lastChange > now,
@@ -31,13 +31,13 @@ test('same node doesn´t change the lastChange property', function (t) {
   var nodeId = common.randomId()
   var lastChanged
   setTimeout(function () {
-    dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+    dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
 
     t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
     lastChanged = dht._rpc.nodes.metadata.lastChange
 
     setTimeout(function () {
-      dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+      dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
       t.equal(dht._rpc.nodes.metadata.lastChange, lastChanged)
       dht.destroy()
     }, 1)
@@ -54,13 +54,13 @@ test('same node doesn´t change the lastChange property', function (t) {
   var nodeId = common.randomId()
   var lastChanged
   setTimeout(function () {
-    dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+    dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
 
     t.equal(typeof dht._rpc.nodes.metadata.lastChange, 'number')
     lastChanged = dht._rpc.nodes.metadata.lastChange
 
     setTimeout(function () {
-      dht.addNode({host: '127.0.0.1', port: 9999, id: nodeId})
+      dht.addNode({ host: '127.0.0.1', port: 9999, id: nodeId })
       t.equal(dht._rpc.nodes.metadata.lastChange, lastChanged)
       dht.destroy()
     }, 1)
@@ -108,7 +108,7 @@ test('_checkNodes: returns the bad one', function (t) {
     t.equal(dht1.ready, true)
 
     var nodeId = common.randomId()
-    var badNode = {host: '127.0.0.1', port: 9999, id: nodeId}
+    var badNode = { host: '127.0.0.1', port: 9999, id: nodeId }
     dht1.addNode(badNode)
 
     dht1.listen(function () {
@@ -158,7 +158,7 @@ test('_checkAndRemoveNodes: removes bad nodes', function (t) {
         t.equal(dht1.nodes.toArray().length, 1)
         var goodNodes = dht1.nodes.toArray()
         var goodNode = goodNodes[0]
-        var badNode = {host: '127.0.0.1', port: 9999, id: nodeId}
+        var badNode = { host: '127.0.0.1', port: 9999, id: nodeId }
         dht1.addNode(badNode)
 
         t.equal(dht1.nodes.toArray().length, 2)
