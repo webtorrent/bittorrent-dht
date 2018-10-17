@@ -47,7 +47,7 @@ class DHT extends EventEmitter {
       this.emit('listening')
     }
 
-    this._tables = new LRU({maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000})
+    this._tables = new LRU({ maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000 })
     this._values = new LRU(opts.maxValues || 1000)
     this._peers = records({
       maxAge: opts.maxAge || 0,
@@ -57,7 +57,7 @@ class DHT extends EventEmitter {
     this._secrets = null
     this._hash = opts.hash || sha1
     this._hashLength = this._hash(Buffer.from('')).length
-    this._rpc = opts.krpc || krpc(Object.assign({idLength: this._hashLength}, opts))
+    this._rpc = opts.krpc || krpc(Object.assign({ idLength: this._hashLength }, opts))
     this._rpc.on('query', this._onquery.bind(this))
     this._rpc.on('node', this.emit.bind(this, 'node'))
     this._rpc.on('warning', this.emit.bind(this, 'warning'))
@@ -82,7 +82,7 @@ class DHT extends EventEmitter {
     const onping = low(ping)
 
     this._rpc.on('ping', (older, swap) => {
-      onping({older, swap})
+      onping({ older, swap })
     })
 
     process.nextTick(bootstrap)
@@ -188,7 +188,7 @@ class DHT extends EventEmitter {
 
   _sendPing (node, cb) {
     const expectedId = node.id
-    this._rpc.query(node, {q: 'ping'}, (err, pong, node) => {
+    this._rpc.query(node, { q: 'ping' }, (err, pong, node) => {
       if (err) return cb(err)
       if (!pong.r || !pong.r.id || !Buffer.isBuffer(pong.r.id) || pong.r.id.length !== this._hashLength) {
         return cb(new Error('Bad reply'))
@@ -206,7 +206,7 @@ class DHT extends EventEmitter {
     })
   }
 
-  toJSON() {
+  toJSON () {
     const values = {}
     for (const key of this._values.keys) {
       const value = this._values.cache[key].value
@@ -226,7 +226,7 @@ class DHT extends EventEmitter {
   }
 
   put (opts, cb) {
-    if (Buffer.isBuffer(opts) || typeof opts === 'string') opts = {v: opts}
+    if (Buffer.isBuffer(opts) || typeof opts === 'string') opts = { v: opts }
     const isMutable = !!opts.k
     if (opts.v === undefined) {
       throw new Error('opts.v not given')
@@ -373,9 +373,9 @@ class DHT extends EventEmitter {
     if (this._host) {
       const dhtPort = this.listening ? this.address().port : 0
       this._addPeer(
-        {host: this._host, port: port || dhtPort},
+        { host: this._host, port: port || dhtPort },
         infoHash,
-        {host: this._host, port: dhtPort}
+        { host: this._host, port: dhtPort }
       )
     }
 
@@ -467,7 +467,7 @@ class DHT extends EventEmitter {
 
     switch (q) {
       case 'ping':
-        return this._rpc.response(peer, query, {id: this._rpc.id})
+        return this._rpc.response(peer, query, { id: this._rpc.id })
 
       case 'find_node':
         return this._onfindnode(query, peer)
@@ -493,7 +493,7 @@ class DHT extends EventEmitter {
     this.emit('find_node', target)
 
     const nodes = this._rpc.nodes.closest(target)
-    this._rpc.response(peer, query, {id: this._rpc.id}, nodes)
+    this._rpc.response(peer, query, { id: this._rpc.id }, nodes)
   }
 
   _ongetpeers (query, peer) {
@@ -503,7 +503,7 @@ class DHT extends EventEmitter {
 
     this.emit('get_peers', infoHash)
 
-    const r = {id: this._rpc.id, token: this._generateToken(host)}
+    const r = { id: this._rpc.id, token: this._generateToken(host) }
     const peers = this._peers.get(infoHash.toString('hex'))
 
     if (peers.length) {
@@ -526,10 +526,10 @@ class DHT extends EventEmitter {
       return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
     }
 
-    this.emit('announce_peer', infoHash, {host, port: peer.port})
+    this.emit('announce_peer', infoHash, { host, port: peer.port })
 
-    this._addPeer({host, port}, infoHash, {host, port: peer.port})
-    this._rpc.response(peer, query, {id: this._rpc.id})
+    this._addPeer({ host, port }, infoHash, { host, port: peer.port })
+    this._rpc.response(peer, query, { id: this._rpc.id })
   }
 
   _addPeer (peer, infoHash, from) {
@@ -548,7 +548,7 @@ class DHT extends EventEmitter {
 
     if (!value) {
       const nodes = this._rpc.nodes.closest(target)
-      this._rpc.response(peer, query, {id: this._rpc.id, token}, nodes)
+      this._rpc.response(peer, query, { id: this._rpc.id, token }, nodes)
     } else {
       this._rpc.response(peer, query, createGetResponse(this._rpc.id, token, value))
     }
@@ -594,12 +594,12 @@ class DHT extends EventEmitter {
       if (prev && typeof prev.seq === 'number' && !(a.seq > prev.seq)) {
         return this._rpc.error(peer, query, [302, 'sequence number less than current'])
       }
-      this._values.set(keyHex, {v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id})
+      this._values.set(keyHex, { v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id })
     } else {
-      this._values.set(keyHex, {v, id})
+      this._values.set(keyHex, { v, id })
     }
 
-    this._rpc.response(peer, query, {id: this._rpc.id})
+    this._rpc.response(peer, query, { id: this._rpc.id })
   }
 
   _bootstrap (populate) {
@@ -693,7 +693,7 @@ function sha1 (buf) {
 }
 
 function createGetResponse (id, token, value) {
-  const r = {id, token, v: value.v}
+  const r = { id, token, v: value.v }
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k
