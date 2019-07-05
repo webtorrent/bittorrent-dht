@@ -6,7 +6,7 @@ var test = require('tape')
 test('bootstrap and listen to custom port', function (t) {
   t.plan(4)
 
-  var dht = new DHT({ bootstrap: [ '1.2.3.4:1000' ] })
+  var dht = new DHT({ bootstrap: ['1.2.3.4:1000'] })
   common.failOnWarningOrError(t, dht)
 
   var port = Math.floor(Math.random() * 60000) + 1024
