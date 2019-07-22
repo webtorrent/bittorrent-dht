@@ -3,7 +3,6 @@ module.exports = DHT
 var bencode = require('bencode')
 var Buffer = require('safe-buffer').Buffer
 var debug = require('debug')('bittorrent-dht')
-var equals = require('buffer-equals')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var KBucket = require('k-bucket')
@@ -389,11 +388,11 @@ DHT.prototype.get = function (key, opts, cb) {
     if (isMutable) {
       if (!verify || !r.sig || !r.k) return true
       if (!verify(r.sig, encodeSigData(r), r.k)) return true
-      if (equals(hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k), key)) {
+      if (hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k).equals(key)) {
         if (!value || r.seq > value.seq) value = r
       }
     } else {
-      if (equals(hash(bencode.encode(r.v)), key)) {
+      if (hash(bencode.encode(r.v)).equals(key)) {
         value = r
         return false
       }
@@ -714,7 +713,7 @@ DHT.prototype._debug = function () {
 DHT.prototype._validateToken = function (host, token) {
   var tokenA = this._generateToken(host, this._secrets[0])
   var tokenB = this._generateToken(host, this._secrets[1])
-  return equals(token, tokenA) || equals(token, tokenB)
+  return token.equals(tokenA) || token.equals(tokenB)
 }
 
 DHT.prototype._generateToken = function (host, secret) {
