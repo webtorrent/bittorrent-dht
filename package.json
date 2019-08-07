@@ -20,7 +20,6 @@
     "lru": "^3.1.0",
     "randombytes": "^2.0.5",
     "record-cache": "^1.0.2",
-    "safe-buffer": "^5.0.1",
     "simple-sha1": "^2.1.0"
   },
   "devDependencies": {

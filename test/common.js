@@ -1,4 +1,3 @@
-var Buffer = require('safe-buffer').Buffer
 var crypto = require('crypto')
 var ed = require('ed25519-supercop')
 var ip = require('ip')

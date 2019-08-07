@@ -1,7 +1,6 @@
 module.exports = DHT
 
 var bencode = require('bencode')
-var Buffer = require('safe-buffer').Buffer
 var debug = require('debug')('bittorrent-dht')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
