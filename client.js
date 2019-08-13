@@ -23,8 +23,8 @@ function DHT (opts) {
 
   var self = this
 
-  this._tables = LRU({ maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000 })
-  this._values = LRU(opts.maxValues || 1000)
+  this._tables = new LRU({ maxAge: ROTATE_INTERVAL, max: opts.maxTables || 1000 })
+  this._values = new LRU(opts.maxValues || 1000)
   this._peers = records({
     maxAge: opts.maxAge || 0,
     maxSize: opts.maxPeers || 10000
