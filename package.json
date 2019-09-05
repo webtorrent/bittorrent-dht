@@ -20,7 +20,7 @@
     "lru": "^3.1.0",
     "randombytes": "^2.0.5",
     "record-cache": "^1.0.2",
-    "simple-sha1": "^2.1.0"
+    "simple-sha1": "^3.0.0"
   },
   "devDependencies": {
     "ed25519-supercop": "^1.0.0",
