@@ -256,7 +256,7 @@ values precisely according to the specification, like so:
 
 ``` js
 var ed = require('bittorrent-dht-sodium')
-var keypair = ed.keygen
+var keypair = ed.keygen()
 
 var value = Buffer.alloc(200).fill('whatever') // the payload you want to send
 var opts = {
