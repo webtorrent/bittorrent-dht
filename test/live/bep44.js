@@ -1,6 +1,6 @@
 var test = require('tape')
 var DHT = require('../../')
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 
 test('Set and get before ready is emitted', function (t) {
   var dht1 = new DHT()
@@ -25,7 +25,7 @@ test('put mutable', function (t) {
   var k = kp()
 
   dht1.put({
-    k: k.publicKey,
+    k: k.pk,
     v: 'myvalue',
     sign: sign,
     seq: 0
@@ -42,7 +42,7 @@ test('put mutable', function (t) {
   })
 
   function sign (buf) {
-    return ed.sign(buf, k.publicKey, k.secretKey)
+    return ed.sign(buf, k.sk)
   }
 })
 
@@ -50,10 +50,10 @@ test('put mutable (salted)', function (t) {
   var dht1 = new DHT()
   var dht2 = new DHT({ verify: ed.verify })
   var k = kp()
-  var salt = ed.createSeed().slice(0, 20)
+  var salt = ed.salt()
 
   dht1.put({
-    k: k.publicKey,
+    k: k.pk,
     v: 'myvalue',
     sign: sign,
     seq: 0,
@@ -74,10 +74,10 @@ test('put mutable (salted)', function (t) {
   })
 
   function sign (buf) {
-    return ed.sign(buf, k.publicKey, k.secretKey)
+    return ed.sign(buf, k.sk)
   }
 })
 
 function kp () {
-  return ed.createKeyPair(ed.createSeed())
+  return ed.keygen()
 }

@@ -1,6 +1,6 @@
 var common = require('./common')
 var DHT = require('../')
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 var test = require('tape')
 
 test('dht.toJSON: re-use dht nodes with `bootstrap` option', function (t) {
@@ -86,7 +86,7 @@ test('dht.toJSON: BEP44 immutable value', function (t) {
 test('dht.toJSON: BEP44 mutable value', function (t) {
   t.plan(5)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
@@ -105,7 +105,7 @@ test('dht.toJSON: BEP44 mutable value', function (t) {
   function ready () {
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 0,
       v: value

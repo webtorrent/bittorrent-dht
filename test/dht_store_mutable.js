@@ -1,13 +1,13 @@
 var common = require('./common')
 var DHT = require('../')
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 var test = require('tape')
 var crypto = require('crypto')
 
 test('local mutable put/get', function (t) {
   t.plan(4)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht = new DHT({ bootstrap: false, verify: ed.verify })
   t.once('end', function () {
@@ -23,7 +23,7 @@ test('local mutable put/get', function (t) {
   function ready () {
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 0,
       v: value
@@ -51,7 +51,7 @@ test('local mutable put/get', function (t) {
 test('multiparty mutable put/get', function (t) {
   t.plan(4)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -78,7 +78,7 @@ test('multiparty mutable put/get', function (t) {
     if (--pending !== 0) return
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       seq: 0,
       sign: common.sign(keypair),
       v: value
@@ -103,7 +103,7 @@ test('multiparty mutable put/get', function (t) {
 test('delegated put', function (t) {
   t.plan(5)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -147,7 +147,7 @@ test('delegated put', function (t) {
     if (--pending !== 0) return
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       seq: 0,
       sign: common.sign(keypair),
       v: value
@@ -175,7 +175,7 @@ test('delegated put', function (t) {
 test('multiparty mutable put/get sequence', function (t) {
   t.plan(12)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
 
@@ -201,7 +201,7 @@ test('multiparty mutable put/get sequence', function (t) {
     if (--pending !== 0) return
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 0,
       v: value
@@ -262,7 +262,7 @@ test('multiparty mutable put/get sequence', function (t) {
 test('salted multikey multiparty mutable put/get sequence', function (t) {
   t.plan(12)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht2 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -289,7 +289,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
     if (--pending !== 0) return
     var fvalue = common.fill(500, 'abc')
     var fopts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       seq: 0,
       salt: Buffer.from('first'),
       sign: common.sign(keypair),
@@ -357,7 +357,7 @@ test('salted multikey multiparty mutable put/get sequence', function (t) {
 test('transitive mutable update', function (t) {
   t.plan(4)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   // dht1 <-> dht2 <-> dht3
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -388,7 +388,7 @@ test('transitive mutable update', function (t) {
     if (--pending !== 0) return
     var value = common.fill(500, 'abc')
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 0,
       v: value
@@ -472,9 +472,9 @@ test('mutable update mesh', function (t) {
   function send (srci, dsti, value) {
     var src = dht[srci]
     var dst = dht[dsti]
-    var keypair = ed.createKeyPair(ed.createSeed())
+    var keypair = ed.keygen()
     var opts = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 0,
       v: value
@@ -498,7 +498,7 @@ test('mutable update mesh', function (t) {
 test('invalid sequence', function (t) {
   t.plan(5)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht0 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -517,13 +517,13 @@ test('invalid sequence', function (t) {
 
   dht0.on('node', function () {
     var opts0 = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 5,
       v: common.fill(500, '5')
     }
     var opts1 = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 4,
       v: common.fill(500, '4')
@@ -556,7 +556,7 @@ test('invalid sequence', function (t) {
 test('valid sequence', function (t) {
   t.plan(6)
 
-  var keypair = ed.createKeyPair(ed.createSeed())
+  var keypair = ed.keygen()
 
   var dht0 = new DHT({ bootstrap: false, verify: ed.verify })
   var dht1 = new DHT({ bootstrap: false, verify: ed.verify })
@@ -575,13 +575,13 @@ test('valid sequence', function (t) {
 
   dht0.on('node', function () {
     var opts0 = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 4,
       v: common.fill(500, '4')
     }
     var opts1 = {
-      k: keypair.publicKey,
+      k: keypair.pk,
       sign: common.sign(keypair),
       seq: 5,
       v: common.fill(500, '5')
