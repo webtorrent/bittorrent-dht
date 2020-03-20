@@ -241,7 +241,7 @@ These options are available:
 * `opts.sign(buf)` - function to generate an ed25519 signature buffer (64 bytes) corresponding to the `opts.k` public key (REQUIRED)
 * `opts.seq` - optional sequence (integer), must monotonically increase (REQUIRED)
 * `opts.cas` - optional previous sequence for compare-and-swap
-* `opts.salt` - optional salt buffer to include (< 64 bytes) when calculating
+* `opts.salt` - optional salt buffer to include (<= 64 bytes) when calculating
   the hash of the content. You can use a salt to have multiple mutable addresses
   for the same public key `opts.k`.
 
