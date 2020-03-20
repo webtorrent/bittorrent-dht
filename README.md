@@ -245,26 +245,26 @@ These options are available:
   the hash of the content. You can use a salt to have multiple mutable addresses
   for the same public key `opts.k`.
 
-Note that bittorrent bep44 uses ed25519 supercop/ref10 keys, NOT nacl/sodium
-keys. You can use the [ed25519-supercop](https://npmjs.com/package/ed25519-supercop)
-package to generate the appropriate signatures or
-[bittorrent-dht-store-keypair](https://npmjs.com/package/bittorrent-dht-store-keypair)
+Note that bittorrent bep44 uses ed25519. You can use the [ed25519-supercop](https://npmjs.com/package/ed25519-supercop)
+package to generate the appropriate signatures,
+[bittorrent-dht-store-keypair](https://npmjs.com/package/bittorrent-dht-store-keypair), 
+[bittorrent-dht-sodium](https://npmjs.com/package/bittorrent-dht-sodium) or 
 for a more convenient version.
 
 To make a mutable update, you will need to create an elliptic key and pack
 values precisely according to the specification, like so:
 
 ``` js
-var ed = require('ed25519-supercop')
-var keypair = ed.createKeyPair(ed.createSeed())
+var ed = require('bittorrent-dht-sodium')
+var keypair = ed.keygen
 
 var value = Buffer.alloc(200).fill('whatever') // the payload you want to send
 var opts = {
-  k: keypair.publicKey,
+  k: keypair.pk,
   seq: 0,
   v: value,
   sign: function (buf) {
-    return ed.sign(buf, keypair.publicKey, keypair.secretKey)
+    return ed.sign(buf, keypair.sk)
   }
 }
 
@@ -289,7 +289,7 @@ If you receive a key/value pair and you want to re-add to the dht it to keep it
 alive you can just `put` it again.
 
 ``` js
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 var dht = new DHT({ verify: ed.verify }) // you MUST specify the "verify" param if you want to get mutable content, otherwise null will be returned
 
 dht.get(key, function (err, res) {
