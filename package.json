@@ -23,7 +23,7 @@
     "simple-sha1": "^3.0.0"
   },
   "devDependencies": {
-    "ed25519-supercop": "^1.0.0",
+    "bittorrent-dht-sodium": "^1.1.0",
     "ip": "^1.1.0",
     "once": "^1.3.3",
     "run-parallel": "^1.1.4",

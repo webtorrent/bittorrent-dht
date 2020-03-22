@@ -1,7 +1,7 @@
 var common = require('./common')
 var DHT = require('../')
 var test = require('tape')
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 var bencode = require('bencode')
 
 test('dht store with salt', function (t) {
@@ -19,9 +19,9 @@ test('dht store with salt', function (t) {
   })
 
   function ready () {
-    var keys = ed.createKeyPair(ed.createSeed())
-    var publicKey = keys.publicKey
-    var secretKey = keys.secretKey
+    var keys = ed.keygen()
+    var publicKey = keys.pk
+    var secretKey = keys.sk
 
     var opts = {
       seq: 1,
@@ -39,7 +39,7 @@ test('dht store with salt', function (t) {
       .toString()
 
     opts.sig = ed
-      .sign(encoded, publicKey, secretKey)
+      .sign(Buffer.from(encoded), secretKey)
 
     dht.put(opts, function (_, hash) {
       dht.get(hash, function (err, res) {

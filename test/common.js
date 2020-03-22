@@ -1,5 +1,5 @@
 var crypto = require('crypto')
-var ed = require('ed25519-supercop')
+var ed = require('bittorrent-dht-sodium')
 var ip = require('ip')
 
 exports.failOnWarningOrError = function (t, dht) {
@@ -50,6 +50,6 @@ exports.fill = function (n, s) {
 
 exports.sign = function (keypair) {
   return function (buf) {
-    return ed.sign(buf, keypair.publicKey, keypair.secretKey)
+    return ed.sign(buf, keypair.sk)
   }
 }
