@@ -58,7 +58,7 @@ function DHT (opts) {
   var onping = low(ping)
 
   this._rpc.on('ping', function (older, swap) {
-    onping({ older: older, swap: swap })
+    onping({ older, swap })
   })
 
   process.nextTick(bootstrap)
@@ -254,7 +254,7 @@ DHT.prototype.toJSON = function () {
   })
   return {
     nodes: this._rpc.nodes.toArray().map(toNode),
-    values: values
+    values
   }
 }
 
@@ -306,7 +306,7 @@ DHT.prototype._put = function (opts, cb) {
     a: {
       id: this._rpc.id,
       token: null, // queryAll sets this
-      v: v
+      v
     }
   }
 
@@ -424,7 +424,7 @@ DHT.prototype.announce = function (infoHash, port, cb) {
       id: this._rpc.id,
       token: null, // queryAll sets this
       info_hash: infoHash,
-      port: port,
+      port,
       implied_port: port ? 0 : 1
     }
   }
@@ -567,9 +567,9 @@ DHT.prototype._onannouncepeer = function (query, peer) {
     return this._rpc.error(peer, query, [203, 'cannot `announce_peer` with bad token'])
   }
 
-  this.emit('announce_peer', infoHash, { host: host, port: peer.port })
+  this.emit('announce_peer', infoHash, { host, port: peer.port })
 
-  this._addPeer({ host: host, port: port }, infoHash, { host: host, port: peer.port })
+  this._addPeer({ host, port }, infoHash, { host, port: peer.port })
   this._rpc.response(peer, query, { id: this._rpc.id })
 }
 
@@ -589,7 +589,7 @@ DHT.prototype._onget = function (query, peer) {
 
   if (!value) {
     var nodes = this._rpc.nodes.closest(target)
-    this._rpc.response(peer, query, { id: this._rpc.id, token: token }, nodes)
+    this._rpc.response(peer, query, { id: this._rpc.id, token }, nodes)
   } else {
     this._rpc.response(peer, query, createGetResponse(this._rpc.id, token, value))
   }
@@ -635,9 +635,9 @@ DHT.prototype._onput = function (query, peer) {
     if (prev && typeof prev.seq === 'number' && !(a.seq > prev.seq)) {
       return this._rpc.error(peer, query, [302, 'sequence number less than current'])
     }
-    this._values.set(keyHex, { v: v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id: id })
+    this._values.set(keyHex, { v, k: a.k, salt: a.salt, sig: a.sig, seq: a.seq, id })
   } else {
-    this._values.set(keyHex, { v: v, id: id })
+    this._values.set(keyHex, { v, id })
   }
 
   this._rpc.response(peer, query, { id: this._rpc.id })
@@ -736,7 +736,7 @@ function sha1 (buf) {
 }
 
 function createGetResponse (id, token, value) {
-  var r = { id: id, token: token, v: value.v }
+  var r = { id, token, v: value.v }
   if (value.sig) {
     r.sig = value.sig
     r.k = value.k
@@ -762,7 +762,7 @@ function decodePeers (buf) {
       if (!port) continue
       peers.push({
         host: parseIp(buf[i], 0),
-        port: port
+        port
       })
     }
   } catch (err) {

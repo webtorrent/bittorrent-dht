@@ -6,7 +6,7 @@ test('explicitly set nodeId', function (t) {
   var nodeId = common.randomId()
 
   var dht = new DHT({
-    nodeId: nodeId,
+    nodeId,
     bootstrap: false
   })
 
@@ -48,7 +48,7 @@ test('call `addNode` without nodeId argument', function (t) {
     var port = dht1.address().port
 
     // If `nodeId` is undefined, then the peer will be pinged to learn their node id.
-    dht2.addNode({ host: '127.0.0.1', port: port })
+    dht2.addNode({ host: '127.0.0.1', port })
 
     dht2.on('node', function (node) {
       t.equal(node.host, '127.0.0.1')
@@ -111,7 +111,7 @@ test('send message while binding (listen)', function (t) {
     var port = a.address().port
     var b = new DHT({ bootstrap: false })
     b.listen()
-    b._sendPing({ host: '127.0.0.1', port: port }, function (err) {
+    b._sendPing({ host: '127.0.0.1', port }, function (err) {
       t.error(err)
       a.destroy()
       b.destroy()

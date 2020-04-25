@@ -179,7 +179,7 @@ test('`announce_peer` query with bad token', function (t) {
       a: {
         info_hash: infoHash,
         port: 9999,
-        token: token
+        token
       }
     }, function (err, res) {
       t.ok(err, 'got error')
@@ -222,7 +222,7 @@ test('`announce_peer` query gets ack response', function (t) {
     var port = dht1.address().port
     dht2._rpc.query({
       host: '127.0.0.1',
-      port: port
+      port
     }, {
       q: 'get_peers',
       a: {
@@ -236,7 +236,7 @@ test('`announce_peer` query gets ack response', function (t) {
 
       dht2._rpc.query({
         host: '127.0.0.1',
-        port: port
+        port
       }, {
         q: 'announce_peer',
         a: {

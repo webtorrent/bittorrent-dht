@@ -27,7 +27,7 @@ test('put mutable', function (t) {
   dht1.put({
     k: k.pk,
     v: 'myvalue',
-    sign: sign,
+    sign,
     seq: 0
   }, function (err, hash, n) {
     t.error(err)
@@ -55,15 +55,15 @@ test('put mutable (salted)', function (t) {
   dht1.put({
     k: k.pk,
     v: 'myvalue',
-    sign: sign,
+    sign,
     seq: 0,
-    salt: salt
+    salt
   }, function (err, hash, n) {
     t.error(err)
     t.ok(hash)
     dht2.get(hash, function (_, value) {
       t.ok(!value, 'salt required')
-      dht2.get(hash, { salt: salt }, function (err, value) {
+      dht2.get(hash, { salt }, function (err, value) {
         t.error(err)
         t.same(value.v.toString(), 'myvalue')
         dht1.destroy()

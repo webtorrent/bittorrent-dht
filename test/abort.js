@@ -6,7 +6,7 @@ test('explicitly set nodeId', function (t) {
   var nodeId = common.randomId()
 
   var dht = new DHT({
-    nodeId: nodeId,
+    nodeId,
     bootstrap: false
   })
 
