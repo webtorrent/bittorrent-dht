@@ -300,6 +300,7 @@ DHT.prototype._put = function (opts, cb) {
 
   var table = this._tables.get(key.toString('hex'))
   if (!table) return this._preput(key, opts, cb)
+  if (opts.backoff && this._backoff(opts, table)) return cb(null, key)
 
   var message = {
     q: 'put',
@@ -327,6 +328,52 @@ DHT.prototype._put = function (opts, cb) {
   })
 
   return key
+}
+
+DHT.prototype._backoff = function (opts, table) {
+  var self = this
+
+  var v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
+  var isMutable = !!opts.k
+  var key = isMutable
+    ? sha1(opts.salt ? Buffer.concat([opts.salt, opts.k]) : opts.k)
+    : sha1(bencode.encode(v))
+
+  var MAX_COPIES = 8
+
+  // For mutable items only nodes holding values with the most
+  // recent known sequence number count towards meeting these conditions
+  function filterMaxSeq (arr) {
+    var max = arr.map(function (r) {
+      return r.seq || 0
+    }).reduce(function (p, c) {
+      return p > c ? p : c
+    }, 0)
+    arr = arr.filter(function (r) {
+      return r.seq !== undefined && r.seq === max
+    })
+    .filter(function (r) {
+      var val = typeof r.v === 'string' ? Buffer.from(r.v) : r.v
+      return val && equals(v, val) // only if it equals input
+    })
+    return arr
+  }
+
+  var copies = table.toArray()
+  copies = filterMaxSeq(copies)
+
+  // The 8 nodes closest to the target key which are eligible for a store
+  // all have indicated they have the data, either by returning it or through the seq number.
+  var closest = table.closest(key)
+  closest = filterMaxSeq(closest)
+
+  if (copies.length > MAX_COPIES && // They find more than 8 copies of the value
+    closest.length > MAX_COPIES) {
+    self._debug('backing off, found %s copies AND %s closest nodes holding data', copies.length, closest.length)
+    return true
+  }
+
+  return false
 }
 
 DHT.prototype._preput = function (key, opts, cb) {
@@ -686,12 +733,17 @@ DHT.prototype._closest = function (target, message, onmessage, cb) {
 
     if (message.r.token && message.r.id && Buffer.isBuffer(message.r.id) && message.r.id.length === self._hashLength) {
       self._debug('found node %s (target: %s)', message.r.id, target)
-      table.add({
+      var o = {
         id: message.r.id,
         host: node.host || node.address,
         port: node.port,
         token: message.r.token
-      })
+      }
+      if (message.r.v) {
+        o.v = message.r.v
+        o.seq = message.r.seq
+      }
+      table.add(o)
     }
 
     if (!onmessage) return true
