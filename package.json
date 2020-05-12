@@ -3,7 +3,7 @@
   "description": "Simple, robust, BitTorrent DHT implementation",
   "version": "10.0.0",
   "author": {
-    "name": "WebTorrent, LLC",
+    "name": "WebTorrent LLC",
     "email": "feross@webtorrent.io",
     "url": "https://webtorrent.io"
   },
@@ -52,5 +52,19 @@
     "update-authors": "./tools/update-authors.sh",
     "test": "standard && tape test/*.js",
     "test-live": "tape test/live/*.js"
-  }
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/feross"
+    },
+    {
+      "type": "patreon",
+      "url": "https://www.patreon.com/feross"
+    },
+    {
+      "type": "consulting",
+      "url": "https://feross.org/support"
+    }
+  ]
 }
