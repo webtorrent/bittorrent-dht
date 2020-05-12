@@ -1,29 +1,29 @@
-var common = require('./common')
-var DHT = require('../')
-var test = require('tape')
+const common = require('./common')
+const DHT = require('../')
+const test = require('tape')
 
-test('explicitly set nodeId', function (t) {
-  var nodeId = common.randomId()
+test('explicitly set nodeId', t => {
+  const nodeId = common.randomId()
 
-  var dht = new DHT({
-    nodeId: nodeId,
+  const dht = new DHT({
+    nodeId,
     bootstrap: false
   })
 
   common.failOnWarningOrError(t, dht)
 
-  dht.on('node', function () {
+  dht.on('node', () => {
     t.fail('should not find nodes')
   })
 
-  dht.on('peer', function () {
+  dht.on('peer', () => {
     t.fail('should not find peers')
   })
 
-  var abort = dht.lookup(common.randomId())
+  const abort = dht.lookup(common.randomId())
   abort()
 
-  setTimeout(function () {
+  setTimeout(() => {
     dht.destroy()
   }, 500)
 

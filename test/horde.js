@@ -1,32 +1,32 @@
-var common = require('./common')
-var DHT = require('../')
-var once = require('once')
-var parallel = require('run-parallel')
-var test = require('tape')
+const common = require('./common')
+const DHT = require('../')
+const once = require('once')
+const parallel = require('run-parallel')
+const test = require('tape')
 
-var from = 2
-var to = 20
+const from = 2
+const to = 20
 
-for (var i = from; i <= to; i++) {
+for (let i = from; i <= to; i++) {
   runAnnounceLookupTest(i)
 }
 
 function runAnnounceLookupTest (numInstances) {
-  test('horde: announce+lookup with ' + numInstances + ' DHTs', function (t) {
-    var numRunning = numInstances
-    findPeers(numInstances, t, function (err, dhts) {
+  test(`horde: announce+lookup with ${numInstances} DHTs`, t => {
+    let numRunning = numInstances
+    findPeers(numInstances, t, (err, dhts) => {
       if (err) throw err
 
-      dhts.forEach(function (dht) {
-        for (var infoHash in dht.tables) {
-          var table = dht.tables[infoHash]
-          table.toJSON().nodes.forEach(function (contact) {
+      dhts.forEach(dht => {
+        for (const infoHash in dht.tables) {
+          const table = dht.tables[infoHash]
+          table.toJSON().nodes.forEach(contact => {
             t.ok(contact.token, 'contact has token')
           })
         }
 
-        process.nextTick(function () {
-          dht.destroy(function (err) {
+        process.nextTick(() => {
+          dht.destroy(err => {
             t.error(err, 'destroyed dht')
             if (--numRunning === 0) t.end()
           })
@@ -42,38 +42,38 @@ function runAnnounceLookupTest (numInstances) {
  */
 function findPeers (numInstances, t, cb) {
   cb = once(cb)
-  var dhts = []
-  var timeoutId = setTimeout(function () {
-    cb(new Error('Timed out for ' + numInstances + ' instances'))
+  const dhts = []
+  const timeoutId = setTimeout(() => {
+    cb(new Error(`Timed out for ${numInstances} instances`))
   }, 20000)
 
-  var infoHash = common.randomId().toString('hex')
+  const infoHash = common.randomId().toString('hex')
 
-  for (var i = 0; i < numInstances; i++) {
-    var dht = new DHT({ bootstrap: false })
+  for (let i = 0; i < numInstances; i++) {
+    const dht = new DHT({ bootstrap: false })
 
     dhts.push(dht)
     common.failOnWarningOrError(t, dht)
   }
 
   // wait until every dht is listening
-  var tasks = dhts.map(function (dht) {
-    return function (cb) {
+  const tasks = dhts.map(dht => {
+    return cb => {
       dht.listen(cb)
     }
   })
 
-  parallel(tasks, function () {
+  parallel(tasks, () => {
     // add each other to routing tables
     makeFriends(dhts)
 
     // lookup from other DHTs
-    dhts[0].announce(infoHash, 9998, function () {
+    dhts[0].announce(infoHash, 9998, () => {
       dhts[1].lookup(infoHash)
     })
   })
 
-  dhts[1].on('peer', function (peer, hash) {
+  dhts[1].on('peer', (peer, hash) => {
     t.equal(hash.toString('hex'), infoHash)
     t.equal(peer.port, 9998)
     clearTimeout(timeoutId)
@@ -86,9 +86,9 @@ function findPeers (numInstances, t, cb) {
  * This should guarantee that any dht can be located (with enough queries).
  */
 function makeFriends (dhts) {
-  var len = dhts.length
-  for (var i = 0; i < len; i++) {
-    var next = dhts[(i + 1) % len]
+  const len = dhts.length
+  for (let i = 0; i < len; i++) {
+    const next = dhts[(i + 1) % len]
     dhts[i].addNode({ host: '127.0.0.1', port: next.address().port, id: next.nodeId })
   }
 }

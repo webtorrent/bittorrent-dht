@@ -1,30 +1,30 @@
-var crypto = require('crypto')
-var ed = require('bittorrent-dht-sodium')
-var ip = require('ip')
+const crypto = require('crypto')
+const ed = require('bittorrent-dht-sodium')
+const ip = require('ip')
 
-exports.failOnWarningOrError = function (t, dht) {
-  dht.on('warning', function (err) { t.fail(err) })
-  dht.on('error', function (err) { t.fail(err) })
+exports.failOnWarningOrError = (t, dht) => {
+  dht.on('warning', err => { t.fail(err) })
+  dht.on('error', err => { t.fail(err) })
 }
 
-exports.randomHost = function () {
+exports.randomHost = () => {
   return ip.toString(crypto.randomBytes(4))
 }
 
-exports.randomPort = function () {
+exports.randomPort = () => {
   return crypto.randomBytes(2).readUInt16LE(0)
 }
 
-exports.randomAddr = function () {
+exports.randomAddr = () => {
   return { host: exports.randomHost(), port: exports.randomPort() }
 }
 
-exports.randomId = function () {
+exports.randomId = () => {
   return crypto.randomBytes(20)
 }
 
-exports.addRandomNodes = function (dht, num) {
-  for (var i = 0; i < num; i++) {
+exports.addRandomNodes = (dht, num) => {
+  for (let i = 0; i < num; i++) {
     dht.addNode({
       id: exports.randomId(),
       host: exports.randomHost(),
@@ -33,23 +33,23 @@ exports.addRandomNodes = function (dht, num) {
   }
 }
 
-exports.addRandomPeers = function (dht, num) {
-  for (var i = 0; i < num; i++) {
+exports.addRandomPeers = (dht, num) => {
+  for (let i = 0; i < num; i++) {
     dht._addPeer(exports.randomAddr(), exports.randomId())
   }
 }
 
-exports.fill = function (n, s) {
-  var bs = Buffer.from(s)
-  var b = Buffer.allocUnsafe(n)
-  for (var i = 0; i < n; i++) {
+exports.fill = (n, s) => {
+  const bs = Buffer.from(s)
+  const b = Buffer.allocUnsafe(n)
+  for (let i = 0; i < n; i++) {
     b[i] = bs[i % bs.length]
   }
   return b
 }
 
-exports.sign = function (keypair) {
-  return function (buf) {
+exports.sign = keypair => {
+  return buf => {
     return ed.sign(buf, keypair.sk)
   }
 }
