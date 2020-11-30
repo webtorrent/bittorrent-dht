@@ -309,18 +309,33 @@ class DHT extends EventEmitter {
       if (opts.salt) message.a.salt = opts.salt
       message.a.k = opts.k
       message.a.seq = opts.seq
-      if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
-      else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
+      if (typeof opts.sign === 'function') {
+        if (opts.sign.length === 1) {
+          message.a.sig = opts.sign(encodeSigData(message.a))
+          this._putSigned(table, key, message, cb)
+        } else {
+          opts.sign(encodeSigData(message.a), (sig) => {
+            message.a.sig = sig
+            this._putSigned(table, key, message, cb)
+          })
+        }
+      } else if (Buffer.isBuffer(opts.sig)) {
+        message.a.sig = opts.sig
+        this._putSigned(table, key, message, cb)
+      }
     } else {
       this._values.set(key.toString('hex'), message.a)
+      this._putSigned(table, key, message, cb)
     }
 
+    return key
+  }
+
+  _putSigned (table, key, message, cb) {
     this._rpc.queryAll(table.closest(key), message, null, (err, n) => {
       if (err) return cb(err, key, n)
       cb(null, key, n)
     })
-
-    return key
   }
 
   _preput (key, opts, cb) {
