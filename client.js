@@ -496,6 +496,8 @@ class DHT extends EventEmitter {
   }
 
   _onquery (query, peer) {
+    if (query.q === undefined || query.q === null) return
+
     const q = query.q.toString()
     this._debug('received %s query from %s:%d', q, peer.address, peer.port)
     if (!query.a) return
