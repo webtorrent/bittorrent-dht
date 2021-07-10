@@ -22,10 +22,12 @@
     "simple-sha1": "^3.0.0"
   },
   "devDependencies": {
+    "@webtorrent/semantic-release-config": "1.0.5",
     "bittorrent-dht-sodium": "1.2.0",
     "ip": "1.1.5",
     "once": "1.4.0",
     "run-parallel": "1.2.0",
+    "semantic-release": "17.4.4",
     "standard": "*",
     "tape": "5.2.2"
   },
