@@ -238,7 +238,7 @@ For mutable content, the hash will be the hash of the public key, `opts.k`.
 These options are available:
 
 * `opts.k` - ed25519 public key buffer (32 bytes) (REQUIRED)
-* `opts.sign(buf)` - function to generate an ed25519 signature buffer (64 bytes) corresponding to the `opts.k` public key (REQUIRED)
+* `opts.sign(buf[, cb])` - function to generate an ed25519 signature buffer (64 bytes) corresponding to the `opts.k` public key (REQUIRED)
 * `opts.seq` - optional sequence (integer), must monotonically increase (REQUIRED)
 * `opts.cas` - optional previous sequence for compare-and-swap
 * `opts.salt` - optional salt buffer to include (<= 64 bytes) when calculating
@@ -263,8 +263,8 @@ const opts = {
   k: keypair.pk,
   seq: 0,
   v: value,
-  sign: function (buf) {
-    return ed.sign(buf, keypair.sk)
+  sign: function (buf, cb) {
+    cb(ed.sign(buf, keypair.sk))
   }
 }
 

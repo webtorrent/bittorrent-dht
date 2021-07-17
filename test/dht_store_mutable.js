@@ -612,3 +612,47 @@ test('valid sequence', t => {
     }
   })
 })
+
+test('asynchronous signing', t => {
+  t.plan(4)
+
+  const keypair = ed.keygen()
+
+  const dht = new DHT({ bootstrap: false, verify: ed.verify })
+  t.once('end', () => {
+    dht.destroy()
+  })
+  common.failOnWarningOrError(t, dht)
+
+  dht.listen(() => {
+    dht.addNode({ host: '127.0.0.1', port: dht.address().port })
+    dht.once('node', ready)
+  })
+
+  function ready () {
+    const value = common.fill(500, 'abc')
+    const opts = {
+      k: keypair.pk,
+      sign: (data, cb) => cb(common.sign(keypair)(data)),
+      seq: 0,
+      v: value
+    }
+
+    const expectedHash = crypto.createHash('sha1').update(opts.k).digest()
+
+    dht.put(opts, (_, hash) => {
+      t.equal(
+        hash.toString('hex'),
+        expectedHash.toString('hex'),
+        'hash of the public key'
+      )
+      dht.get(hash, (err, res) => {
+        t.ifError(err)
+        t.equal(res.v.toString('utf8'), opts.v.toString('utf8'),
+          'got back what we put in'
+        )
+        t.equal(res.seq, 0)
+      })
+    })
+  }
+})
