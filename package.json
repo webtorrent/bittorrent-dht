@@ -19,7 +19,7 @@
     "lru": "^3.1.0",
     "randombytes": "^2.0.5",
     "record-cache": "^1.0.2",
-    "simple-sha1": "^3.0.0"
+    "simple-sha1": "^3.1.0"
   },
   "devDependencies": {
     "@webtorrent/semantic-release-config": "1.0.5",
