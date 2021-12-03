@@ -58,6 +58,8 @@ class DHT extends EventEmitter {
 
     this._debug('new DHT %s', this.nodeId)
 
+    this.encodeSigData = encodeSigData
+
     const self = this
 
     function ping (opts, cb) {
