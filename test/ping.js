@@ -1,5 +1,5 @@
-const test = require('tape')
-const DHT = require('../')
+import test from 'tape'
+import DHT from '../index.js'
 
 test('ping should clear clones', t => {
   const dht1 = new DHT({ bootstrap: false })

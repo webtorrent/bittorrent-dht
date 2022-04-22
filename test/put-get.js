@@ -1,8 +1,8 @@
-const common = require('./common')
-const DHT = require('../')
-const test = require('tape')
-const ed = require('bittorrent-dht-sodium')
-const bencode = require('bencode')
+import bencode from 'bencode'
+import ed from 'bittorrent-dht-sodium'
+import test from 'tape'
+import DHT from '../index.js'
+import * as common from './common.js'
 
 test('dht store with salt', t => {
   t.plan(3)
