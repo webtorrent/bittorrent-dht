@@ -17,7 +17,7 @@
     "k-rpc": "^5.0.0",
     "last-one-wins": "^1.0.4",
     "lru": "^3.1.0",
-    "randombytes": "^2.0.5",
+    "randombytes": "^2.1.0",
     "record-cache": "^1.0.2",
     "simple-sha1": "^3.1.0"
   },
