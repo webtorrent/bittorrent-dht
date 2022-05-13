@@ -29,7 +29,7 @@
     "run-parallel": "1.2.0",
     "semantic-release": "19.0.2",
     "standard": "*",
-    "tape": "5.5.2"
+    "tape": "5.5.3"
   },
   "keywords": [
     "torrent",
