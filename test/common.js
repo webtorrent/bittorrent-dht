@@ -1,6 +1,6 @@
 import ed from 'bittorrent-dht-sodium'
-import crypto from 'crypto'
 import ip from 'ip'
+import crypto from 'node:crypto'
 
 export const failOnWarningOrError = (t, dht) => {
   dht.on('warning', err => { t.fail(err) })

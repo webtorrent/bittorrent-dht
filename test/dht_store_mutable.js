@@ -1,5 +1,5 @@
 import ed from 'bittorrent-dht-sodium'
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 import test from 'tape'
 import DHT from '../index.js'
 import * as common from './common.js'
