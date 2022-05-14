@@ -1,3 +1,10 @@
+## [10.0.4](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.3...v10.0.4) (2022-05-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency bencode to ^2.0.3 ([fcf9245](https://github.com/webtorrent/bittorrent-dht/commit/fcf924518fe6bb1a2022f350345100c9f6b2313e))
+
 ## [10.0.3](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.2...v10.0.3) (2022-05-13)
 
 
