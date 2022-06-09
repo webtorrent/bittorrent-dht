@@ -27,7 +27,7 @@
     "ip": "1.1.8",
     "once": "1.4.0",
     "run-parallel": "1.2.0",
-    "semantic-release": "19.0.2",
+    "semantic-release": "19.0.3",
     "standard": "*",
     "tape": "5.5.3"
   },
