@@ -1,6 +1,6 @@
+import { EventEmitter } from 'events'
 import bencode from 'bencode'
 import Debug from 'debug'
-import { EventEmitter } from 'events'
 import KBucket from 'k-bucket'
 import krpc from 'k-rpc'
 import low from 'last-one-wins'
