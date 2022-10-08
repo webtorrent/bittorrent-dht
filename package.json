@@ -14,7 +14,7 @@
     "bencode": "^2.0.3",
     "debug": "^4.1.1",
     "k-bucket": "^5.0.0",
-    "k-rpc": "^5.0.0",
+    "k-rpc": "^5.1.0",
     "last-one-wins": "^1.0.4",
     "lru": "^3.1.0",
     "randombytes": "^2.1.0",
