@@ -1,3 +1,10 @@
+## [10.0.5](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.4...v10.0.5) (2022-10-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency k-rpc to ^5.1.0 ([#232](https://github.com/webtorrent/bittorrent-dht/issues/232)) ([4cbce4d](https://github.com/webtorrent/bittorrent-dht/commit/4cbce4d1fc2896c9e59a9c59c39a7381c659d2a8))
+
 ## [10.0.4](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.3...v10.0.4) (2022-05-14)
 
 
