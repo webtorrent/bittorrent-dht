@@ -1,8 +1,8 @@
-import crypto from 'node:crypto'
-import ed from 'bittorrent-dht-sodium'
-import test from 'tape'
-import DHT from '../index.js'
-import * as common from './common.js'
+const common = require('./common')
+const DHT = require('../')
+const ed = require('bittorrent-dht-sodium')
+const test = require('tape')
+const crypto = require('crypto')
 
 test('local mutable put/get', t => {
   t.plan(4)

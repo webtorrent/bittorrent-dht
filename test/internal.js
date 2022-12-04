@@ -1,6 +1,6 @@
-import test from 'tape'
-import DHT from '../index.js'
-import * as common from './common.js'
+const common = require('./common')
+const DHT = require('../')
+const test = require('tape')
 
 test('`ping` query send and response', t => {
   t.plan(2)

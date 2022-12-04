@@ -1,15 +1,13 @@
-import { EventEmitter } from 'events'
-import bencode from 'bencode'
-import Debug from 'debug'
-import KBucket from 'k-bucket'
-import krpc from 'k-rpc'
-import low from 'last-one-wins'
-import LRU from 'lru'
-import randombytes from 'randombytes'
-import records from 'record-cache'
-import simpleSha1 from 'simple-sha1'
-
-const debug = Debug('bittorret-dht')
+const bencode = require('bencode')
+const debug = require('debug')('bittorrent-dht')
+const KBucket = require('k-bucket')
+const krpc = require('k-rpc')
+const low = require('last-one-wins')
+const LRU = require('lru')
+const randombytes = require('randombytes')
+const records = require('record-cache')
+const simpleSha1 = require('simple-sha1')
+const { EventEmitter } = require('events')
 
 const ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 const BUCKET_OUTDATED_TIMESPAN = 15 * 60 * 1000 // check nodes in bucket in 15 minutes old buckets
@@ -795,4 +793,4 @@ function toBuffer (str) {
   throw new Error('Pass a buffer or a string')
 }
 
-export default DHT
+module.exports = DHT

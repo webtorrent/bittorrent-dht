@@ -1,6 +1,6 @@
-import test from 'tape'
-import DHT from '../index.js'
-import * as common from './common.js'
+const common = require('./common')
+const DHT = require('../')
+const test = require('tape')
 
 test('explicitly set nodeId', t => {
   const nodeId = common.randomId()
