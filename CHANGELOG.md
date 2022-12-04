@@ -1,3 +1,10 @@
+## [10.0.7](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.6...v10.0.7) (2022-12-04)
+
+
+### Reverts
+
+* Revert "chore: switch to ESM (#248)" (#262) ([520c2de](https://github.com/webtorrent/bittorrent-dht/commit/520c2de3fc29aa892998058f08ee63be2ef1059b)), closes [#248](https://github.com/webtorrent/bittorrent-dht/issues/248) [#262](https://github.com/webtorrent/bittorrent-dht/issues/262)
+
 ## [10.0.6](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.5...v10.0.6) (2022-10-08)
 
 
