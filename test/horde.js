@@ -1,8 +1,8 @@
-const common = require('./common')
-const DHT = require('../')
-const once = require('once')
-const parallel = require('run-parallel')
-const test = require('tape')
+import once from 'once'
+import parallel from 'run-parallel'
+import test from 'tape'
+import DHT from '../index.js'
+import * as common from './common.js'
 
 const from = 2
 const to = 20

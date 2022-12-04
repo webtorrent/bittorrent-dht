@@ -1,5 +1,5 @@
-const DHT = require('../../')
-const test = require('tape')
+import test from 'tape'
+import DHT from '../../index.js'
 
 const pride = '1E69917FBAA2C767BCA463A96B5572785C6D8A12'.toLowerCase() // Pride & Prejudice
 const leaves = 'D2474E86C95B19B8BCFDB92BC12C9D44667CFA36'.toLowerCase() // Leaves of Grass

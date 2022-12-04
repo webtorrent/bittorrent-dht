@@ -1,7 +1,3 @@
 /*! bittorrent-dht. MIT License. WebTorrent LLC <https://webtorrent.io/opensource> */
-const Client = require('./client')
-const Server = require('./server')
-
-module.exports = Client
-module.exports.Client = Client
-module.exports.Server = Server
+export { default as Client, default } from './client.js'
+export { default as Server } from './server.js'

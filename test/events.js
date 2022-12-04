@@ -1,6 +1,6 @@
-const common = require('./common')
-const DHT = require('../')
-const test = require('tape')
+import test from 'tape'
+import DHT from '../index.js'
+import * as common from './common.js'
 
 test('`node` event fires for each added node (100x)', t => {
   const dht = new DHT({ bootstrap: false })
