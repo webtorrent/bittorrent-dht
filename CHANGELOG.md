@@ -1,3 +1,19 @@
+## [10.0.6](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.5...v10.0.6) (2022-10-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency debug to ^4.3.4 ([#230](https://github.com/webtorrent/bittorrent-dht/issues/230)) ([294e70d](https://github.com/webtorrent/bittorrent-dht/commit/294e70d51421e0447b676b7b5ecc214fde8c3338))
+* **deps:** update dependency k-bucket to ^5.1.0 ([#231](https://github.com/webtorrent/bittorrent-dht/issues/231)) ([a952dcd](https://github.com/webtorrent/bittorrent-dht/commit/a952dcd4a34391ff1b66aee0d80c84ef4c87920b))
+* **deps:** update dependency record-cache to ^1.2.0 ([#234](https://github.com/webtorrent/bittorrent-dht/issues/234)) ([adbe6ce](https://github.com/webtorrent/bittorrent-dht/commit/adbe6cecf9103115af57997ae246f3810048bc9f))
+
+## [10.0.5](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.4...v10.0.5) (2022-10-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency k-rpc to ^5.1.0 ([#232](https://github.com/webtorrent/bittorrent-dht/issues/232)) ([4cbce4d](https://github.com/webtorrent/bittorrent-dht/commit/4cbce4d1fc2896c9e59a9c59c39a7381c659d2a8))
+
 ## [10.0.4](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.3...v10.0.4) (2022-05-14)
 
 
