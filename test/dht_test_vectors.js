@@ -1,8 +1,8 @@
-import crypto from 'node:crypto'
-import ed from 'bittorrent-dht-sodium'
-import test from 'tape'
-import DHT from '../index.js'
-import * as common from './common.js'
+const common = require('./common')
+const DHT = require('../')
+const test = require('tape')
+const crypto = require('crypto')
+const ed = require('bittorrent-dht-sodium')
 
 // test vectors from http://bittorrent.org/beps/bep_0044.html
 test('dht store test vectors - test 1 (mutable)', t => {
