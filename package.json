@@ -2,7 +2,7 @@
   "name": "bittorrent-dht",
   "description": "Simple, robust, BitTorrent DHT implementation",
   "type": "module",
-  "version": "10.0.7",
+  "version": "11.0.0",
   "author": {
     "name": "WebTorrent LLC",
     "email": "feross@webtorrent.io",

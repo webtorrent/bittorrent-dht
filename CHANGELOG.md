@@ -1,3 +1,50 @@
+# [11.0.0](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.7...v11.0.0) (2022-12-05)
+
+
+### Features
+
+* esm ([#263](https://github.com/webtorrent/bittorrent-dht/issues/263)) ([232b9fd](https://github.com/webtorrent/bittorrent-dht/commit/232b9fd931c4d6b8749bfcd84b3a37d021a84b86))
+
+
+### BREAKING CHANGES
+
+* ESM only
+
+* refactor: update import/export of source files
+
+use esm import export
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* refactor: update common test file
+
+use esm const exports and imports
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* chore: update import in tests
+
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* chore: update package.json for esm support
+
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* chore: update Readme esm
+
+small fix new DHT() now new DHT
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* fix: node:crypto use
+
+use valid absolute URL strings
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+* chore: order module imports
+
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
+Signed-off-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+Co-authored-by: Lakshya Singh <lakshay.singh1108@gmail.com>
+
 ## [10.0.7](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.6...v10.0.7) (2022-12-04)
 
 
