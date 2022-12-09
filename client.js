@@ -7,9 +7,9 @@ import low from 'last-one-wins'
 import LRU from 'lru'
 import randombytes from 'randombytes'
 import records from 'record-cache'
-import simpleSha1 from 'simple-sha1'
+import crypto from 'node:crypto'
 
-const debug = Debug('bittorret-dht')
+const debug = Debug('bittorrent-dht')
 
 const ROTATE_INTERVAL = 5 * 60 * 1000 // rotate secrets every 5 minutes
 const BUCKET_OUTDATED_TIMESPAN = 15 * 60 * 1000 // check nodes in bucket in 15 minutes old buckets
@@ -731,7 +731,7 @@ class DHT extends EventEmitter {
 function noop () {}
 
 function sha1 (buf) {
-  return Buffer.from(simpleSha1.sync(buf), 'hex')
+  return crypto.createHash('sha1').update(buf).digest()
 }
 
 function createGetResponse (id, token, value) {
