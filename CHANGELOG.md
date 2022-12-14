@@ -1,3 +1,10 @@
+## [11.0.1](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.0...v11.0.1) (2022-12-14)
+
+
+### Performance Improvements
+
+* drop rusha, fix typo ([#257](https://github.com/webtorrent/bittorrent-dht/issues/257)) ([8cb79c6](https://github.com/webtorrent/bittorrent-dht/commit/8cb79c6c9e7e0c0e81cddf905ddc47e058652750))
+
 # [11.0.0](https://github.com/webtorrent/bittorrent-dht/compare/v10.0.7...v11.0.0) (2022-12-05)
 
 
