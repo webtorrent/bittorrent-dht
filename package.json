@@ -12,7 +12,7 @@
     "url": "https://github.com/webtorrent/bittorrent-dht/issues"
   },
   "dependencies": {
-    "bencode": "^2.0.3",
+    "bencode": "^3.0.0",
     "debug": "^4.3.4",
     "k-bucket": "^5.1.0",
     "k-rpc": "^5.1.0",
