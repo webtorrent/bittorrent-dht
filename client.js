@@ -7,7 +7,7 @@ import low from 'last-one-wins'
 import LRU from 'lru'
 import randombytes from 'randombytes'
 import records from 'record-cache'
-import crypto from 'node:crypto'
+import crypto from 'crypto'
 
 const debug = Debug('bittorrent-dht')
 
