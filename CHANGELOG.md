@@ -1,3 +1,10 @@
+## [11.0.3](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.2...v11.0.3) (2023-01-26)
+
+
+### Bug Fixes
+
+* webpack builds ([#266](https://github.com/webtorrent/bittorrent-dht/issues/266)) ([4b9a880](https://github.com/webtorrent/bittorrent-dht/commit/4b9a880a89d8a70174056a02ca4cfdb094ee36ae))
+
 ## [11.0.2](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.1...v11.0.2) (2023-01-25)
 
 
