@@ -33,9 +33,9 @@ test('dht store with salt', t => {
 
     const toEncode = { salt: opts.salt, seq: opts.seq, v: opts.v }
 
-    const encoded = bencode
+    const encoded = Buffer.from(bencode
       .encode(toEncode)
-      .slice(1, -1)
+      .slice(1, -1))
       .toString()
 
     opts.sig = ed
