@@ -31,7 +31,7 @@ test('dht store test vectors - test 1 (mutable)', t => {
       seq: 1,
       v: value,
       sign (buf) {
-        t.equal(buf.toString(), '3:seqi1e1:v12:Hello World!')
+        t.equal(Buffer.from(buf).toString(), '3:seqi1e1:v12:Hello World!')
         const sig = Buffer.from(
           '305ac8aeb6c9c151fa120f120ea2cfb923564e11552d06a5d856091e5e853cff' +
           '1260d3f39e4999684aa92eb73ffd136e6f4f3ecbfda0ce53a1608ecd7ae21f01',
@@ -88,7 +88,7 @@ test('dht store test vectors - test 2 (mutable with salt)', t => {
       v: Buffer.from(value),
       salt: Buffer.from('foobar'),
       sign (buf) {
-        t.equal(buf.toString(), '4:salt6:foobar3:seqi1e1:v12:Hello World!', 'encodings match')
+        t.equal(Buffer.from(buf).toString(), '4:salt6:foobar3:seqi1e1:v12:Hello World!', 'encodings match')
         const sig = Buffer.from(
           '6834284b6b24c3204eb2fea824d82f88883a3d95e8b4a21b8c0ded553d17d17d' +
           'df9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08',
