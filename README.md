@@ -19,7 +19,7 @@ This module is used by [WebTorrent](http://webtorrent.io).
 
 - complete implementation of the DHT protocol in JavaScript
 - follows [the spec](http://www.bittorrent.org/beps/bep_0005.html)
-- supports [BEP44](http://bittorrent.org/beps/bep_0044.html) for storing arbitrary data in the DHT
+- supports [BEP44](http://www.bittorrent.org/beps/bep_0044.html) for storing arbitrary data in the DHT
 - robust and well-tested
   - Comprehensive, fully-offline test suite
   - Used by [WebTorrent](http://webtorrent.io), [peerflix](https://www.npmjs.com/package/peerflix), and [Playback](https://mafintosh.github.io/playback/)
