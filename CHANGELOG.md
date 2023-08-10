@@ -1,3 +1,10 @@
+## [11.0.5](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.4...v11.0.5) (2023-08-10)
+
+
+### Bug Fixes
+
+* **deps:** update dependency bencode to v4 ([#279](https://github.com/webtorrent/bittorrent-dht/issues/279)) ([3bd9db7](https://github.com/webtorrent/bittorrent-dht/commit/3bd9db72dfe0832ba4ec7a4e468f0a1ef4348137))
+
 ## [11.0.4](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.3...v11.0.4) (2023-02-01)
 
 
