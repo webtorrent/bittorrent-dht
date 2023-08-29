@@ -292,7 +292,7 @@ class DHT extends EventEmitter {
     const v = typeof opts.v === 'string' ? Buffer.from(opts.v) : opts.v
     const key = isMutable
       ? this._hash(opts.salt ? Buffer.concat([opts.k, opts.salt]) : opts.k)
-      : this._hash(bencode.encode(v))
+      : this._hash(Buffer.from(bencode.encode(v)))
 
     const table = this._tables.get(key.toString('hex'))
     if (!table) return this._preput(key, opts, cb)
@@ -311,7 +311,7 @@ class DHT extends EventEmitter {
       if (opts.salt) message.a.salt = opts.salt
       message.a.k = opts.k
       message.a.seq = opts.seq
-      if (typeof opts.sign === 'function') message.a.sig = opts.sign(Buffer.from(encodeSigData(message.a)))
+      if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
       else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
     } else {
       this._values.set(key.toString('hex'), message.a)
@@ -382,12 +382,12 @@ class DHT extends EventEmitter {
 
       if (isMutable) {
         if (!verify || !r.sig || !r.k) return true
-        if (!verify(r.sig, Buffer.from(encodeSigData(r)), r.k)) return true
+        if (!verify(r.sig, encodeSigData(r), r.k)) return true
         if (hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k).equals(key)) {
           if (!value || r.seq > value.seq) value = r
         }
       } else {
-        if (hash(bencode.encode(r.v)).equals(key)) {
+        if (hash(Buffer.from(bencode.encode(r.v))).equals(key)) {
           value = r
           return false
         }
@@ -618,14 +618,14 @@ class DHT extends EventEmitter {
 
     const key = isMutable
       ? this._hash(a.salt ? Buffer.concat([a.k, a.salt]) : a.k)
-      : this._hash(bencode.encode(v))
+      : this._hash(Buffer.from(bencode.encode(v)))
     const keyHex = key.toString('hex')
 
     this.emit('put', key, v)
 
     if (isMutable) {
       if (!this._verify) return this._rpc.error(peer, query, [400, 'verification not supported'])
-      if (!this._verify(a.sig, Buffer.from(encodeSigData(a)), a.k)) return
+      if (!this._verify(a.sig, encodeSigData(a), a.k)) return
       const prev = this._values.get(keyHex)
       if (prev && typeof a.cas === 'number' && prev.seq !== a.cas) {
         return this._rpc.error(peer, query, [301, 'CAS mismatch, re-read and try again'])
@@ -778,7 +778,7 @@ function parseIp (buf, offset) {
 function encodeSigData (msg) {
   const ref = { seq: msg.seq || 0, v: msg.v }
   if (msg.salt) ref.salt = msg.salt
-  return bencode.encode(ref).slice(1, -1)
+  return Buffer.from(bencode.encode(ref).slice(1, -1))
 }
 
 function toNode (node) {
