@@ -311,7 +311,7 @@ class DHT extends EventEmitter {
       if (opts.salt) message.a.salt = opts.salt
       message.a.k = opts.k
       message.a.seq = opts.seq
-      if (typeof opts.sign === 'function') message.a.sig = opts.sign(encodeSigData(message.a))
+      if (typeof opts.sign === 'function') message.a.sig = opts.sign(Buffer.from(encodeSigData(message.a)))
       else if (Buffer.isBuffer(opts.sig)) message.a.sig = opts.sig
     } else {
       this._values.set(key.toString('hex'), message.a)
@@ -382,7 +382,7 @@ class DHT extends EventEmitter {
 
       if (isMutable) {
         if (!verify || !r.sig || !r.k) return true
-        if (!verify(r.sig, encodeSigData(r), r.k)) return true
+        if (!verify(r.sig, Buffer.from(encodeSigData(r)), r.k)) return true
         if (hash(r.salt ? Buffer.concat([r.k, r.salt]) : r.k).equals(key)) {
           if (!value || r.seq > value.seq) value = r
         }
@@ -625,7 +625,7 @@ class DHT extends EventEmitter {
 
     if (isMutable) {
       if (!this._verify) return this._rpc.error(peer, query, [400, 'verification not supported'])
-      if (!this._verify(a.sig, encodeSigData(a), a.k)) return
+      if (!this._verify(a.sig, Buffer.from(encodeSigData(a)), a.k)) return
       const prev = this._values.get(keyHex)
       if (prev && typeof a.cas === 'number' && prev.seq !== a.cas) {
         return this._rpc.error(peer, query, [301, 'CAS mismatch, re-read and try again'])
