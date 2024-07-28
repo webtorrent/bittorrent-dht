@@ -1,3 +1,10 @@
+## [11.0.7](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.6...v11.0.7) (2024-07-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency debug to ^4.3.6 ([6241c8f](https://github.com/webtorrent/bittorrent-dht/commit/6241c8f304ab944df0c65f2a8ceaf731ae8c9bac))
+
 ## [11.0.6](https://github.com/webtorrent/bittorrent-dht/compare/v11.0.5...v11.0.6) (2024-06-01)
 
 
