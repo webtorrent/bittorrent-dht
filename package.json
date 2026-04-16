@@ -22,7 +22,7 @@
     "record-cache": "^1.2.0"
   },
   "devDependencies": {
-    "@webtorrent/semantic-release-config": "1.0.10",
+    "@webtorrent/semantic-release-config": "1.0.11",
     "bittorrent-dht-sodium": "1.2.0",
     "ip": "1.1.9",
     "once": "1.4.0",
