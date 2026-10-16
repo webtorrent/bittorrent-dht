@@ -744,11 +744,14 @@ function createGetResponse (id, token, value) {
   return r
 }
 
-function encodePeer (host, port) {
-  const buf = Buffer.allocUnsafe(6)
-  const ip = host.split('.')
-  for (let i = 0; i < 4; i++) buf[i] = parseInt(ip[i] || 0, 10)
+function encodePeer(host, port) {
+  const buf = Buffer.alloc(6)
+  if (port < 0 || port > 0xffff) throw new Error('port out of bounds')
   buf.writeUInt16BE(port, 4)
+  host.split('.').forEach((octet, i) => {
+    if (octet < 0 || octet > 0xff) throw new Error('IP out of bounds')
+    buf.writeUInt8(octet, i)
+  })
   return buf
 }
 
